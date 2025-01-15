@@ -1,12 +1,14 @@
 import express from "express";
 import { envConfig } from "./constants/config";
+import userRouter from "./routers/user.router";
+
 const app = express();
 
-app.get("/", () => {
-  console.log("hello world");
-});
+app.use(express.json());
+
+// Routes
+app.use('/api/users', userRouter);
 
 app.listen(envConfig.PORT, () => {
-  console.log(envConfig);
-  console.log(`Server is running in port  ${envConfig.PORT}`);
+  console.log(`Server is running on port ${envConfig.PORT}`);
 });
