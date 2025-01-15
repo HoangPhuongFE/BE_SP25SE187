@@ -18,7 +18,8 @@ export class UserController {
         }
       });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const errorMessage = (error as Error).message;
+      res.status(500).json({ message: errorMessage });
     }
   }
 
@@ -31,7 +32,8 @@ export class UserController {
         refreshToken
       });
     } catch (error) {
-      res.status(401).json({ message: error.message });
+      const errorMessage = (error as Error).message;
+      res.status(401).json({ message: errorMessage });
     }
   }
 
@@ -47,7 +49,7 @@ export class UserController {
     } catch (error) {
       res.status(401).json({ 
         message: AUTH_MESSAGE.GOOGLE_LOGIN_FAILED,
-        error: error.message 
+        error: (error as Error).message 
       });
     }
   }
@@ -58,7 +60,8 @@ export class UserController {
       }
       res.json({ user: req.user });
     } catch (error) {
-      res.status(500).json({ message: error.message });
+      const errorMessage = (error as Error).message;
+      res.status(500).json({ message: errorMessage });
     }
   }
 }

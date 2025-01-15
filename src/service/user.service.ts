@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from '@prisma/client';
 import { hashPassword, comparePassword } from '../utils/hash';
 import jwt from 'jsonwebtoken';
@@ -25,17 +26,18 @@ export class UserService {
       where: { email: data.email },
       include: { roles: true }
     });
-
+  
     if (!user) throw new Error('User not found');
-
+  
     const isValidPassword = await comparePassword(data.password, user.passwordHash);
     if (!isValidPassword) throw new Error('Invalid password');
-
+  
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user.id);
-
+  
     return { accessToken, refreshToken };
   }
+  
 
   async loginWithGoogle(idToken: string) {
     const ticket = await googleClient.verifyIdToken({
@@ -69,32 +71,34 @@ export class UserService {
   }
 
   private generateAccessToken(user: any) {
+    if (!process.env.JWT_SECRET_ACCESS_TOKEN) {
+      throw new Error('JWT_SECRET_ACCESS_TOKEN is not defined in the environment variables');
+    }
     return jwt.sign(
       {
         userId: user.id,
         email: user.email,
-        roles: user.roles.map((r: any) => r.role.name)
+        roles: user.roles.map((r: any) => r.role.name),
       },
-      process.env.JWT_SECRET!,
-      { expiresIn: '15m' }
+      process.env.JWT_SECRET_ACCESS_TOKEN,
+      { expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || '15m' }
     );
   }
-
+  
   private async generateRefreshToken(userId: string) {
-    const token = jwt.sign(
-      { userId },
-      process.env.JWT_REFRESH_SECRET!,
-      { expiresIn: '7d' }
-    );
-
+    // Tạo UUID
+    const token = uuidv4();
+  
+    // Lưu token vào database
     await prisma.refreshToken.create({
       data: {
         token,
         userId,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      }
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 ngày
+      },
     });
-
-    return token;
+  
+    return token; // Trả về token UUID
   }
+  
 }

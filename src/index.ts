@@ -1,6 +1,8 @@
 import express from "express";
 import { envConfig } from "./constants/config";
 import userRouter from "./routers/user.router";
+import { config } from 'dotenv';
+config();
 
 const app = express();
 
