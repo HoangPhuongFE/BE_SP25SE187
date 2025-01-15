@@ -52,6 +52,12 @@ export class UserService {
   
 
   async loginWithGoogle(idToken: string) {
+    const googleClient = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_REDIRECT_URI
+    );
+
     const ticket = await googleClient.verifyIdToken({
       idToken,
       audience: process.env.GOOGLE_CLIENT_ID
@@ -84,7 +90,7 @@ export class UserService {
 
   private generateAccessToken(user: any) {
     if (!process.env.JWT_SECRET_ACCESS_TOKEN) {
-      throw new Error('JWT_SECRET_ACCESS_TOKEN is not defined in the environment variables');
+      throw new Error('JWT_SECRET_ACCESS_TOKEN is not defined');
     }
     return jwt.sign(
       {
@@ -98,10 +104,13 @@ export class UserService {
   }
   
   private async generateRefreshToken(userId: string) {
-    // Tạo UUID
+    if (!process.env.JWT_SECRET_REFRESH_TOKEN) {
+      throw new Error('JWT_SECRET_REFRESH_TOKEN is not defined');
+    }
+    
     const token = uuidv4();
-  
-    // Lưu token vào database
+    const expiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
+    
     await prisma.refreshToken.create({
       data: {
         token,
@@ -110,7 +119,7 @@ export class UserService {
       },
     });
   
-    return token; // Trả về token UUID
+    return token;
   }
   
   async logout(refreshToken: string) {

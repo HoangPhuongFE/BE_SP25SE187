@@ -67,7 +67,11 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
+    const payload = jwt.verify(
+      token, 
+      process.env.JWT_SECRET_ACCESS_TOKEN!
+    ) as TokenPayload;
+    
     req.user = payload;
     next();
   } catch (error) {
