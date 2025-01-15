@@ -64,4 +64,38 @@ export class UserController {
       res.status(500).json({ message: errorMessage });
     }
   }
+
+  async logout(req: AuthenticatedRequest, res: Response) {
+    try {
+      const refreshToken = req.body.refreshToken;
+      if (!refreshToken) {
+        return res.status(400).json({ message: USER_MESSAGE.INVALID_REFRESH_TOKEN });
+      }
+
+      await userService.logout(refreshToken);
+      res.json({ message: AUTH_MESSAGE.LOGOUT_SUCCESS });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  }
+
+  async updateProfile(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: USER_MESSAGE.UNAUTHORIZED });
+      }
+
+      const updatedUser = await userService.updateProfile(req.user.userId, {
+        fullName: req.body.fullName,
+        avatar: req.body.avatar
+      });
+
+      res.json({ 
+        message: USER_MESSAGE.UPDATE_PROFILE_SUCCESS,
+        user: updatedUser 
+      });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  }
 }

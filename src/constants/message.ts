@@ -8,6 +8,7 @@ export const USER_MESSAGE = {
   UNAUTHORIZED: "Unauthorized access",
   FORBIDDEN: "Forbidden access",
   INVALID_REFRESH_TOKEN: "Invalid refresh token",
+  UPDATE_PROFILE_SUCCESS: "Profile updated successfully",
 } as const;
 
 export const AUTH_MESSAGE = {

@@ -11,14 +11,26 @@ export class UserService {
   async register(data: RegisterDTO) {
     const hashedPassword = await hashPassword(data.password);
     
-    return prisma.user.create({
+    // Tạo user
+    const user = await prisma.user.create({
       data: {
         email: data.email,
         username: data.username,
         passwordHash: hashedPassword,
-        fullName: data.fullName
+        fullName: data.fullName,
+        roles: {
+          create: {
+            roleId: 'student-role-id', // ID của role student trong DB
+            isActive: true
+          }
+        }
+      },
+      include: {
+        roles: true
       }
     });
+
+    return user;
   }
 
   async login(data: LoginDTO) {
@@ -101,4 +113,58 @@ export class UserService {
     return token; // Trả về token UUID
   }
   
+  async logout(refreshToken: string) {
+    return prisma.refreshToken.delete({
+      where: { token: refreshToken }
+    });
+  }
+
+  async updateProfile(userId: string, data: {
+    fullName?: string;
+    avatar?: string;
+  }) {
+    return prisma.user.update({
+      where: { id: userId },
+      data: {
+        fullName: data.fullName,
+        avatar: data.avatar,
+        updatedAt: new Date()
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        fullName: true,
+        avatar: true
+      }
+    });
+  }
+
+  // Thêm method để tạo các user mặc định
+  async createDefaultUsers() {
+    const roles = [
+      'lecturer',
+      'head_of_department', 
+      'dean',
+      'reviewer',
+      'mentor'
+    ];
+
+    for (const role of roles) {
+      await prisma.user.create({
+        data: {
+          email: `${role}@gmail.com`,
+          username: '${role}' ,
+          passwordHash: await hashPassword('12345'),
+          fullName: role.charAt(0).toUpperCase() + role.slice(1),
+          roles: {
+            create: {
+              roleId: `${role}-role-id`, // ID của role tương ứng
+              isActive: true
+            }
+          }
+        }
+      });
+    }
+  }
 }
