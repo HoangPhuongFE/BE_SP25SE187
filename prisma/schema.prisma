@@ -45,10 +45,13 @@ model UserRole {
 
 model RefreshToken {
   id        String   @id @default(uuid())
-  token     String   @unique // UUID không cần `@db.Text`
+  token     String   @db.Text
   userId    String
   user      User     @relation(fields: [userId], references: [id])
   expiresAt DateTime
   createdAt DateTime @default(now())
 }
+
+
+
 
