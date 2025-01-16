@@ -4,7 +4,7 @@
   "description": "This is source config for project nodejs express typescript",
   "main": "index.js",
   "scripts": {
-    "dev": "npx nodemon",
+    "dev": "npm run build && npx nodemon",
     "build": "rimraf ./dist && tsc && tsc-alias",
     "start": "node dist/index.js",
     "format": "prettier --write \"src/**/*.ts\"",
