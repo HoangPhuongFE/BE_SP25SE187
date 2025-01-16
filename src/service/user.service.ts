@@ -95,7 +95,6 @@ export class UserService {
     return jwt.sign(
       {
         userId: user.id,
-        email: user.email,
         roles: user.roles.map((r: any) => r.role.name),
       },
       process.env.JWT_SECRET_ACCESS_TOKEN,
@@ -103,18 +102,25 @@ export class UserService {
     );
   }
   
-  private async generateRefreshToken(userId: string) {
+  private async generateRefreshToken(user: any) {
     if (!process.env.JWT_SECRET_REFRESH_TOKEN) {
       throw new Error('JWT_SECRET_REFRESH_TOKEN is not defined');
     }
     
-    const token = uuidv4();
-    const expiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d';
     
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        roles: user.roles.map((r: any) => r.role.name),
+      },
+      process.env.JWT_SECRET_REFRESH_TOKEN,
+      { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '15m' }
+    );
+
     await prisma.refreshToken.create({
       data: {
         token,
-        userId,
+        userId : user.id,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 ngày
       },
     });
