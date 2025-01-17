@@ -159,51 +159,6 @@ export class UserService {
     return { accessToken, refreshToken };
   }
 
-  async createDefaultUsers() {
-    const defaultUsers = [
-      {
-        email: 'student@gmail.com',
-        username: 'student',
-        password: await hashPassword('12345'),
-        fullName: 'Student User',
-        roleId: 'student-role-id',
-      },
-      {
-        email: 'lecturer@gmail.com',
-        username: 'lecturer',
-        password: await hashPassword('12345'),
-        fullName: 'Lecturer User',
-        roleId: 'lecturer-role-id',
-      },
-    ];
-
-    for (const user of defaultUsers) {
-      const roleExists = await prisma.role.findUnique({
-        where: { id: user.roleId },
-      });
-
-      if (!roleExists) {
-        throw new Error(`Role with ID ${user.roleId} does not exist`);
-      }
-
-      await prisma.user.create({
-        data: {
-          email: user.email,
-          username: user.username,
-          passwordHash: user.password,
-          fullName: user.fullName,
-          roles: {
-            create: {
-              roleId: user.roleId,
-              isActive: true,
-            },
-          },
-        },
-      });
-
-      console.log(`User created: ${user.username}`);
-    }
-  }
 
   async logout(refreshToken: string): Promise<void> {
     await prisma.refreshToken.deleteMany({
