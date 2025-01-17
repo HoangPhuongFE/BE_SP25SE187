@@ -78,3 +78,19 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
     return res.status(403).json({ message: USER_MESSAGE.INVALID_TOKEN });
   }
 };
+
+export const checkRole = (allowedRoles: string[]) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ message: USER_MESSAGE.UNAUTHORIZED });
+    }
+
+    const hasRole = req.user.roles.some(role => allowedRoles.includes(role));
+    
+    if (!hasRole) {
+      return res.status(403).json({ message: USER_MESSAGE.FORBIDDEN });
+    }
+
+    next();
+  };
+};
