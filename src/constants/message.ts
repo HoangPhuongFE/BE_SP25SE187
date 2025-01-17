@@ -19,8 +19,12 @@ export const AUTH_MESSAGE = {
 } as const;
 
 export const ADMIN_MESSAGE = {
-  CREATE_USER_SUCCESS: "User created successfully",
-  INVALID_ROLE: "Invalid role",
-  STUDENT_ROLE_RESTRICTION: "Cannot assign another role to a student account",
-  ADMIN_REQUIRED: "Admin rights required",
+  CREATE_USER_SUCCESS: 'User created successfully',
+  UPDATE_ROLES_SUCCESS: 'User roles updated successfully',
+  INVALID_ROLE: 'One or more roles are invalid',
+  EMAIL_EXISTS: 'Email already exists',
+  USERNAME_EXISTS: 'Username already exists',
+  USER_NOT_FOUND: 'User not found',
+  MISSING_FIELDS: 'User ID and roles are required',
+  STUDENT_ROLE_RESTRICTION: 'User with the role student cannot have additional roles', 
 } as const;

@@ -14,4 +14,13 @@ router.post(
   adminController.createUser
 );
 
+
+router.put(
+  '/users/roles',
+  authenticateToken, 
+  checkRole(['admin']), 
+  adminController.updateUserRoles 
+);
+
+
 export default router; 
