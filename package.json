@@ -1,5 +1,5 @@
 {
-  "name": "twitter",
+  "name": "fptu-capstone-management",
   "version": "1.0.0",
   "description": "This is source config for project nodejs express typescript",
   "main": "index.js",
