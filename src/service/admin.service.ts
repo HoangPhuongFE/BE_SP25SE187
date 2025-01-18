@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../utils/hash';
+import * as XLSX from 'xlsx';
+import { generateUsername } from '../utils/generator';
+import * as fs from 'fs';
 
 const prisma = new PrismaClient();
 
@@ -13,6 +16,11 @@ interface CreateUserDTO {
 interface UpdateRolesDTO {
   userId: string;
   roles: string[];
+}
+interface ExcelUserData {
+  email: string;
+  profession?: string;
+  specialty?: string;
 }
 export class AdminService {
   // Hàm tạo mới user
@@ -113,5 +121,88 @@ export class AdminService {
     });
   }
 
+  async importUsersFromExcel(filePath: string) {
+    try {
+      // Đọc file Excel
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const data = XLSX.utils.sheet_to_json(worksheet) as ExcelUserData[];
 
+      const results = {
+        success: 0,
+        failed: 0,
+        errors: [] as string[]
+      };
+
+      // Lấy student role ID
+      const studentRole = await prisma.role.findFirst({
+        where: { name: 'student' },
+        select: { id: true }
+      });
+
+      if (!studentRole) {
+        throw new Error('Student role not found');
+      }
+
+      // Xử lý từng dòng dữ liệu
+      for (const row of data) {
+        try {
+          // Kiểm tra email hợp lệ
+          if (!row.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
+            results.failed++;
+            results.errors.push(`Email ${row.email} không hợp lệ`);
+            continue;
+          }
+
+          // Kiểm tra email tồn tại
+          const existingUser = await prisma.user.findUnique({
+            where: { email: row.email }
+          });
+
+          if (existingUser) {
+            results.failed++;
+            results.errors.push(`Email ${row.email} đã tồn tại`);
+            continue;
+          }
+
+          // Tạo username từ email
+          const username = generateUsername(row.email);
+          // Tạo mật khẩu mặc định
+          const defaultPassword = await hashPassword('123456');
+
+          // Tạo user mới
+          await prisma.user.create({
+            data: {
+              email: row.email,
+              username: username,
+              passwordHash: defaultPassword,
+              profession: row.profession,
+              specialty: row.specialty,
+              roles: {
+                create: {
+                  roleId: studentRole.id,
+                  isActive: true
+                }
+              }
+            }
+          });
+
+          results.success++;
+        } catch (error) {
+          results.failed++;
+          results.errors.push(`Lỗi khi xử lý ${row.email}: ${(error as Error).message}`);
+        }
+      }
+
+      return results;
+    } finally {
+      // Xóa file sau khi xử lý xong
+      try {
+        fs.unlinkSync(filePath);
+      } catch (error) {
+        console.error('Lỗi khi xóa file:', error);
+      }
+    }
+  }
 } 

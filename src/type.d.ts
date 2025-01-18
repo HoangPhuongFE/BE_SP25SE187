@@ -19,3 +19,9 @@ interface TokenPayload {
 interface GoogleLoginDTO {
   idToken: string;
 }
+
+interface ExcelUserData {
+  email: string;
+  profession: string;
+  specialty: string;
+}

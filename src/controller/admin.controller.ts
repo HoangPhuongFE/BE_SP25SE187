@@ -78,4 +78,28 @@ export class AdminController {
       res.status(500).json({ message: errorMessage });
     }
   }
+
+  async importUsers(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: 'Vui lòng upload file Excel' });
+      }
+
+      const results = await adminService.importUsersFromExcel(req.file.path);
+      
+      res.json({
+        message: 'Import thành công',
+        results: {
+          success: results.success,
+          failed: results.failed,
+          errors: results.errors
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        message: 'Lỗi khi import users',
+        error: (error as Error).message 
+      });
+    }
+  }
 }
