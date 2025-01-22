@@ -14,12 +14,25 @@ model User {
   passwordHash  String
   fullName      String?
   avatar        String?
+  profession    String?
+  specialty     String?
   isActive      Boolean   @default(true)
   lastLogin     DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   refreshTokens RefreshToken[]
   roles         UserRole[]
+  students        Student[]
+  importLogs      ImportLog[]
+  systemConfigs   SystemConfig[]
+  createdTopics   Topic[]          @relation("TopicCreator")
+  createdGroups   Group[]          @relation("GroupCreator")
+  systemLogs      SystemLog[]
+  emailLogs       EmailLog[]
+  createdDecisions Decision[]      @relation("DecisionCreator")
+  reviewCouncils  ReviewCouncil[]  @relation("ReviewCouncilCreator")
+  documents       Document[]
+  notificationRecipients NotificationRecipient[]
 }
 
 model Role {
@@ -52,6 +65,469 @@ model RefreshToken {
   createdAt DateTime @default(now())
 }
 
+model Student {
+  id                Int            @id @default(autoincrement())
+  user             User?          @relation(fields: [userId], references: [id])
+  userId           String?        @unique
+  studentCode      String         @unique @map("student_code")
+  major            Major          @relation(fields: [majorId], references: [id])
+  majorId          Int            @map("major_id")
+  specialization   Specialization? @relation(fields: [specializationId], references: [id])
+  specializationId Int?           @map("specialization_id")
+  isEligible       Boolean        @default(false) @map("is_eligible")
+  personalEmail    String?        @map("personal_email")
+  status           StudentStatus  @default(PENDING)
+  importAt         DateTime       @default(now()) @map("import_at")
+  importSource     String         @map("import_source")
+  isImported       Boolean        @default(true) @map("is_imported")
+
+  @@map("students")
+}
+
+model Major {
+  id              Int              @id @default(autoincrement())
+  name            String           @unique
+  
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  students        Student[]
+  specializations Specialization[]
+  topics          Topic[]          @relation("MajorTopics")
+  semesterTopicMajors SemesterTopicMajor[]
+  detailMajorTopics DetailMajorTopic[]
+
+  @@map("majors")
+}
+
+model Specialization {
+  id        Int       @id @default(autoincrement())
+  major     Major     @relation(fields: [majorId], references: [id])
+  majorId   Int       @map("major_id")
+  name      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  students  Student[]
+
+  @@map("specializations")
+}
+
+model ImportLog {
+  id             Int      @id @default(autoincrement())
+  source         String
+  fileName       String   @map("file_name")
+  importBy       User     @relation(fields: [importById], references: [id])
+  importById     String   @map("import_by")
+  importAt       DateTime @default(now()) @map("import_at")
+  totalRecords   Int      @map("total_records")
+  successRecords Int      @map("success_records")
+  errorRecords   Int      @map("error_records")
+  errorsDetails  String?  @db.Text @map("errors_details")
+
+  @@map("import_logs")
+}
+
+enum StudentStatus {
+  PENDING
+  ACTIVE
+  INACTIVE
+}
+
+model MeetingSchedule {
+  id           Int       @id @default(autoincrement())
+  mentorId     String    @map("mentor_id")
+  groupId      Int       @map("group_id") 
+  meetingTime  DateTime  @map("meeting_time")
+  location     String
+  agenda       String
+  status       String
+  meetingNotes String?   @db.Text @map("meeting_notes")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  feedback     Feedback[]
+
+  @@map("meeting_schedules")
+}
+
+model TopicRegistration {
+  id              Int      @id @default(autoincrement())
+  topicId         Int      @map("topic_id")
+  userId          String   @map("user_id")
+  reviewerId      String?  @map("reviewer_id")
+  role            String
+  status          String
+  decisionFile    String?  @map("decision_file")
+  rejectionReason String?  @db.Text @map("rejection_reason")
+  registeredAt    DateTime @default(now()) @map("registered_at")
+  reviewedAt      DateTime? @map("reviewed_at")
+  topic           Topic    @relation(fields: [topicId], references: [id])
+
+  @@map("topic_registrations")
+}
+
+model SystemConfig {
+  id          Int      @id @default(autoincrement())
+  configKey   String   @unique @map("config_key")
+  configValue String   @map("config_value")
+  description String?
+  updatedBy   String   @map("updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  user        User     @relation(fields: [updatedBy], references: [id])
+
+  @@map("system_configs")
+}
+
+model Council {
+  id            Int       @id @default(autoincrement()) @map("council_id")
+  name          String    @map("council_name")
+  topicAssId    Int       @map("topicass_id")
+  createdDate   DateTime  @default(now()) @map("created_date")
+  status        String
+  topicAssignment TopicAssignment @relation(fields: [topicAssId], references: [id])
+  members       CouncilMember[]
+  reviewDefenseCouncils ReviewDefenseCouncil[]
+  reviewAssignments ReviewAssignment[]
+  defenseSchedules DefenseSchedule[]
+
+  @@map("councils")
+}
+
+model ReviewDefenseCouncil {
+  id                 Int      @id @default(autoincrement())
+  councilId          Int      @unique @map("council_id")
+  semesterId         Int      @map("semester_id")
+  defenseReviewRound String   @map("defense_review_round")
+  url               String    @map("URL")
+  status            String
+  createdBy         String    @map("created_by")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  timeReview        DateTime  @map("time_review")
+  topicAssignmentId Int      @map("TopicAssignments_id")
+  council           Council   @relation(fields: [councilId], references: [id])
+  semester          Semester  @relation(fields: [semesterId], references: [id])
+
+  @@map("review_defense_councils")
+}
+
+model Topic {
+  id              Int       @id @default(autoincrement())
+  semesterId      Int       @map("semester_id")
+  topicCode       String    @unique @map("topic_code")
+  name            String
+  description     String?   @db.Text
+  isBusiness      Boolean   @default(false) @map("is_business")
+  businessPartner String?   @map("business_partner")
+  source          String?
+  status          String
+  isMultiMajor    Boolean   @default(false) @map("is_multi_major")
+  createdBy       String    @map("created_by")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  majorId1        Int?      @map("major_id1")
+  majorId2        Int?      @map("major_id2")
+  semester        Semester  @relation(fields: [semesterId], references: [id])
+  creator         User      @relation("TopicCreator", fields: [createdBy], references: [id])
+  topicRegistrations TopicRegistration[]
+  aiVerificationLogs AIVerificationLog[]
+  semesterTopicMajors SemesterTopicMajor[]
+  topicAssignments TopicAssignment[]
+  decisions       Decision[]
+  detailMajorTopics DetailMajorTopic[]
+  majors          Major[]          @relation("MajorTopics")
+
+  @@map("topics")
+}
+
+model TopicAssignment {
+  id              Int       @id @default(autoincrement())
+  topicId         Int       @map("topic_id")
+  groupId         Int       @map("group_id")
+  decisionId      String?   @map("decision_id")
+  decisionFile    String?   @map("decision_file")
+  draftFile       String?   @map("draft_file")
+  approvalStatus  String    @map("approval_status")
+  defendStatus    String    @map("defend_status")
+  url             String?   @map("URL")
+  assignedBy      String    @map("assigned_by")
+  reviewCouncilId String?   @map("review_council_id")
+  assignedAt      DateTime  @default(now()) @map("assigned_at")
+  approvalAt      DateTime? @map("approval_at")
+  topic           Topic     @relation(fields: [topicId], references: [id])
+  councils        Council[]
+
+  @@map("topic_assignments")
+}
+
+model Group {
+  id            Int       @id @default(autoincrement())
+  groupCode     String    @unique @map("group_code")
+  semesterId    Int       @map("semester_id")
+  status        String
+  isAutoCreated Boolean   @default(false) @map("is_auto_created")
+  createdBy     String    @map("created_by")
+  maxMembers    Int       @map("max_members")
+  isMultiMajor  Boolean   @default(false) @map("is_multi_major")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  mentor1Id     String?   @map("mentor_1_id")
+  mentor2Id     String?   @map("mentor_2_id")
+  semester      Semester  @relation(fields: [semesterId], references: [id])
+  creator       User      @relation("GroupCreator", fields: [createdBy], references: [id])
+  members       GroupMember[]
+  progressReports ProgressReport[]
+  defenseSchedules DefenseSchedule[]
+  decisions       Decision[]
+
+  @@map("groups")
+}
+
+model ProgressReport {
+  id                  Int       @id @default(autoincrement())
+  groupId             Int       @map("group_id")
+  mentorId            String    @map("mentor_id")
+  weekNumber          Int       @map("week_number")
+  content             String    @db.Text
+  mentorFeedback      String?   @db.Text @map("mentor_feedback")
+  completionPercentage Float     @map("completion_percentage")
+  status              String
+  submittedAt         DateTime  @map("submitted_at")
+  reviewedAt          DateTime? @map("reviewed_at")
+  url                 String?
+  group               Group     @relation(fields: [groupId], references: [id])
+
+  @@map("progress_reports")
+}
+
+model AIVerificationLog {
+  id              Int       @id @default(autoincrement())
+  topicId         Int       @map("topic_id")
+  verification    String
+  originalText    String    @db.Text @map("original_text")
+  verifiedText    String    @db.Text @map("verified_text")
+  similarityScore Float     @map("similarity_score")
+  suggestions     String?   @db.Text
+  verifiedBy      String    @map("verified_by")
+  verifiedAt      DateTime  @map("verified_at")
+  topic           Topic     @relation(fields: [topicId], references: [id])
+
+  @@map("ai_verification_logs")
+}
+
+model GroupMember {
+  id          Int       @id @default(autoincrement())
+  groupId     Int       @map("group_id")
+  studentId   Int       @map("student_id")
+  role        String
+  joinedAt    DateTime  @default(now()) @map("joined_at")
+  leaveAt     DateTime? @map("leave_at")
+  leaveReason String?   @map("leave_reason")
+  isActive    Boolean   @default(true) @map("is_active")
+  status      String
+  group       Group     @relation(fields: [groupId], references: [id])
+
+  @@map("group_members")
+}
+
+model SystemLog {
+  id          Int      @id @default(autoincrement())
+  userId      String   @map("user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  oldValues   Json?    @map("old_values")
+  newValues   Json?    @map("new_values")
+  createdAt   DateTime @default(now()) @map("created_at")
+  ipAddress   String   @map("ip_address")
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@map("system_logs")
+}
+
+model SemesterTopicMajor {
+  semesterId Int      @map("semester_id")
+  topicId    Int      @map("topic_id")
+  majorId    Int      @map("major_id")
+  status     String
+  topic      Topic    @relation(fields: [topicId], references: [id])
+  semester   Semester @relation(fields: [semesterId], references: [id])
+  major      Major    @relation(fields: [majorId], references: [id])
+
+  @@id([semesterId, topicId, majorId])
+  @@map("semester_topic_major")
+}
+
+model EmailLog {
+  id             Int      @id @default(autoincrement())
+  userId         String   @map("user_id")
+  recipientEmail String   @map("recipient_email")
+  subject        String
+  content        String   @db.Text
+  status         String
+  errorMessage   String?  @map("error_message")
+  errorAt        DateTime @map("error_at")
+  user           User     @relation(fields: [userId], references: [id])
+
+  @@map("email_logs")
+}
+
+model Notification {
+  id               Int      @id @default(autoincrement())
+  title            String
+  content          String   @db.Text
+  notificationType String   @map("notification_type")
+  createdBy        String   @map("created_by")
+  createdAt        DateTime @default(now()) @map("created_at")
+  isSystem         Boolean  @default(false) @map("is_system")
+  recipients       NotificationRecipient[]
+
+  @@map("notifications")
+}
+
+model Decision {
+  id             Int      @id @default(autoincrement()) @map("decision_id")
+  decisionNumber String   @map("decision_number")
+  decisionTitle  String   @map("decision_title")
+  groupId        Int      @map("group_id")
+  topicId        Int      @map("topic_id")
+  draftFileUrl   String?  @map("draft_file_url")
+  finalFileUrl   String?  @map("final_file_url")
+  status         String
+  createdBy      String   @map("created_by")
+  createdAt      DateTime @default(now()) @map("created_at")
+  topic          Topic    @relation(fields: [topicId], references: [id])
+  creator        User     @relation("DecisionCreator", fields: [createdBy], references: [id])
+  group          Group    @relation(fields: [groupId], references: [id])
+
+  @@map("decisions")
+}
+
+model ReviewCouncil {
+  id          Int      @id @default(autoincrement())
+  semesterId  Int      @map("semester_id")
+  reviewType  String   @map("review_type")
+  room        String
+  councilCode String   @unique @map("council_code")
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  status      String
+  url         String   @map("URL")
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  semester    Semester @relation(fields: [semesterId], references: [id])
+  creator     User     @relation("ReviewCouncilCreator", fields: [createdBy], references: [id])
+
+  @@map("review_councils")
+}
+
+model ReviewAssignment {
+  id               Int       @id @default(autoincrement())
+  councilId        Int      @map("council_id")
+  topicId          Int      @map("topic_id")
+  reviewerId       String   @map("reviewer_id")
+  score            Float?
+  feedback         String?  @db.Text
+  status           String
+  assignedAt       DateTime @default(now()) @map("assigned_at")
+  reviewedAt       DateTime? @map("reviewed_at")
+  assignmentStatus String   @map("assignment_status")
+  council          Council  @relation(fields: [councilId], references: [id])
+
+  @@map("review_assignments")
+}
+
+model Document {
+  id           Int      @id @default(autoincrement())
+  fileName     String   @map("file_name")
+  filePath     String   @map("file_path")
+  relatedTable String   @map("related_table")
+  documentType String   @map("document_type")
+  uploadedAt   DateTime @default(now()) @map("uploaded_at")
+  uploadedBy   String   @map("uploaded_by")
+  uploader     User     @relation(fields: [uploadedBy], references: [id])
+
+  @@map("documents")
+}
+
+model CouncilMember {
+  id                Int      @id @default(autoincrement())
+  councilId         Int      @map("council_id")
+  defenseCouncilsId Int?     @map("defensecouncils_id")
+  userId            String   @map("user_id")
+  role              String
+  assignedAt        DateTime @default(now()) @map("assigned_at")
+  status            String
+  council           Council  @relation(fields: [councilId], references: [id])
+
+  @@map("council_members")
+}
+
+model Feedback {
+  id                 Int      @id @default(autoincrement())
+  meetingId          Int      @map("meeting_id")
+  reviewAssignmentId Int?     @map("review_assignment_id")
+  content            String   @db.Text
+  rating             Int
+  createdAt          DateTime @default(now()) @map("created_at")
+  meeting            MeetingSchedule @relation(fields: [meetingId], references: [id])
+
+  @@map("feedback")
+}
+
+model DefenseSchedule {
+  id                 Int      @id @default(autoincrement())
+  councilId          Int      @map("council_id")
+  groupId            Int      @map("group_id")
+  defenseTime        DateTime @map("defense_time")
+  location           String
+  defenseRound       Int      @map("defense_round")
+  status             String
+  notes              String?  @db.Text
+  createdAt          DateTime @default(now()) @map("created_at")
+  confirmationStatus String   @map("confirmation_status")
+  group              Group    @relation(fields: [groupId], references: [id])
+  council            Council  @relation(fields: [councilId], references: [id])
+
+  @@map("defense_schedules")
+}
+
+model NotificationRecipient {
+  notificationId Int         @map("notification_id")
+  userId         String      @map("user_id")
+  isRead         Boolean     @default(false) @map("is_read")
+  readAt         DateTime?   @map("read_at")
+  notification   Notification @relation(fields: [notificationId], references: [id])
+  user           User        @relation(fields: [userId], references: [id])
+
+  @@id([notificationId, userId])
+  @@map("notification_recipients")
+}
+
+model DetailMajorTopic {
+  majorId Int    @map("major_id")
+  topicId Int    @map("topic_id")
+  status  String
+  major   Major  @relation(fields: [majorId], references: [id])
+  topic   Topic  @relation(fields: [topicId], references: [id])
+
+  @@id([majorId, topicId])
+  @@map("detail_major_topic")
+}
+
+model Semester {
+  id                   Int       @id @default(autoincrement())
+  code                 String    @unique
+  startDate            DateTime  @map("start_date")
+  endDate              DateTime  @map("end_date")
+  registrationDeadline DateTime  @map("registration_deadline")
+  status               String
+  createdAt            DateTime  @default(now()) @map("created_at")
+  reviewDefenseCouncils ReviewDefenseCouncil[]
+  topics               Topic[]
+  groups               Group[]
+  reviewCouncils       ReviewCouncil[]
+  semesterTopicMajors  SemesterTopicMajor[]
+
+  @@map("semesters")
+}
 
 
 
