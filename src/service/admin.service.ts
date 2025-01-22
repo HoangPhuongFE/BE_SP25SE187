@@ -19,8 +19,10 @@ interface UpdateRolesDTO {
 }
 interface ExcelUserData {
   email: string;
-  profession?: string;
-  specialty?: string;
+  student_code: string;
+  major_id: string;
+  specialization_id?: string;
+  personal_email?: string;
 }
 export class AdminService {
   // Hàm tạo mới user
@@ -123,7 +125,6 @@ export class AdminService {
 
   async importUsersFromExcel(filePath: string) {
     try {
-      // Đọc file Excel
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
@@ -135,16 +136,6 @@ export class AdminService {
         errors: [] as string[]
       };
 
-      // Lấy student role ID
-      const studentRole = await prisma.role.findFirst({
-        where: { name: 'student' },
-        select: { id: true }
-      });
-
-      if (!studentRole) {
-        throw new Error('Student role not found');
-      }
-
       // Xử lý từng dòng dữ liệu
       for (const row of data) {
         try {
@@ -155,36 +146,51 @@ export class AdminService {
             continue;
           }
 
-          // Kiểm tra email tồn tại
-          const existingUser = await prisma.user.findUnique({
-            where: { email: row.email }
-          });
-
-          if (existingUser) {
+          // Kiểm tra student_code bắt buộc
+          if (!row.student_code) {
             results.failed++;
-            results.errors.push(`Email ${row.email} đã tồn tại`);
+            results.errors.push(`Thiếu mã sinh viên cho email ${row.email}`);
             continue;
           }
 
-          // Tạo username từ email
-          const username = generateUsername(row.email);
-          // Tạo mật khẩu mặc định
-          const defaultPassword = await hashPassword('123456');
+          // Kiểm tra major_id tồn tại
+          const major = await prisma.major.findFirst({
+            where: { id: parseInt(row.major_id) }
+          });
 
-          // Tạo user mới
-          await prisma.user.create({
-            data: {
-              email: row.email,
-              username: username,
-              passwordHash: defaultPassword,
-              profession: row.profession,
-              specialty: row.specialty,
-              roles: {
-                create: {
-                  roleId: studentRole.id,
-                  isActive: true
-                }
+          if (!major) {
+            results.failed++;
+            results.errors.push(`Major ID ${row.major_id} không tồn tại cho sinh viên ${row.student_code}`);
+            continue;
+          }
+
+          // Kiểm tra specialization_id nếu có
+          if (row.specialization_id) {
+            const specialization = await prisma.specialization.findFirst({
+              where: { 
+                id: parseInt(row.specialization_id),
+                majorId: parseInt(row.major_id)
               }
+            });
+
+            if (!specialization) {
+              results.failed++;
+              results.errors.push(`Specialization ID ${row.specialization_id} không hợp lệ cho major ${row.major_id}`);
+              continue;
+            }
+          }
+
+          // Tạo bản ghi student mới
+          await prisma.student.create({
+            data: {
+              studentCode: row.student_code,
+              majorId: parseInt(row.major_id),
+              specializationId: row.specialization_id ? parseInt(row.specialization_id) : null,
+              personalEmail: row.personal_email || null,
+              status: 'PENDING',
+              isImported: true,
+              importAt: new Date(),
+              importSource: 'EXCEL'
             }
           });
 
@@ -195,9 +201,25 @@ export class AdminService {
         }
       }
 
+      // Ghi log import
+      await prisma.importLog.create({
+        data: {
+          source: 'EXCEL',
+          fileName: filePath.split('/').pop() || '',
+          importBy: {
+            connect: {
+              id: 'admin-user-id' // Cần thay thế bằng ID của user thực hiện import
+            }
+          },
+          totalRecords: data.length,
+          successRecords: results.success,
+          errorRecords: results.failed,
+          errorsDetails: JSON.stringify(results.errors)
+        }
+      });
+
       return results;
     } finally {
-      // Xóa file sau khi xử lý xong
       try {
         fs.unlinkSync(filePath);
       } catch (error) {

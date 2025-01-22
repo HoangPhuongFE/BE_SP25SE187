@@ -8,14 +8,33 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 export class UserService {
   async register(data: RegisterDTO) {
+    // Kiểm tra email đã được import chưa
+    const student = await prisma.student.findFirst({
+      where: {
+        personalEmail: data.email,
+        status: 'PENDING',
+        userId: null
+      }
+    });
+
+    if (!student) {
+      throw new Error('Email chưa được import vào hệ thống');
+    }
+
     const hashedPassword = await hashPassword(data.password);
 
+    // Tạo user và liên kết với student
     const user = await prisma.user.create({
       data: {
         email: data.email,
         username: data.username,
         passwordHash: hashedPassword,
         fullName: data.fullName,
+        students: {
+          connect: {
+            id: student.id
+          }
+        },
         roles: {
           create: {
             roleId: 'student-role-id',
@@ -30,6 +49,15 @@ export class UserService {
           },
         },
       },
+    });
+
+    // Cập nhật trạng thái student
+    await prisma.student.update({
+      where: { id: student.id },
+      data: { 
+        status: 'ACTIVE',
+        userId: user.id
+      }
     });
 
     return user;
