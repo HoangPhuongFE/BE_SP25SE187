@@ -4,6 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { USER_MESSAGE } from '../constants/message';
 import { body, validationResult } from 'express-validator';
 import { Request as ExpressRequest } from 'express';
+import { TokenPayload } from '~/types/type';
 
 export interface AuthenticatedRequest extends ExpressRequest {
   user?: TokenPayload;
@@ -63,21 +64,22 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
   const token = authHeader && authHeader.split(' ')[1];
 
   if (!token) {
-    return res.status(401).json({ message: USER_MESSAGE.UNAUTHORIZED });
+    return res.status(401).json({ message: 'Unauthorized: Missing token.' });
   }
 
   try {
-    const payload = jwt.verify(
-      token, 
-      process.env.JWT_SECRET_ACCESS_TOKEN!
-    ) as TokenPayload;
-    
-    req.user = payload;
+    const payload = jwt.verify(token, process.env.JWT_SECRET_ACCESS_TOKEN!) as TokenPayload;
+
+    req.user = payload; // Gắn thông tin user vào req.user
+    console.log('Authenticated User:', req.user); // Debug thông tin user
+
     next();
   } catch (error) {
-    return res.status(403).json({ message: USER_MESSAGE.INVALID_TOKEN });
+    console.error('Token verification error:', error);
+    return res.status(403).json({ message: 'Unauthorized: Invalid or expired token.' });
   }
 };
+
 
 export const checkRole = (allowedRoles: string[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {

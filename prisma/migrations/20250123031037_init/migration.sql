@@ -53,7 +53,7 @@ CREATE TABLE `RefreshToken` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `students` (
+CREATE TABLE `Student` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `userId` VARCHAR(191) NULL,
     `student_code` VARCHAR(191) NOT NULL,
@@ -66,8 +66,35 @@ CREATE TABLE `students` (
     `import_source` VARCHAR(191) NOT NULL,
     `is_imported` BOOLEAN NOT NULL DEFAULT true,
 
-    UNIQUE INDEX `students_userId_key`(`userId`),
-    UNIQUE INDEX `students_student_code_key`(`student_code`),
+    UNIQUE INDEX `Student_userId_key`(`userId`),
+    UNIQUE INDEX `Student_student_code_key`(`student_code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `Semester` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `code` VARCHAR(191) NOT NULL,
+    `start_date` DATETIME(3) NOT NULL,
+    `end_date` DATETIME(3) NOT NULL,
+    `registration_deadline` DATETIME(3) NOT NULL,
+    `status` VARCHAR(191) NOT NULL,
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `Semester_code_key`(`code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `SemesterStudent` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `semester_id` INTEGER NOT NULL,
+    `student_id` INTEGER NOT NULL,
+    `status` VARCHAR(191) NOT NULL DEFAULT 'active',
+    `isEligible` BOOLEAN NOT NULL DEFAULT false,
+    `registeredAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `SemesterStudent_semester_id_student_id_key`(`semester_id`, `student_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -98,11 +125,12 @@ CREATE TABLE `import_logs` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `source` VARCHAR(191) NOT NULL,
     `file_name` VARCHAR(191) NOT NULL,
+    `file_path` VARCHAR(191) NULL,
     `import_by` VARCHAR(191) NOT NULL,
     `import_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `total_records` INTEGER NOT NULL,
-    `success_records` INTEGER NOT NULL,
-    `error_records` INTEGER NOT NULL,
+    `total_records` INTEGER NOT NULL DEFAULT 0,
+    `success_records` INTEGER NOT NULL DEFAULT 0,
+    `error_records` INTEGER NOT NULL DEFAULT 0,
     `errors_details` TEXT NULL,
 
     PRIMARY KEY (`id`)
@@ -464,20 +492,6 @@ CREATE TABLE `detail_major_topic` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `semesters` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `code` VARCHAR(191) NOT NULL,
-    `start_date` DATETIME(3) NOT NULL,
-    `end_date` DATETIME(3) NOT NULL,
-    `registration_deadline` DATETIME(3) NOT NULL,
-    `status` VARCHAR(191) NOT NULL,
-    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    UNIQUE INDEX `semesters_code_key`(`code`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
 CREATE TABLE `_MajorTopics` (
     `A` INTEGER NOT NULL,
     `B` INTEGER NOT NULL,
@@ -496,13 +510,19 @@ ALTER TABLE `UserRole` ADD CONSTRAINT `UserRole_roleId_fkey` FOREIGN KEY (`roleI
 ALTER TABLE `RefreshToken` ADD CONSTRAINT `RefreshToken_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `students` ADD CONSTRAINT `students_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `Student` ADD CONSTRAINT `Student_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `students` ADD CONSTRAINT `students_major_id_fkey` FOREIGN KEY (`major_id`) REFERENCES `majors`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `Student` ADD CONSTRAINT `Student_major_id_fkey` FOREIGN KEY (`major_id`) REFERENCES `majors`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `students` ADD CONSTRAINT `students_specialization_id_fkey` FOREIGN KEY (`specialization_id`) REFERENCES `specializations`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `Student` ADD CONSTRAINT `Student_specialization_id_fkey` FOREIGN KEY (`specialization_id`) REFERENCES `specializations`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `SemesterStudent` ADD CONSTRAINT `SemesterStudent_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `Semester`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `SemesterStudent` ADD CONSTRAINT `SemesterStudent_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `Student`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `specializations` ADD CONSTRAINT `specializations_major_id_fkey` FOREIGN KEY (`major_id`) REFERENCES `majors`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -523,10 +543,10 @@ ALTER TABLE `councils` ADD CONSTRAINT `councils_topicass_id_fkey` FOREIGN KEY (`
 ALTER TABLE `review_defense_councils` ADD CONSTRAINT `review_defense_councils_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `review_defense_councils` ADD CONSTRAINT `review_defense_councils_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `review_defense_councils` ADD CONSTRAINT `review_defense_councils_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `Semester`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `topics` ADD CONSTRAINT `topics_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `topics` ADD CONSTRAINT `topics_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `Semester`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `topics` ADD CONSTRAINT `topics_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -535,7 +555,7 @@ ALTER TABLE `topics` ADD CONSTRAINT `topics_created_by_fkey` FOREIGN KEY (`creat
 ALTER TABLE `topic_assignments` ADD CONSTRAINT `topic_assignments_topic_id_fkey` FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `groups` ADD CONSTRAINT `groups_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `groups` ADD CONSTRAINT `groups_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `Semester`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `groups` ADD CONSTRAINT `groups_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -556,7 +576,7 @@ ALTER TABLE `system_logs` ADD CONSTRAINT `system_logs_user_id_fkey` FOREIGN KEY 
 ALTER TABLE `semester_topic_major` ADD CONSTRAINT `semester_topic_major_topic_id_fkey` FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `semester_topic_major` ADD CONSTRAINT `semester_topic_major_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `semester_topic_major` ADD CONSTRAINT `semester_topic_major_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `Semester`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `semester_topic_major` ADD CONSTRAINT `semester_topic_major_major_id_fkey` FOREIGN KEY (`major_id`) REFERENCES `majors`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -574,7 +594,7 @@ ALTER TABLE `decisions` ADD CONSTRAINT `decisions_created_by_fkey` FOREIGN KEY (
 ALTER TABLE `decisions` ADD CONSTRAINT `decisions_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `review_councils` ADD CONSTRAINT `review_councils_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `review_councils` ADD CONSTRAINT `review_councils_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `Semester`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `review_councils` ADD CONSTRAINT `review_councils_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

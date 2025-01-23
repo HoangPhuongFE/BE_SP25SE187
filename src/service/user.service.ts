@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { hashPassword, comparePassword } from '../utils/hash';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
+import { LoginDTO, RegisterDTO } from '~/types/type';
 
 const prisma = new PrismaClient();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
