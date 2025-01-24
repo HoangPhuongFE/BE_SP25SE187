@@ -75,7 +75,7 @@ model Student {
   specialization   Specialization?   @relation(fields: [specializationId], references: [id])
   specializationId Int?              @map("specialization_id")
   semesterStudents SemesterStudent[] // Quan hệ với bảng SemesterStudent
-  isEligible       Boolean           @default(false) @map("is_eligible")
+  isEligible       Boolean           @default(false) @map("is_eligible") 
   personalEmail    String?           @map("personal_email")
   status           StudentStatus     @default(PENDING)
   importAt         DateTime          @default(now()) @map("import_at")
@@ -112,6 +112,14 @@ model SemesterStudent {
 
   @@unique([semesterId, studentId]) // Đảm bảo mỗi sinh viên chỉ được liên kết với một học kỳ duy nhất
 }
+model Year {
+  id        Int       @id @default(autoincrement())
+  year      Int       @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  semesters Semester[] // Quan hệ 1-N với Semester
+}
+
 
 model Major {
   id   Int    @id @default(autoincrement())

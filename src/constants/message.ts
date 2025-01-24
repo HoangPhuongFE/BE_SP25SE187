@@ -58,7 +58,8 @@ export const SEMESTER_MESSAGE = {
   SEMESTER_UPDATED: "Semester updated successfully",
   SEMESTER_DELETED: "Semester deleted successfully",
   SEMESTER_NOT_FOUND: "Semester not found",
-  INVALID_SEMESTER_DATE: "Invalid semester dates provided",
+  SEMESTER_STUDENTS_FETCHED: "Students for semester fetched successfully",
+  INVALID_SEMESTER_ID: "Invalid semester ID provided",
 } as const;
 
 // Thông báo cho sinh viên
@@ -67,6 +68,8 @@ export const STUDENT_MESSAGE = {
   STUDENT_ADDED: "Student added successfully",
   STUDENT_UPDATED: "Student information updated successfully",
   STUDENT_DELETED: "Student removed successfully",
+  STUDENTS_FETCHED: "Students fetched successfully",
+  STUDENT_LIST_EMPTY: "No students found for the selected semester",
 } as const;
 
 // Thông báo chung
