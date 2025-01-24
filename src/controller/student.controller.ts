@@ -1,18 +1,70 @@
 import { Request, Response } from 'express';
-import { getPaginatedStudents } from '../service/student.service';
+import { getPaginatedStudents, updateStudent, deleteStudent } from '../service/student.service';
+import { validate as isUUID } from 'uuid';
+import { MESSAGES } from '../constants/message';
 
+// Hàm lấy danh sách sinh viên
 export async function getStudentList(req: Request, res: Response) {
   try {
-    // Lấy page và pageSize từ query params, mặc định nếu không truyền
     const page = parseInt(req.query.page as string) || 1;
     const pageSize = parseInt(req.query.pageSize as string) || 10;
 
-    // Gọi service để lấy dữ liệu với phân trang
     const paginatedStudents = await getPaginatedStudents(page, pageSize);
 
-    res.status(200).json(paginatedStudents);
+    return res.status(200).json({
+      message: MESSAGES.GENERAL.ACTION_SUCCESS,
+      data: paginatedStudents,
+    });
   } catch (error) {
     console.error('Error fetching students:', error);
-    res.status(500).json({ message: 'Failed to fetch students' });
+    return res.status(500).json({ message: MESSAGES.GENERAL.SERVER_ERROR });
+  }
+}
+
+// Hàm cập nhật thông tin sinh viên
+export const updateStudentHandler = async (req: Request, res: Response) => {
+  try {
+    const studentId = req.params.studentId;
+    const { majorId, specializationId } = req.body;
+
+    if (!isUUID(studentId)) {
+      return res.status(400).json({ message: MESSAGES.STUDENT.STUDENT_NOT_FOUND });
+    }
+
+    const updatedStudent = await updateStudent(studentId, {
+      majorId: parseInt(majorId, 10),
+      specializationId: specializationId ? parseInt(specializationId, 10) : null,
+    });
+
+    return res.status(200).json({
+      message: MESSAGES.STUDENT.STUDENT_UPDATED,
+      data: updatedStudent,
+    });
+  } catch (error) {
+    if ((error as any).message === 'Student not found') {
+      return res.status(404).json({ message: MESSAGES.STUDENT.STUDENT_NOT_FOUND });
+    }
+    console.error('Error updating student:', error);
+    return res.status(500).json({ message: MESSAGES.GENERAL.SERVER_ERROR });
+  }
+};
+
+// Hàm xóa sinh viên
+export async function deleteStudentHandler(req: Request, res: Response) {
+  try {
+    const studentId = req.params.studentId;
+
+    if (!isUUID(studentId)) {
+      return res.status(400).json({ message: MESSAGES.STUDENT.STUDENT_NOT_FOUND });
+    }
+
+    await deleteStudent(studentId);
+    return res.status(200).json({ message: MESSAGES.STUDENT.STUDENT_DELETED });
+  } catch (error) {
+    if ((error as any).message === 'Student not found') {
+      return res.status(404).json({ message: MESSAGES.STUDENT.STUDENT_NOT_FOUND });
+    }
+    console.error('Error deleting student:', error);
+    return res.status(500).json({ message: MESSAGES.GENERAL.SERVER_ERROR });
   }
 }

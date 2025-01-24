@@ -1,3 +1,6 @@
+
+
+// Thông báo dành cho người dùng
 export const USER_MESSAGE = {
   VALIDATION_ERROR: "Validation errors",
   USER_NOT_FOUND: "User not found",
@@ -11,6 +14,7 @@ export const USER_MESSAGE = {
   UPDATE_PROFILE_SUCCESS: "Profile updated successfully",
 } as const;
 
+// Thông báo liên quan đến xác thực
 export const AUTH_MESSAGE = {
   LOGIN_SUCCESS: "Login successful",
   REGISTER_SUCCESS: "Registration successful",
@@ -18,6 +22,7 @@ export const AUTH_MESSAGE = {
   GOOGLE_LOGIN_FAILED: "Google login failed",
 } as const;
 
+// Thông báo cho quản trị viên
 export const ADMIN_MESSAGE = {
   CREATE_USER_SUCCESS: "User created successfully",
   UPDATE_ROLES_SUCCESS: "User roles updated successfully",
@@ -29,6 +34,7 @@ export const ADMIN_MESSAGE = {
   STUDENT_ROLE_RESTRICTION: "User with the role 'student' cannot have additional roles",
 } as const;
 
+// Thông báo liên quan đến xử lý dữ liệu
 export const DATA_MESSAGE = {
   IMPORT_SUCCESS: "Data imported successfully",
   IMPORT_FAILED: "Data import failed",
@@ -39,13 +45,14 @@ export const DATA_MESSAGE = {
   USER_ALREADY_EXISTS: "User already exists in the system",
 } as const;
 
-
+// Thông báo cho nhật ký hệ thống
 export const SYSTEM_LOG_MESSAGE = {
   LOG_CREATED: "System log entry created",
   LOG_UPDATED: "System log entry updated",
   LOG_DELETED: "System log entry deleted",
 } as const;
 
+// Thông báo liên quan đến học kỳ
 export const SEMESTER_MESSAGE = {
   SEMESTER_CREATED: "Semester created successfully",
   SEMESTER_UPDATED: "Semester updated successfully",
@@ -54,6 +61,7 @@ export const SEMESTER_MESSAGE = {
   INVALID_SEMESTER_DATE: "Invalid semester dates provided",
 } as const;
 
+// Thông báo cho sinh viên
 export const STUDENT_MESSAGE = {
   STUDENT_NOT_FOUND: "Student not found",
   STUDENT_ADDED: "Student added successfully",
@@ -61,8 +69,22 @@ export const STUDENT_MESSAGE = {
   STUDENT_DELETED: "Student removed successfully",
 } as const;
 
+// Thông báo chung
 export const GENERAL_MESSAGE = {
   ACTION_SUCCESS: "Action completed successfully",
   ACTION_FAILED: "Action failed",
   SERVER_ERROR: "Internal server error",
+} as const;
+
+
+// Tập hợp các nhóm thông báo
+export const MESSAGES = {
+  STUDENT: STUDENT_MESSAGE,
+  GENERAL: GENERAL_MESSAGE,
+  USER: USER_MESSAGE,
+  AUTH: AUTH_MESSAGE,
+  ADMIN: ADMIN_MESSAGE,
+  DATA: DATA_MESSAGE,
+  SYSTEM_LOG: SYSTEM_LOG_MESSAGE,
+  SEMESTER: SEMESTER_MESSAGE,
 } as const;
