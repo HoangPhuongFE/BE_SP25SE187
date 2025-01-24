@@ -1,6 +1,6 @@
   import { PrismaClient } from '@prisma/client';
   import { paginate } from '../helpers/pagination.helper';
-
+  import { validate as isUUID } from 'uuid';
   const prisma = new PrismaClient();
   // Hàm lấy danh sách sinh viên toàn bộ
   export async function fetchStudentList() {
@@ -24,3 +24,41 @@
       },
     });
   };
+
+
+
+export const updateStudent = async (studentId: string, data: any) => {
+  if (!isUUID(studentId)) {
+    throw new Error('Invalid Student ID format');
+  }
+
+  return await prisma.student.update({
+    where: { userId: studentId },
+    data: {
+      majorId: data.majorId,
+      specializationId: data.specializationId,
+    },
+    include: {
+      user: true,
+      major: true,
+      specialization: true,
+    },
+  });
+};
+
+  
+export const deleteStudent = async (studentId: string) => {
+  try {
+    return await prisma.student.delete({
+      where: { userId: studentId },
+    });
+  } catch (error) {
+    if ((error as { code: string }).code === 'P2025') {
+      // Lỗi khi không tìm thấy bản ghi
+      throw new Error('Student not found');
+    }
+    throw error;
+  }
+};
+
+  
