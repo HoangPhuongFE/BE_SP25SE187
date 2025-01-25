@@ -1,22 +1,23 @@
-import ExcelJS from 'exceljs';
-import { PrismaClient } from '@prisma/client';
+import ExcelJS from "exceljs";
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
 
 function extractCellValue(cellValue: any): string {
-  if (typeof cellValue === 'object' && cellValue?.text) {
+  if (typeof cellValue === "object" && cellValue?.text) {
     return cellValue.text;
   }
-  return String(cellValue || '').trim();
+  return String(cellValue || "").trim();
 }
 
-export async function importExcel(filePath: string, userId: string) {
+export async function importExcel(filePath: string, userId: string, semesterId: number) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(filePath);
 
   const worksheet = workbook.getWorksheet(1);
   if (!worksheet) {
-    throw new Error('Worksheet is undefined');
+    throw new Error("Worksheet is undefined");
   }
 
   const errors: string[] = [];
@@ -29,17 +30,20 @@ export async function importExcel(filePath: string, userId: string) {
     const specialty = extractCellValue(row.getCell(3).value);
 
     try {
-      // Kiểm tra dữ liệu bắt buộc
-      if (!email) throw new Error('Email is required');
-      if (!profession) throw new Error('Major (profession) is required');
+      // Validate dữ liệu bắt buộc
+      if (!email) throw new Error("Email không được để trống");
+      if (!profession) throw new Error("Ngành (Profession) không được để trống");
 
-      // 1. Tìm hoặc tạo Major
+      // Hash mật khẩu
+      const hashedPassword = await bcrypt.hash("defaultPassword", 10);
+
+      // Tìm hoặc tạo Major
       let major = await prisma.major.findUnique({ where: { name: profession } });
       if (!major) {
         major = await prisma.major.create({ data: { name: profession } });
       }
 
-      // 2. Tìm hoặc tạo Specialization
+      // Tìm hoặc tạo Specialization
       let specialization = await prisma.specialization.findFirst({
         where: { name: specialty, majorId: major.id },
       });
@@ -49,63 +53,77 @@ export async function importExcel(filePath: string, userId: string) {
         });
       }
 
-      // 3. Tìm hoặc tạo User
+      // Tìm hoặc tạo User
       let user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
         user = await prisma.user.create({
           data: {
             email,
-            username: email.split('@')[0],
-            passwordHash: 'defaultHash', // update sau loại bỏ passwordHash
+            username: email.split("@")[0],
+            passwordHash: hashedPassword,
           },
         });
       }
 
-      // 4. Tìm hoặc tạo Student
+      // Tìm hoặc tạo Student
       let student = await prisma.student.findFirst({
-        where: { studentCode: email.split('@')[0] },
+        where: { studentCode: email.split("@")[0] },
       });
 
       if (!student) {
-        await prisma.student.create({
+        student = await prisma.student.create({
           data: {
             userId: user.id,
             majorId: major.id,
             specializationId: specialization?.id || null,
-            studentCode: email.split('@')[0],
-            importSource: 'excelImport',
+            studentCode: email.split("@")[0],
+            importSource: "excelImport",
           },
         });
-        successCount++;
-      } else {
-        console.log(`Student with code ${email.split('@')[0]} already exists.`);
       }
+
+      // Liên kết Student với Semester
+      await prisma.semesterStudent.upsert({
+        where: {
+          semesterId_studentId: {
+            semesterId,
+            studentId: student.id,
+          },
+        },
+        create: {
+          semesterId,
+          studentId: student.id,
+        },
+        update: {}, // Không cần cập nhật thêm
+      });
+
+      successCount++;
     } catch (error) {
       console.error(`Error processing row ${i}:`, error);
       if (error instanceof Error) {
-        errors.push(`Row ${i}: ${error.message}`);
+        errors.push(`Dòng ${i}: ${error.message}`);
       } else {
-        errors.push(`Row ${i}: Unknown error`);
+        errors.push(`Dòng ${i}: Lỗi không xác định`);
       }
     }
   }
 
-  // Lưu log import
-  const fileName = filePath.split('/').pop();
+  // Ghi log import
+  const fileName = filePath.split("/").pop();
   await prisma.importLog.create({
     data: {
-      source: 'Excel Import',
-      fileName: fileName || 'unknown',
+      source: "Excel Import",
+      fileName: fileName || "unknown",
       importById: userId,
       totalRecords: worksheet.rowCount - 1,
       successRecords: successCount,
       errorRecords: errors.length,
-      errorsDetails: errors.join('\n'),
+      errorsDetails: errors.join("\n"),
     },
   });
 
   // Ném lỗi nếu có lỗi
   if (errors.length) {
-    throw new Error(`Import completed with errors: ${errors.join('\n')}`);
+    throw new Error(`Import hoàn thành với lỗi: ${errors.join("\n")}`);
   }
 }
