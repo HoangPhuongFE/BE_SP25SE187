@@ -97,6 +97,8 @@ model Semester {
   groups                Group[]
   reviewCouncils        ReviewCouncil[]
   semesterTopicMajors   SemesterTopicMajor[]
+  yearId                Int                   
+  year                  Year                  @relation(fields: [yearId], references: [id]) 
 }
 
 model SemesterStudent {
