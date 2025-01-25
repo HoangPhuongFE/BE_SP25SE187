@@ -62,3 +62,25 @@ export const deleteStudent = async (studentId: string) => {
 };
 
   
+export const getStudentsBySemesterService = async (semesterId: number) => {
+  const students = await prisma.semesterStudent.findMany({
+    where: { semesterId },
+    include: {
+      student: {
+        include: {
+          user: true,
+          major: true,
+          specialization: true,
+        },
+      },
+    },
+  });
+
+  return students.map((entry) => ({
+    id: entry.student.id,
+    email: entry.student.user?.email || "",
+    major: entry.student.major.name || "",
+    specialization: entry.student.specialization?.name || "",
+    status: entry.status,
+  }));
+};

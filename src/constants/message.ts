@@ -60,6 +60,7 @@ export const SEMESTER_MESSAGE = {
   SEMESTER_NOT_FOUND: "Semester not found",
   SEMESTER_STUDENTS_FETCHED: "Students for semester fetched successfully",
   INVALID_SEMESTER_ID: "Invalid semester ID provided",
+  SEMESTERS_FETCHED: "Semesters fetched successfully",
 } as const;
 
 // Thông báo cho sinh viên
@@ -79,6 +80,13 @@ export const GENERAL_MESSAGE = {
   SERVER_ERROR: "Internal server error",
 } as const;
 
+export const YEAR_MESSAGE = {
+  YEAR_CREATED: "Year created successfully",
+  YEAR_UPDATED: "Year updated successfully",
+  YEAR_DELETED: "Year deleted successfully",
+  YEAR_NOT_FOUND: "Year not found",
+  YEAR_FETCHED: "Years fetched successfully",
+};
 
 // Tập hợp các nhóm thông báo
 export const MESSAGES = {
@@ -90,4 +98,5 @@ export const MESSAGES = {
   DATA: DATA_MESSAGE,
   SYSTEM_LOG: SYSTEM_LOG_MESSAGE,
   SEMESTER: SEMESTER_MESSAGE,
+  YEAR : YEAR_MESSAGE,
 } as const;
