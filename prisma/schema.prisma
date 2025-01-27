@@ -107,6 +107,7 @@ model SemesterStudent {
   studentId    Int      @map("student_id")
   status       String   @default("active") // Trạng thái sinh viên trong học kỳ
   isEligible   Boolean  @default(false) // Điều kiện hợp lệ
+qualificationStatus String   @default("not qualified") // Trạng thái điều kiện
   registeredAt DateTime @default(now())
 
   semester Semester @relation(fields: [semesterId], references: [id])

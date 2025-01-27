@@ -7,6 +7,7 @@ import importStudentRouter from './routers/importStudent.router';
 import  studentRouter  from "./routers/student.router";
 import yearRouter from "./routers/year.route";
 import semesterRouter from "./routers/semester.route";
+import importConditionRouter from "./routers/importCondition.router";
 config();
 
 const app = express();
@@ -20,7 +21,7 @@ app.use('/api/import', importStudentRouter);
 app.use('/api/student', studentRouter);
 app.use('/api/year', yearRouter);
 app.use('/api/semester', semesterRouter);
-
+app.use('/api/import', importConditionRouter);
 
 
 

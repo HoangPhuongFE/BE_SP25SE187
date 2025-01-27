@@ -92,6 +92,7 @@ CREATE TABLE `SemesterStudent` (
     `student_id` INTEGER NOT NULL,
     `status` VARCHAR(191) NOT NULL DEFAULT 'active',
     `isEligible` BOOLEAN NOT NULL DEFAULT false,
+    `qualificationStatus` VARCHAR(191) NOT NULL DEFAULT 'not qualified',
     `registeredAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     UNIQUE INDEX `SemesterStudent_semester_id_student_id_key`(`semester_id`, `student_id`),

@@ -43,7 +43,10 @@ export const DATA_MESSAGE = {
   MISSING_REQUIRED_FIELDS: "Missing required fields in the file",
   STUDENT_ALREADY_EXISTS: "Student already exists in the system",
   USER_ALREADY_EXISTS: "User already exists in the system",
-  MISSING_SEMESTER: "Chọn học kỳ trước khi import",
+  MISSING_SEMESTER: "Select semester before importing",
+  NO_STUDENTS_FOUND: "No students found for the selected semester",
+  UNAUTHORIZED: 'Unauthorized access',
+
 } as const;
 
 // Thông báo cho nhật ký hệ thống
