@@ -84,6 +84,12 @@ export const GENERAL_MESSAGE = {
   SERVER_ERROR: "Internal server error",
 } as const;
 
+export const EXPORT_MESSAGE = {
+  EXPORT_SUCCESS: "Export completed successfully.",
+  EXPORT_FAILED: "Failed to export the data.",
+  NO_DATA_FOUND: "No data found for the selected semester.",
+} as const;
+
 export const YEAR_MESSAGE = {
   YEAR_CREATED: "Year created successfully",
   YEAR_UPDATED: "Year updated successfully",
@@ -103,4 +109,5 @@ export const MESSAGES = {
   SYSTEM_LOG: SYSTEM_LOG_MESSAGE,
   SEMESTER: SEMESTER_MESSAGE,
   YEAR : YEAR_MESSAGE,
+  EXPORT: EXPORT_MESSAGE,
 } as const;
