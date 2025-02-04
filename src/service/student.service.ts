@@ -1,4 +1,4 @@
-  import { PrismaClient } from '@prisma/client';
+  import { Prisma, PrismaClient } from '@prisma/client';
   import { paginate } from '../helpers/pagination.helper';
   import { validate as isUUID } from 'uuid';
   const prisma = new PrismaClient();
@@ -62,8 +62,21 @@ export const deleteStudent = async (studentId: string) => {
 };
 
   
-export const getStudentsBySemesterService = async (semesterId: number) => {
-  const students = await prisma.semesterStudent.findMany({
+
+export const getStudentsBySemesterService = async (semesterId: string) => {
+  type SemesterStudentWithStudent = Prisma.SemesterStudentGetPayload<{
+    include: {
+      student: {
+        include: {
+          user: true,
+          major: true,
+          specialization: true
+        }
+      }
+    }
+  }>;
+
+  const students: SemesterStudentWithStudent[] = await prisma.semesterStudent.findMany({
     where: { semesterId },
     include: {
       student: {
@@ -79,7 +92,7 @@ export const getStudentsBySemesterService = async (semesterId: number) => {
   return students.map((entry) => ({
     id: entry.student.id,
     email: entry.student.user?.email || "",
-    major: entry.student.major.name || "",
+    major: entry.student.major?.name || "",
     specialization: entry.student.specialization?.name || "",
     status: entry.status,
   }));

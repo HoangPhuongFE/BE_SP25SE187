@@ -4,9 +4,9 @@ import { EXPORT_MESSAGE, GENERAL_MESSAGE } from "../constants/message";
 
 export const exportStudentList = async (req: Request, res: Response) => {
   try {
-    const { semesterId } = req.params;
+const { semesterId } = req.params;
 
-    const filePath = await exportStudentListService(Number(semesterId));
+const filePath = await exportStudentListService(semesterId);
 
     if (!filePath) {
       return res.status(404).json({ message: EXPORT_MESSAGE.NO_DATA_FOUND });
@@ -27,8 +27,8 @@ export const exportStudentList = async (req: Request, res: Response) => {
 export const exportConditionList = async (req: Request, res: Response) => {
   try {
     const { semesterId } = req.params;
-
-    const filePath = await exportConditionListService(Number(semesterId));
+    const filePath = await exportConditionListService(semesterId);
+    
 
     if (!filePath) {
       return res.status(404).json({ message: EXPORT_MESSAGE.NO_DATA_FOUND });

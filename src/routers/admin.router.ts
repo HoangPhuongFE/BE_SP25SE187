@@ -17,9 +17,9 @@ router.post(
 
 router.put(
   '/users/roles',
-  authenticateToken, 
-  checkRole(['admin']), 
-  adminController.updateUserRoles 
+  authenticateToken,
+  checkRole(['admin']),
+  adminController.updateUserRoles
 );
 
 

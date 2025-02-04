@@ -20,7 +20,7 @@ export async function importStudentHandler(req: AuthenticatedRequest, res: Respo
   }
 
   try {
-    await importExcel(filePath, req.user.userId, Number(semesterId));
+    await importExcel(filePath, req.user.userId, semesterId);
     return res.status(200).json({ message: DATA_MESSAGE.IMPORT_SUCCESS });
   } catch (error) {
     console.error("Import failed:", error);

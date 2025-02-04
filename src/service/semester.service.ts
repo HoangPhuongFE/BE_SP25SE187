@@ -4,15 +4,15 @@ import { paginate } from "~/helpers/pagination.helper";
 const prisma = new PrismaClient();
 
 export const getSemestersByYearService = async (
-    yearId: number,
-    page: number,
-    pageSize: number
-  ) => {
-    return await paginate(prisma.semester, { page, pageSize }, { where: { yearId } });
-  };
-  
+  yearId: string, // CHUYỂN SANG STRING
+  page: number,
+  pageSize: number
+) => {
+  return await paginate(prisma.semester, { page, pageSize }, { where: { yearId } });
+};
+
 export const createSemesterService = async (
-  yearId: number,
+  yearId: string, // CHUYỂN SANG STRING
   code: string,
   startDate: Date,
   endDate: Date,
@@ -21,7 +21,7 @@ export const createSemesterService = async (
 ) => {
   return await prisma.semester.create({
     data: {
-      yearId,
+      yearId, // string
       code,
       startDate,
       endDate,
@@ -32,7 +32,7 @@ export const createSemesterService = async (
 };
 
 export const updateSemesterService = async (
-  id: number,
+  id: string, // CHUYỂN SANG STRING
   code: string,
   startDate: Date,
   endDate: Date,
@@ -40,7 +40,7 @@ export const updateSemesterService = async (
   status: string
 ) => {
   return await prisma.semester.update({
-    where: { id },
+    where: { id }, // string
     data: {
       code,
       startDate,
@@ -51,8 +51,8 @@ export const updateSemesterService = async (
   });
 };
 
-export const deleteSemesterService = async (id: number) => {
+export const deleteSemesterService = async (id: string) => {
   return await prisma.semester.delete({
-    where: { id },
+    where: { id }, // string
   });
 };

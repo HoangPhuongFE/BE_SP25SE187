@@ -20,7 +20,8 @@ export async function importConditionListHandler(req: AuthenticatedRequest, res:
   }
 
   try {
-    const importResult = await importConditionExcel(filePath, parseInt(semesterId, 10), req.user.userId);
+// semesterId là string (UUID)
+const importResult = await importConditionExcel(filePath, semesterId, req.user.userId);
 
     return res.status(200).json({
       message: DATA_MESSAGE.IMPORT_SUCCESS,

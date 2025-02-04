@@ -11,7 +11,7 @@ function extractCellValue(cellValue: any): string {
   return String(cellValue || "").trim();
 }
 
-export async function importExcel(filePath: string, userId: string, semesterId: number) {
+export async function importExcel(filePath: string, userId: string, semesterId: string) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(filePath);
 
@@ -30,20 +30,16 @@ export async function importExcel(filePath: string, userId: string, semesterId: 
     const specialty = extractCellValue(row.getCell(3).value);
 
     try {
-      // Validate dữ liệu bắt buộc
       if (!email) throw new Error("Email không được để trống");
       if (!profession) throw new Error("Ngành (Profession) không được để trống");
 
-      // Hash mật khẩu
       const hashedPassword = await bcrypt.hash("defaultPassword", 10);
 
-      // Tìm hoặc tạo Major
       let major = await prisma.major.findUnique({ where: { name: profession } });
       if (!major) {
         major = await prisma.major.create({ data: { name: profession } });
       }
 
-      // Tìm hoặc tạo Specialization
       let specialization = await prisma.specialization.findFirst({
         where: { name: specialty, majorId: major.id },
       });
@@ -53,7 +49,6 @@ export async function importExcel(filePath: string, userId: string, semesterId: 
         });
       }
 
-      // Tìm hoặc tạo User
       let user = await prisma.user.findUnique({ where: { email } });
       if (!user) {
         user = await prisma.user.create({
@@ -65,7 +60,6 @@ export async function importExcel(filePath: string, userId: string, semesterId: 
         });
       }
 
-      // Tìm hoặc tạo Student
       let student = await prisma.student.findFirst({
         where: { studentCode: email.split("@")[0] },
       });
@@ -82,7 +76,6 @@ export async function importExcel(filePath: string, userId: string, semesterId: 
         });
       }
 
-      // Liên kết Student với Semester
       await prisma.semesterStudent.upsert({
         where: {
           semesterId_studentId: {
@@ -94,7 +87,7 @@ export async function importExcel(filePath: string, userId: string, semesterId: 
           semesterId,
           studentId: student.id,
         },
-        update: {}, // Không cần cập nhật thêm
+        update: {},
       });
 
       successCount++;
@@ -108,7 +101,6 @@ export async function importExcel(filePath: string, userId: string, semesterId: 
     }
   }
 
-  // Ghi log import
   const fileName = filePath.split("/").pop();
   await prisma.importLog.create({
     data: {
@@ -122,7 +114,6 @@ export async function importExcel(filePath: string, userId: string, semesterId: 
     },
   });
 
-  // Ném lỗi nếu có lỗi
   if (errors.length) {
     throw new Error(`Import hoàn thành với lỗi: ${errors.join("\n")}`);
   }

@@ -60,8 +60,8 @@ export const createYear = async (req: Request, res: Response) => {
       }
   
      
-      const updatedYear = await updateYearService(parseInt(id, 10), year);
-      return res.status(200).json({ message: YEAR_MESSAGE.YEAR_UPDATED, data: updatedYear });
+      const updatedYear = await updateYearService(id, year); 
+            return res.status(200).json({ message: YEAR_MESSAGE.YEAR_UPDATED, data: updatedYear });
     } catch (error) {
       console.error("Error updating year:", error);
       return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
@@ -71,7 +71,7 @@ export const createYear = async (req: Request, res: Response) => {
 export const deleteYear = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const year = await deleteYearService(parseInt(id, 10));
+    const year = await deleteYearService(id); 
     return res.status(200).json({ message: YEAR_MESSAGE.YEAR_DELETED, data: year });
   } catch (error) {
     console.error("Error deleting year:", error);

@@ -10,7 +10,7 @@ function extractCellValue(cellValue: any): string {
   return String(cellValue || '').trim();
 }
 
-export async function importConditionExcel(filePath: string, semesterId: number, userId: string) {
+export async function importConditionExcel(filePath: string, semesterId: string, userId: string) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(filePath);
 
@@ -28,22 +28,21 @@ export async function importConditionExcel(filePath: string, semesterId: number,
     const status = extractCellValue(row.getCell(2).value);
 
     try {
-      // Kiểm tra dữ liệu bắt buộc
       if (!email) throw new Error('Email is required');
       if (!status) throw new Error('Status is required');
 
-      // Tìm student qua email
       const student = await prisma.student.findFirst({
         where: { user: { email } },
       });
-
       if (!student) {
         throw new Error(`Student with email ${email} not found`);
       }
 
-      // Cập nhật thông tin student vào bảng SemesterStudent
+      // Upsert vào bảng SemesterStudent (đều là string ID)
       await prisma.semesterStudent.upsert({
-        where: { semesterId_studentId: { semesterId, studentId: student.id } },
+        where: {
+          semesterId_studentId: { semesterId, studentId: student.id },
+        },
         update: { status },
         create: { semesterId, studentId: student.id, status },
       });

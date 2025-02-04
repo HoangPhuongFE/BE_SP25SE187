@@ -66,14 +66,14 @@ model RefreshToken {
 }
 
 model Student {
-  id               Int               @id @default(autoincrement())
+  id               String               @id @default(uuid())
   user             User?             @relation(fields: [userId], references: [id])
   userId           String?           @unique
   studentCode      String            @unique @map("student_code")
   major            Major             @relation(fields: [majorId], references: [id])
-  majorId          Int               @map("major_id")
+  majorId          String               @map("major_id")
   specialization   Specialization?   @relation(fields: [specializationId], references: [id])
-  specializationId Int?              @map("specialization_id")
+  specializationId String?              @map("specialization_id")
   semesterStudents SemesterStudent[] // Quan hệ với bảng SemesterStudent
   isEligible       Boolean           @default(false) @map("is_eligible") 
   personalEmail    String?           @map("personal_email")
@@ -84,7 +84,7 @@ model Student {
 }
 
 model Semester {
-  id                    Int                    @id @default(autoincrement())
+  id                    String                    @id @default(uuid())
   code                  String                 
   startDate             DateTime               @map("start_date")
   endDate               DateTime               @map("end_date")
@@ -97,14 +97,14 @@ model Semester {
   groups                Group[]
   reviewCouncils        ReviewCouncil[]
   semesterTopicMajors   SemesterTopicMajor[]
-  yearId                Int                   
+  yearId                String                   
   year                  Year                  @relation(fields: [yearId], references: [id]) 
 }
 
 model SemesterStudent {
-  id           Int      @id @default(autoincrement())
-  semesterId   Int      @map("semester_id")
-  studentId    Int      @map("student_id")
+  id           String      @id @default(uuid())
+  semesterId   String      @map("semester_id")
+  studentId    String      @map("student_id")
   status       String   @default("active") // Trạng thái sinh viên trong học kỳ
   isEligible   Boolean  @default(false) // Điều kiện hợp lệ
 qualificationStatus String   @default("not qualified") // Trạng thái điều kiện
@@ -116,7 +116,7 @@ qualificationStatus String   @default("not qualified") // Trạng thái điều 
   @@unique([semesterId, studentId]) // Đảm bảo mỗi sinh viên chỉ được liên kết với một học kỳ duy nhất
 }
 model Year {
-  id        Int       @id @default(autoincrement())
+  id        String       @id @default(uuid())
   year      Int       @unique
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -125,7 +125,7 @@ model Year {
 
 
 model Major {
-  id   Int    @id @default(autoincrement())
+  id   String    @id @default(uuid())
   name String @unique
 
   createdAt           DateTime             @default(now()) @map("created_at")
@@ -140,9 +140,9 @@ model Major {
 }
 
 model Specialization {
-  id        Int       @id @default(autoincrement())
+  id        String       @id @default(uuid())
   major     Major     @relation(fields: [majorId], references: [id])
-  majorId   Int       @map("major_id")
+  majorId   String       @map("major_id")
   name      String
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -152,7 +152,7 @@ model Specialization {
 }
 
 model ImportLog {
-  id             Int      @id @default(autoincrement())
+  id             String      @id @default(uuid())
   source         String // Nguồn import, ví dụ: "Excel Import"
   fileName       String   @map("file_name") // Tên file
   filePath       String?  @map("file_path") // Đường dẫn file trên server
@@ -174,7 +174,7 @@ enum StudentStatus {
 }
 
 model MeetingSchedule {
-  id           Int        @id @default(autoincrement())
+  id           String        @id @default(uuid())
   mentorId     String     @map("mentor_id")
   groupId      Int        @map("group_id")
   meetingTime  DateTime   @map("meeting_time")
@@ -190,8 +190,8 @@ model MeetingSchedule {
 }
 
 model TopicRegistration {
-  id              Int       @id @default(autoincrement())
-  topicId         Int       @map("topic_id")
+  id              String       @id @default(uuid())
+  topicId         String       @map("topic_id")
   userId          String    @map("user_id")
   reviewerId      String?   @map("reviewer_id")
   role            String
@@ -206,7 +206,7 @@ model TopicRegistration {
 }
 
 model SystemConfig {
-  id          Int      @id @default(autoincrement())
+  id          String     @id @default(uuid())
   configKey   String   @unique @map("config_key")
   configValue String   @map("config_value")
   description String?
@@ -218,9 +218,9 @@ model SystemConfig {
 }
 
 model Council {
-  id                    Int                    @id @default(autoincrement()) @map("council_id")
+  id                    String                    @id @default(uuid()) @map("council_id")
   name                  String                 @map("council_name")
-  topicAssId            Int                    @map("topicass_id")
+  topicAssId            String                    @map("topicass_id")
   createdDate           DateTime               @default(now()) @map("created_date")
   status                String
   topicAssignment       TopicAssignment        @relation(fields: [topicAssId], references: [id])
@@ -233,9 +233,9 @@ model Council {
 }
 
 model ReviewDefenseCouncil {
-  id                 Int      @id @default(autoincrement())
-  councilId          Int      @unique @map("council_id")
-  semesterId         Int      @map("semester_id")
+  id                 String      @id @default(uuid())
+  councilId          String      @unique @map("council_id")
+  semesterId         String      @map("semester_id")
   defenseReviewRound String   @map("defense_review_round")
   url                String   @map("URL")
   status             String
@@ -250,8 +250,8 @@ model ReviewDefenseCouncil {
 }
 
 model Topic {
-  id                  Int                  @id @default(autoincrement())
-  semesterId          Int                  @map("semester_id")
+  id                  String                  @id @default(uuid())
+  semesterId          String                  @map("semester_id")
   topicCode           String               @unique @map("topic_code")
   name                String
   description         String?              @db.Text
@@ -279,9 +279,9 @@ model Topic {
 }
 
 model TopicAssignment {
-  id              Int       @id @default(autoincrement())
-  topicId         Int       @map("topic_id")
-  groupId         Int       @map("group_id")
+  id              String       @id @default(uuid())
+  topicId         String       @map("topic_id")
+  groupId         String       @map("group_id")
   decisionId      String?   @map("decision_id")
   decisionFile    String?   @map("decision_file")
   draftFile       String?   @map("draft_file")
@@ -299,9 +299,9 @@ model TopicAssignment {
 }
 
 model Group {
-  id               Int               @id @default(autoincrement())
+  id               String               @id @default(uuid())
   groupCode        String            @unique @map("group_code")
-  semesterId       Int               @map("semester_id")
+  semesterId       String               @map("semester_id")
   status           String
   isAutoCreated    Boolean           @default(false) @map("is_auto_created")
   createdBy        String            @map("created_by")
@@ -322,8 +322,8 @@ model Group {
 }
 
 model ProgressReport {
-  id                   Int       @id @default(autoincrement())
-  groupId              Int       @map("group_id")
+  id                   String       @id @default(uuid())
+  groupId              String       @map("group_id")
   mentorId             String    @map("mentor_id")
   weekNumber           Int       @map("week_number")
   content              String    @db.Text
@@ -339,8 +339,8 @@ model ProgressReport {
 }
 
 model AIVerificationLog {
-  id              Int      @id @default(autoincrement())
-  topicId         Int      @map("topic_id")
+  id              String      @id @default(uuid())
+  topicId         String      @map("topic_id")
   verification    String
   originalText    String   @map("original_text") @db.Text
   verifiedText    String   @map("verified_text") @db.Text
@@ -354,9 +354,9 @@ model AIVerificationLog {
 }
 
 model GroupMember {
-  id          Int       @id @default(autoincrement())
-  groupId     Int       @map("group_id")
-  studentId   Int       @map("student_id")
+  id          String       @id @default(uuid())
+  groupId     String       @map("group_id")
+  studentId   String       @map("student_id")
   role        String
   joinedAt    DateTime  @default(now()) @map("joined_at")
   leaveAt     DateTime? @map("leave_at")
@@ -369,7 +369,7 @@ model GroupMember {
 }
 
 model SystemLog {
-  id         Int      @id @default(autoincrement())
+  id         String     @id @default(uuid())
   userId     String   @map("user_id")
   action     String
   entityType String   @map("entity_type")
@@ -384,9 +384,9 @@ model SystemLog {
 }
 
 model SemesterTopicMajor {
-  semesterId Int      @map("semester_id")
-  topicId    Int      @map("topic_id")
-  majorId    Int      @map("major_id")
+  semesterId String     @map("semester_id")
+  topicId    String      @map("topic_id")
+  majorId    String      @map("major_id")
   status     String
   topic      Topic    @relation(fields: [topicId], references: [id])
   semester   Semester @relation(fields: [semesterId], references: [id])
@@ -397,7 +397,7 @@ model SemesterTopicMajor {
 }
 
 model EmailLog {
-  id             Int      @id @default(autoincrement())
+  id             String      @id @default(uuid())
   userId         String   @map("user_id")
   recipientEmail String   @map("recipient_email")
   subject        String
@@ -411,7 +411,7 @@ model EmailLog {
 }
 
 model Notification {
-  id               Int                     @id @default(autoincrement())
+  id               String                     @id @default(uuid())
   title            String
   content          String                  @db.Text
   notificationType String                  @map("notification_type")
@@ -424,11 +424,11 @@ model Notification {
 }
 
 model Decision {
-  id             Int      @id @default(autoincrement()) @map("decision_id")
+  id             String      @id @default(uuid()) @map("decision_id")
   decisionNumber String   @map("decision_number")
   decisionTitle  String   @map("decision_title")
-  groupId        Int      @map("group_id")
-  topicId        Int      @map("topic_id")
+  groupId        String      @map("group_id")
+  topicId        String      @map("topic_id")
   draftFileUrl   String?  @map("draft_file_url")
   finalFileUrl   String?  @map("final_file_url")
   status         String
@@ -442,8 +442,8 @@ model Decision {
 }
 
 model ReviewCouncil {
-  id          Int      @id @default(autoincrement())
-  semesterId  Int      @map("semester_id")
+  id          String     @id @default(uuid())
+  semesterId  String      @map("semester_id")
   reviewType  String   @map("review_type")
   room        String
   councilCode String   @unique @map("council_code")
@@ -460,9 +460,9 @@ model ReviewCouncil {
 }
 
 model ReviewAssignment {
-  id               Int       @id @default(autoincrement())
-  councilId        Int       @map("council_id")
-  topicId          Int       @map("topic_id")
+  id               String       @id @default(uuid())
+  councilId        String       @map("council_id")
+  topicId          String       @map("topic_id")
   reviewerId       String    @map("reviewer_id")
   score            Float?
   feedback         String?   @db.Text
@@ -476,7 +476,7 @@ model ReviewAssignment {
 }
 
 model Document {
-  id           Int      @id @default(autoincrement())
+  id           String    @id @default(uuid())
   fileName     String   @map("file_name")
   filePath     String   @map("file_path")
   relatedTable String   @map("related_table")
@@ -489,9 +489,9 @@ model Document {
 }
 
 model CouncilMember {
-  id                Int      @id @default(autoincrement())
-  councilId         Int      @map("council_id")
-  defenseCouncilsId Int?     @map("defensecouncils_id")
+  id                String      @id @default(uuid())
+  councilId         String      @map("council_id")
+  defenseCouncilsId String?     @map("defensecouncils_id")
   userId            String   @map("user_id")
   role              String
   assignedAt        DateTime @default(now()) @map("assigned_at")
@@ -502,9 +502,9 @@ model CouncilMember {
 }
 
 model Feedback {
-  id                 Int             @id @default(autoincrement())
-  meetingId          Int             @map("meeting_id")
-  reviewAssignmentId Int?            @map("review_assignment_id")
+  id                 String             @id @default(uuid())
+  meetingId          String            @map("meeting_id")
+  reviewAssignmentId String?            @map("review_assignment_id")
   content            String          @db.Text
   rating             Int
   createdAt          DateTime        @default(now()) @map("created_at")
@@ -514,9 +514,9 @@ model Feedback {
 }
 
 model DefenseSchedule {
-  id                 Int      @id @default(autoincrement())
-  councilId          Int      @map("council_id")
-  groupId            Int      @map("group_id")
+  id                 String      @id @default(uuid())
+  councilId          String      @map("council_id")
+  groupId            String      @map("group_id")
   defenseTime        DateTime @map("defense_time")
   location           String
   defenseRound       Int      @map("defense_round")
@@ -531,7 +531,7 @@ model DefenseSchedule {
 }
 
 model NotificationRecipient {
-  notificationId Int          @map("notification_id")
+  notificationId String          @map("notification_id")
   userId         String       @map("user_id")
   isRead         Boolean      @default(false) @map("is_read")
   readAt         DateTime?    @map("read_at")
@@ -543,8 +543,8 @@ model NotificationRecipient {
 }
 
 model DetailMajorTopic {
-  majorId Int    @map("major_id")
-  topicId Int    @map("topic_id")
+  majorId String    @map("major_id")
+  topicId String    @map("topic_id")
   status  String
   major   Major  @relation(fields: [majorId], references: [id])
   topic   Topic  @relation(fields: [topicId], references: [id])

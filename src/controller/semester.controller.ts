@@ -11,18 +11,18 @@ import { SEMESTER_MESSAGE, GENERAL_MESSAGE , MESSAGES } from "../constants/messa
 
 export const getSemestersByYear = async (req: Request, res: Response) => {
   try {
-    const { yearId } = req.params;
     const { page = 1, pageSize = 10 } = req.query;
-
-    if (!yearId || isNaN(Number(yearId))) {
+    const { yearId } = req.params;
+    if (!yearId) {
       return res.status(400).json({ message: SEMESTER_MESSAGE.INVALID_SEMESTER_ID });
     }
-
+    
     const result = await getSemestersByYearService(
-      parseInt(yearId, 10),
-      Number(page),
-      Number(pageSize)
+      yearId,
+      Number(page), 
+      Number(pageSize),
     );
+    
 
     return res.status(200).json({
       message: SEMESTER_MESSAGE.SEMESTERS_FETCHED,
@@ -39,13 +39,14 @@ export const createSemester = async (req: Request, res: Response) => {
   try {
     const { yearId, code, startDate, endDate, registrationDeadline, status } = req.body;
     const semester = await createSemesterService(
-      parseInt(yearId, 10),
+      yearId, 
       code,
       new Date(startDate),
       new Date(endDate),
       new Date(registrationDeadline),
       status
     );
+    
     return res.status(201).json({ message: SEMESTER_MESSAGE.SEMESTER_CREATED, data: semester });
   } catch (error) {
     console.error("Error creating semester:", error);
@@ -58,7 +59,7 @@ export const updateSemester = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { code, startDate, endDate, registrationDeadline, status } = req.body;
     const semester = await updateSemesterService(
-      parseInt(id, 10),
+      id,
       code,
       new Date(startDate),
       new Date(endDate),
@@ -75,7 +76,7 @@ export const updateSemester = async (req: Request, res: Response) => {
 export const deleteSemester = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const semester = await deleteSemesterService(parseInt(id, 10));
+    const semester = await deleteSemesterService(id);
     return res.status(200).json({ message: SEMESTER_MESSAGE.SEMESTER_DELETED, data: semester });
   } catch (error) {
     console.error("Error deleting semester:", error);

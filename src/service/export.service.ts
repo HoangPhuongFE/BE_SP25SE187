@@ -1,12 +1,13 @@
 import ExcelJS from "exceljs";
 import { PrismaClient } from "@prisma/client";
 import path from "path";
-import fs from 'fs';
+import fs from "fs";
 import { EXPORT_MESSAGE } from "../constants/message";
 
 const prisma = new PrismaClient();
 
-export const exportStudentListService = async (semesterId: number): Promise<string | null> => {
+export const exportStudentListService = async (semesterId: string): Promise<string | null> => {
+  // 1. Tìm SemesterStudent bằng where: { semesterId } (string)
   const students = await prisma.semesterStudent.findMany({
     where: { semesterId },
     include: {
@@ -35,30 +36,29 @@ export const exportStudentListService = async (semesterId: number): Promise<stri
   ];
 
   students.forEach((entry) => {
+    // entry.student đã được include
     worksheet.addRow({
       email: entry.student.user?.email || "",
-      major: entry.student.major.name || "",
+      major: entry.student.major?.name || "",
       specialization: entry.student.specialization?.name || "",
       status: entry.status,
     });
   });
 
-  // Tạo thư mục exports nếu chưa tồn tại
-  const exportDir = path.resolve(__dirname, '../../exports');
+  const exportDir = path.resolve(__dirname, "../../exports");
   if (!fs.existsSync(exportDir)) {
     fs.mkdirSync(exportDir, { recursive: true });
   }
 
-  // Tạo tên file độc nhất dựa trên semesterId và timestamp
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   const filePath = path.join(exportDir, `Student_List_Semester_${semesterId}_${timestamp}.xlsx`);
   await workbook.xlsx.writeFile(filePath);
 
   return filePath;
 };
 
-
-export const exportConditionListService = async (semesterId: number): Promise<string | null> => {
+export const exportConditionListService = async (semesterId: string): Promise<string | null> => {
+  // 2. Tương tự, where: { semesterId } (string)
   const conditions = await prisma.semesterStudent.findMany({
     where: { semesterId },
     include: {
@@ -89,15 +89,16 @@ export const exportConditionListService = async (semesterId: number): Promise<st
     });
   });
 
-  // Tạo thư mục exports nếu chưa tồn tại
-  const exportDir = path.resolve(__dirname, '../../exports');
+  const exportDir = path.resolve(__dirname, "../../exports");
   if (!fs.existsSync(exportDir)) {
     fs.mkdirSync(exportDir, { recursive: true });
   }
 
-  // Tạo tên file độc nhất dựa trên semesterId và timestamp
-  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filePath = path.join(exportDir, `Condition_List_Semester_${semesterId}_${timestamp}.xlsx`);
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const filePath = path.join(
+    exportDir,
+    `Condition_List_Semester_${semesterId}_${timestamp}.xlsx`
+  );
   await workbook.xlsx.writeFile(filePath);
 
   return filePath;

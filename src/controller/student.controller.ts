@@ -75,7 +75,7 @@ export async function deleteStudentHandler(req: Request, res: Response) {
 export const getStudentsBySemester = async (req: Request, res: Response) => {
   try {
     const { semesterId } = req.params;
-    const students = await getStudentsBySemesterService(parseInt(semesterId, 10));
+    const students = await getStudentsBySemesterService(semesterId);
 
     if (students.length === 0) {
       return res.status(404).json({ message: MESSAGES.STUDENT.STUDENT_LIST_EMPTY });
