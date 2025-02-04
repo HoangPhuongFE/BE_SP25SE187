@@ -1,29 +1,34 @@
 import { Request, Response } from "express";
-import { importExcel } from "../service/importStudent.service";
 import { DATA_MESSAGE } from "../constants/message";
 import { AuthenticatedRequest } from "~/middleware/user.middleware";
+import { ImportStudentService } from "../service/importStudent.service";
 
-export async function importStudentHandler(req: AuthenticatedRequest, res: Response) {
-  const filePath = req.file?.path;
-  const { semesterId } = req.body;
+export class ImportStudentController {
+  private importStudentService = new ImportStudentService();
 
-  if (!filePath) {
-    return res.status(400).json({ message: DATA_MESSAGE.INVALID_FILE_FORMAT });
-  }
+  async importStudentHandler(req: AuthenticatedRequest, res: Response) {
+    const filePath = req.file?.path;
+    const { semesterId } = req.body;
 
-  if (!semesterId) {
-    return res.status(400).json({ message: DATA_MESSAGE.MISSING_SEMESTER });
-  }
+    if (!filePath) {
+      return res.status(400).json({ message: DATA_MESSAGE.INVALID_FILE_FORMAT });
+    }
 
-  if (!req.user || !req.user.userId) {
-    return res.status(401).json({ message: "Unauthorized: Missing user information." });
-  }
+    if (!semesterId) {
+      return res.status(400).json({ message: DATA_MESSAGE.MISSING_SEMESTER });
+    }
 
-  try {
-    await importExcel(filePath, req.user.userId, semesterId);
-    return res.status(200).json({ message: DATA_MESSAGE.IMPORT_SUCCESS });
-  } catch (error) {
-    console.error("Import failed:", error);
-    return res.status(500).json({ message: DATA_MESSAGE.IMPORT_FAILED });
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ message: "Unauthorized: Missing user information." });
+    }
+
+    try {
+      // Gọi method service
+      await this.importStudentService.importExcel(filePath, req.user.userId, semesterId);
+      return res.status(200).json({ message: DATA_MESSAGE.IMPORT_SUCCESS });
+    } catch (error) {
+      console.error("Import failed:", error);
+      return res.status(500).json({ message: DATA_MESSAGE.IMPORT_FAILED });
+    }
   }
 }

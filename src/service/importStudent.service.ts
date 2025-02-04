@@ -1,3 +1,4 @@
+
 import ExcelJS from "exceljs";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
@@ -11,110 +12,112 @@ function extractCellValue(cellValue: any): string {
   return String(cellValue || "").trim();
 }
 
-export async function importExcel(filePath: string, userId: string, semesterId: string) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.readFile(filePath);
+export class ImportStudentService {
+  async importExcel(filePath: string, userId: string, semesterId: string) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
 
-  const worksheet = workbook.getWorksheet(1);
-  if (!worksheet) {
-    throw new Error("Worksheet is undefined");
-  }
+    const worksheet = workbook.getWorksheet(1);
+    if (!worksheet) {
+      throw new Error("Worksheet is undefined");
+    }
 
-  const errors: string[] = [];
-  let successCount = 0;
+    const errors: string[] = [];
+    let successCount = 0;
 
-  for (let i = 2; i <= worksheet.rowCount; i++) {
-    const row = worksheet.getRow(i);
-    const email = extractCellValue(row.getCell(1).value);
-    const profession = extractCellValue(row.getCell(2).value);
-    const specialty = extractCellValue(row.getCell(3).value);
+    for (let i = 2; i <= worksheet.rowCount; i++) {
+      const row = worksheet.getRow(i);
+      const email = extractCellValue(row.getCell(1).value);
+      const profession = extractCellValue(row.getCell(2).value);
+      const specialty = extractCellValue(row.getCell(3).value);
 
-    try {
-      if (!email) throw new Error("Email không được để trống");
-      if (!profession) throw new Error("Ngành (Profession) không được để trống");
+      try {
+        if (!email) throw new Error("Email không được để trống");
+        if (!profession) throw new Error("Ngành (Profession) không được để trống");
 
-      const hashedPassword = await bcrypt.hash("defaultPassword", 10);
+        const hashedPassword = await bcrypt.hash("defaultPassword", 10);
 
-      let major = await prisma.major.findUnique({ where: { name: profession } });
-      if (!major) {
-        major = await prisma.major.create({ data: { name: profession } });
-      }
+        let major = await prisma.major.findUnique({ where: { name: profession } });
+        if (!major) {
+          major = await prisma.major.create({ data: { name: profession } });
+        }
 
-      let specialization = await prisma.specialization.findFirst({
-        where: { name: specialty, majorId: major.id },
-      });
-      if (!specialization && specialty) {
-        specialization = await prisma.specialization.create({
-          data: { name: specialty, majorId: major.id },
+        let specialization = await prisma.specialization.findFirst({
+          where: { name: specialty, majorId: major.id },
         });
-      }
+        if (!specialization && specialty) {
+          specialization = await prisma.specialization.create({
+            data: { name: specialty, majorId: major.id },
+          });
+        }
 
-      let user = await prisma.user.findUnique({ where: { email } });
-      if (!user) {
-        user = await prisma.user.create({
-          data: {
-            email,
-            username: email.split("@")[0],
-            passwordHash: hashedPassword,
+        let user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+          user = await prisma.user.create({
+            data: {
+              email,
+              username: email.split("@")[0],
+              passwordHash: hashedPassword,
+            },
+          });
+        }
+
+        let student = await prisma.student.findFirst({
+          where: { studentCode: email.split("@")[0] },
+        });
+
+        if (!student) {
+          student = await prisma.student.create({
+            data: {
+              userId: user.id,
+              majorId: major.id,
+              specializationId: specialization?.id || null,
+              studentCode: email.split("@")[0],
+              importSource: "excelImport",
+            },
+          });
+        }
+
+        await prisma.semesterStudent.upsert({
+          where: {
+            semesterId_studentId: {
+              semesterId,
+              studentId: student.id,
+            },
           },
-        });
-      }
-
-      let student = await prisma.student.findFirst({
-        where: { studentCode: email.split("@")[0] },
-      });
-
-      if (!student) {
-        student = await prisma.student.create({
-          data: {
-            userId: user.id,
-            majorId: major.id,
-            specializationId: specialization?.id || null,
-            studentCode: email.split("@")[0],
-            importSource: "excelImport",
-          },
-        });
-      }
-
-      await prisma.semesterStudent.upsert({
-        where: {
-          semesterId_studentId: {
+          create: {
             semesterId,
             studentId: student.id,
           },
-        },
-        create: {
-          semesterId,
-          studentId: student.id,
-        },
-        update: {},
-      });
+          update: {},
+        });
 
-      successCount++;
-    } catch (error) {
-      console.error(`Error processing row ${i}:`, error);
-      if (error instanceof Error) {
-        errors.push(`Dòng ${i}: ${error.message}`);
-      } else {
-        errors.push(`Dòng ${i}: Lỗi không xác định`);
+        successCount++;
+      } catch (error) {
+        console.error(`Error processing row ${i}:`, error);
+        if (error instanceof Error) {
+          errors.push(`Dòng ${i}: ${error.message}`);
+        } else {
+          errors.push(`Dòng ${i}: Lỗi không xác định`);
+        }
       }
     }
-  }
 
-  const fileName = filePath.split("/").pop();
-  await prisma.importLog.create({
-    data: {
-      source: "Excel Import",
-      fileName: fileName || "unknown",
-      importById: userId,
-      totalRecords: worksheet.rowCount - 1,
-      successRecords: successCount,
-      errorRecords: errors.length,
-      errorsDetails: errors.join("\n"),
-    },
-  });
+    const fileName = filePath.split("/").pop();
+    await prisma.importLog.create({
+      data: {
+        source: "Excel Import",
+        fileName: fileName || "unknown",
+        importById: userId,
+        totalRecords: worksheet.rowCount - 1,
+        successRecords: successCount,
+        errorRecords: errors.length,
+        errorsDetails: errors.join("\n"),
+      },
+    });
 
-  if (errors.length) {
-    throw new Error(`Import hoàn thành với lỗi: ${errors.join("\n")}`);
+    if (errors.length) {
+      throw new Error(`Import hoàn thành với lỗi: ${errors.join("\n")}`);
+    }
   }
 }

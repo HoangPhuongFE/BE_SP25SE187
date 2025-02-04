@@ -10,75 +10,78 @@ function extractCellValue(cellValue: any): string {
   return String(cellValue || '').trim();
 }
 
-export async function importConditionExcel(filePath: string, semesterId: string, userId: string) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.readFile(filePath);
 
-  const worksheet = workbook.getWorksheet(1);
-  if (!worksheet) {
-    throw new Error('Worksheet is undefined');
-  }
+export class ImportConditionService {
+  async importConditionExcel(filePath: string, semesterId: string, userId: string) {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
 
-  const errors: string[] = [];
-  let successCount = 0;
+    const worksheet = workbook.getWorksheet(1);
+    if (!worksheet) {
+      throw new Error('Worksheet is undefined');
+    }
 
-  for (let i = 2; i <= worksheet.rowCount; i++) {
-    const row = worksheet.getRow(i);
-    const email = extractCellValue(row.getCell(1).value);
-    const status = extractCellValue(row.getCell(2).value);
+    const errors: string[] = [];
+    let successCount = 0;
 
-    try {
-      if (!email) throw new Error('Email is required');
-      if (!status) throw new Error('Status is required');
+    for (let i = 2; i <= worksheet.rowCount; i++) {
+      const row = worksheet.getRow(i);
+      const email = extractCellValue(row.getCell(1).value);
+      const status = extractCellValue(row.getCell(2).value);
 
-      const student = await prisma.student.findFirst({
-        where: { user: { email } },
-      });
-      if (!student) {
-        throw new Error(`Student with email ${email} not found`);
-      }
+      try {
+        if (!email) throw new Error('Email is required');
+        if (!status) throw new Error('Status is required');
 
-      // Upsert vào bảng SemesterStudent (đều là string ID)
-      await prisma.semesterStudent.upsert({
-        where: {
-          semesterId_studentId: { semesterId, studentId: student.id },
-        },
-        update: { status },
-        create: { semesterId, studentId: student.id, status },
-      });
+        const student = await prisma.student.findFirst({
+          where: { user: { email } },
+        });
+        if (!student) {
+          throw new Error(`Student with email ${email} not found`);
+        }
 
-      successCount++;
-    } catch (error) {
-      console.error(`Error processing row ${i}:`, error);
-      if (error instanceof Error) {
-        errors.push(`Row ${i}: ${error.message}`);
-      } else {
-        errors.push(`Row ${i}: Unknown error`);
+        // Upsert vào bảng SemesterStudent (đều là string ID)
+        await prisma.semesterStudent.upsert({
+          where: {
+            semesterId_studentId: { semesterId, studentId: student.id },
+          },
+          update: { status },
+          create: { semesterId, studentId: student.id, status },
+        });
+
+        successCount++;
+      } catch (error) {
+        console.error(`Error processing row ${i}:`, error);
+        if (error instanceof Error) {
+          errors.push(`Row ${i}: ${error.message}`);
+        } else {
+          errors.push(`Row ${i}: Unknown error`);
+        }
       }
     }
-  }
 
-  // Tính tổng số bản ghi
-  const totalRecords = worksheet.rowCount - 1;
+    // Tính tổng số bản ghi
+    const totalRecords = worksheet.rowCount - 1;
 
-  // Lưu log import
-  const fileName = filePath.split('/').pop();
-  await prisma.importLog.create({
-    data: {
-      source: 'Condition Import',
-      fileName: fileName || 'unknown',
-      importById: userId,
+    // Lưu log import
+    const fileName = filePath.split('/').pop();
+    await prisma.importLog.create({
+      data: {
+        source: 'Condition Import',
+        fileName: fileName || 'unknown',
+        importById: userId,
+        totalRecords,
+        successRecords: successCount,
+        errorRecords: errors.length,
+        errorsDetails: errors.join('\n'),
+      },
+    });
+
+    return {
       totalRecords,
       successRecords: successCount,
       errorRecords: errors.length,
-      errorsDetails: errors.join('\n'),
-    },
-  });
-
-  return {
-    totalRecords,
-    successRecords: successCount,
-    errorRecords: errors.length,
-    errors,
-  };
+      errors,
+    };
+  }
 }
