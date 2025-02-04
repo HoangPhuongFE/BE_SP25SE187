@@ -1,11 +1,15 @@
 import express from "express";
-import { getSemestersByYear, createSemester, updateSemester, deleteSemester } from "../controller/semester.controller";
+import { SemesterController } from "../controller/semester.controller";
 
 const router = express.Router();
+const semesterController = new SemesterController();
 
-router.get("/:yearId", getSemestersByYear);
-router.post("/", createSemester);
-router.put("/:id", updateSemester);
-router.delete("/:id", deleteSemester);
+router.get("/:yearId", semesterController.getSemestersByYear.bind(semesterController));
+
+router.post("/", semesterController.createSemester.bind(semesterController));
+
+router.put("/:id", semesterController.updateSemester.bind(semesterController));
+
+router.delete("/:id", semesterController.deleteSemester.bind(semesterController));
 
 export default router;

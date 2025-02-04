@@ -1,11 +1,17 @@
-import express from 'express';
-import { getStudentList, updateStudentHandler, deleteStudentHandler,getStudentsBySemester } from '../controller/student.controller';
+import express from "express";
+import { StudentController } from "../controller/student.controller";
 
 const router = express.Router();
+const studentController = new StudentController();
 
-router.get('/gets', getStudentList);
-router.put('/:studentId', updateStudentHandler);
-router.delete('/:studentId', deleteStudentHandler); 
-router.get("/:semesterId", getStudentsBySemester);
+
+router.get("/gets", studentController.getStudentList.bind(studentController));
+
+
+router.put("/:studentId", studentController.updateStudentHandler.bind(studentController));
+
+router.delete("/:studentId", studentController.deleteStudentHandler.bind(studentController));
+
+router.get("/:semesterId", studentController.getStudentsBySemester.bind(studentController));
 
 export default router;
