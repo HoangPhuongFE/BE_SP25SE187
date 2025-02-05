@@ -61,6 +61,7 @@ export class ImportStudentService {
             },
           });
         }
+            
         let student = await prisma.student.findFirst({
           where: { studentCode: email.split("@")[0] },
         });
