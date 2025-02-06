@@ -1,4 +1,23 @@
 
+// Thông báo liên quan đến nhóm
+export const GROUP_MESSAGE = {
+  GROUP_CREATED: "Group created successfully",
+  GROUP_NOT_FOUND: "Group not found",
+  GROUP_FULL: "Group is already full",
+  MEMBER_ALREADY_EXISTS: "Student is already in the group",
+  INVITATION_SENT: "Invitation sent successfully",
+  INVITATION_EXISTS: "Invitation already sent",
+  INVITATION_NOT_FOUND: "Invitation not found",
+  INVITATION_ACCEPTED: "Invitation accepted successfully",
+  INVITATION_REJECTED: "Invitation rejected successfully",
+} as const;
+
+// Thông báo liên quan đến Email
+export const EMAIL_MESSAGE = {
+  EMAIL_SENT: "Email sent successfully",
+  EMAIL_FAILED: "Failed to send email",
+} as const;
+
 
 // Thông báo dành cho người dùng
 export const USER_MESSAGE = {
@@ -98,7 +117,8 @@ export const YEAR_MESSAGE = {
   YEAR_FETCHED: "Years fetched successfully",
 };
 
-// Tập hợp các nhóm thông báo
+
+// Cập nhật vào danh sách MESSAGES chung
 export const MESSAGES = {
   STUDENT: STUDENT_MESSAGE,
   GENERAL: GENERAL_MESSAGE,
@@ -108,6 +128,8 @@ export const MESSAGES = {
   DATA: DATA_MESSAGE,
   SYSTEM_LOG: SYSTEM_LOG_MESSAGE,
   SEMESTER: SEMESTER_MESSAGE,
-  YEAR : YEAR_MESSAGE,
+  YEAR: YEAR_MESSAGE,
   EXPORT: EXPORT_MESSAGE,
+  GROUP: GROUP_MESSAGE, 
+  EMAIL: EMAIL_MESSAGE,
 } as const;

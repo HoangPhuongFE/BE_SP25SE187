@@ -39,7 +39,7 @@ export const validateCreateUser = [
     }
 
     // Kiểm tra roles hợp lệ
-    const validRoles = ['student', 'lecturer', 'head_of_department', 'dean', 'reviewer', 'mentor', 'chairman', 'secretary'];
+    const validRoles = ['student', 'lecturer', 'head_of_department', 'dean', 'reviewer', 'mentor', 'chairman', 'secretary','leader'];
     const isValidRoles = roles.every((role: string) => validRoles.includes(role));
     
     if (!isValidRoles) {

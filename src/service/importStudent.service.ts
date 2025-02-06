@@ -1,4 +1,3 @@
-
 import ExcelJS from "exceljs";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
@@ -24,6 +23,8 @@ export class ImportStudentService {
 
     const errors: string[] = [];
     let successCount = 0;
+    const DEFAULT_PASSWORD = "123456"; 
+    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10); 
 
     for (let i = 2; i <= worksheet.rowCount; i++) {
       const row = worksheet.getRow(i);
@@ -34,8 +35,6 @@ export class ImportStudentService {
       try {
         if (!email) throw new Error("Email không được để trống");
         if (!profession) throw new Error("Ngành (Profession) không được để trống");
-
-        const hashedPassword = await bcrypt.hash("defaultPassword", 10);
 
         let major = await prisma.major.findUnique({ where: { name: profession } });
         if (!major) {
@@ -57,7 +56,7 @@ export class ImportStudentService {
             data: {
               email,
               username: email.split("@")[0],
-              passwordHash: hashedPassword,
+              passwordHash: hashedPassword, 
             },
           });
         }

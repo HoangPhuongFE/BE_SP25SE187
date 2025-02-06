@@ -66,26 +66,28 @@ model RefreshToken {
 }
 
 model Student {
-  id               String               @id @default(uuid())
+  id               String            @id @default(uuid())
   user             User?             @relation(fields: [userId], references: [id])
   userId           String?           @unique
   studentCode      String            @unique @map("student_code")
   major            Major             @relation(fields: [majorId], references: [id])
-  majorId          String               @map("major_id")
+  majorId          String            @map("major_id")
   specialization   Specialization?   @relation(fields: [specializationId], references: [id])
-  specializationId String?              @map("specialization_id")
+  specializationId String?           @map("specialization_id")
   semesterStudents SemesterStudent[] // Quan hệ với bảng SemesterStudent
-  isEligible       Boolean           @default(false) @map("is_eligible") 
+  isEligible       Boolean           @default(false) @map("is_eligible")
   personalEmail    String?           @map("personal_email")
   status           StudentStatus     @default(PENDING)
   importAt         DateTime          @default(now()) @map("import_at")
   importSource     String            @map("import_source")
   isImported       Boolean           @default(true) @map("is_imported")
+  invitations      GroupInvitation[]
+  groupMembers     GroupMember[]
 }
 
 model Semester {
-  id                    String                    @id @default(uuid())
-  code                  String                 
+  id                    String                 @id @default(uuid())
+  code                  String
   startDate             DateTime               @map("start_date")
   endDate               DateTime               @map("end_date")
   registrationDeadline  DateTime               @map("registration_deadline")
@@ -97,35 +99,35 @@ model Semester {
   groups                Group[]
   reviewCouncils        ReviewCouncil[]
   semesterTopicMajors   SemesterTopicMajor[]
-  yearId                String                   
-  year                  Year                  @relation(fields: [yearId], references: [id]) 
+  yearId                String
+  year                  Year                   @relation(fields: [yearId], references: [id])
 }
 
 model SemesterStudent {
-  id           String      @id @default(uuid())
-  semesterId   String      @map("semester_id")
-  studentId    String      @map("student_id")
-  status       String   @default("active") // Trạng thái sinh viên trong học kỳ
-  isEligible   Boolean  @default(false) // Điều kiện hợp lệ
-qualificationStatus String   @default("not qualified") // Trạng thái điều kiện
-  registeredAt DateTime @default(now())
+  id                  String   @id @default(uuid())
+  semesterId          String   @map("semester_id")
+  studentId           String   @map("student_id")
+  status              String   @default("active") // Trạng thái sinh viên trong học kỳ
+  isEligible          Boolean  @default(false) // Điều kiện hợp lệ
+  qualificationStatus String   @default("not qualified") // Trạng thái điều kiện
+  registeredAt        DateTime @default(now())
 
   semester Semester @relation(fields: [semesterId], references: [id])
   student  Student  @relation(fields: [studentId], references: [id])
 
   @@unique([semesterId, studentId]) // Đảm bảo mỗi sinh viên chỉ được liên kết với một học kỳ duy nhất
 }
+
 model Year {
-  id        String       @id @default(uuid())
-  year      Int       @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id        String     @id @default(uuid())
+  year      Int        @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   semesters Semester[] // Quan hệ 1-N với Semester
 }
 
-
 model Major {
-  id   String    @id @default(uuid())
+  id   String @id @default(uuid())
   name String @unique
 
   createdAt           DateTime             @default(now()) @map("created_at")
@@ -140,9 +142,9 @@ model Major {
 }
 
 model Specialization {
-  id        String       @id @default(uuid())
+  id        String    @id @default(uuid())
   major     Major     @relation(fields: [majorId], references: [id])
-  majorId   String       @map("major_id")
+  majorId   String    @map("major_id")
   name      String
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -152,7 +154,7 @@ model Specialization {
 }
 
 model ImportLog {
-  id             String      @id @default(uuid())
+  id             String   @id @default(uuid())
   source         String // Nguồn import, ví dụ: "Excel Import"
   fileName       String   @map("file_name") // Tên file
   filePath       String?  @map("file_path") // Đường dẫn file trên server
@@ -174,7 +176,7 @@ enum StudentStatus {
 }
 
 model MeetingSchedule {
-  id           String        @id @default(uuid())
+  id           String     @id @default(uuid())
   mentorId     String     @map("mentor_id")
   groupId      Int        @map("group_id")
   meetingTime  DateTime   @map("meeting_time")
@@ -190,8 +192,8 @@ model MeetingSchedule {
 }
 
 model TopicRegistration {
-  id              String       @id @default(uuid())
-  topicId         String       @map("topic_id")
+  id              String    @id @default(uuid())
+  topicId         String    @map("topic_id")
   userId          String    @map("user_id")
   reviewerId      String?   @map("reviewer_id")
   role            String
@@ -206,7 +208,7 @@ model TopicRegistration {
 }
 
 model SystemConfig {
-  id          String     @id @default(uuid())
+  id          String   @id @default(uuid())
   configKey   String   @unique @map("config_key")
   configValue String   @map("config_value")
   description String?
@@ -218,9 +220,9 @@ model SystemConfig {
 }
 
 model Council {
-  id                    String                    @id @default(uuid()) @map("council_id")
+  id                    String                 @id @default(uuid()) @map("council_id")
   name                  String                 @map("council_name")
-  topicAssId            String                    @map("topicass_id")
+  topicAssId            String                 @map("topicass_id")
   createdDate           DateTime               @default(now()) @map("created_date")
   status                String
   topicAssignment       TopicAssignment        @relation(fields: [topicAssId], references: [id])
@@ -233,9 +235,9 @@ model Council {
 }
 
 model ReviewDefenseCouncil {
-  id                 String      @id @default(uuid())
-  councilId          String      @unique @map("council_id")
-  semesterId         String      @map("semester_id")
+  id                 String   @id @default(uuid())
+  councilId          String   @unique @map("council_id")
+  semesterId         String   @map("semester_id")
   defenseReviewRound String   @map("defense_review_round")
   url                String   @map("URL")
   status             String
@@ -250,8 +252,8 @@ model ReviewDefenseCouncil {
 }
 
 model Topic {
-  id                  String                  @id @default(uuid())
-  semesterId          String                  @map("semester_id")
+  id                  String               @id @default(uuid())
+  semesterId          String               @map("semester_id")
   topicCode           String               @unique @map("topic_code")
   name                String
   description         String?              @db.Text
@@ -279,9 +281,9 @@ model Topic {
 }
 
 model TopicAssignment {
-  id              String       @id @default(uuid())
-  topicId         String       @map("topic_id")
-  groupId         String       @map("group_id")
+  id              String    @id @default(uuid())
+  topicId         String    @map("topic_id")
+  groupId         String    @map("group_id")
   decisionId      String?   @map("decision_id")
   decisionFile    String?   @map("decision_file")
   draftFile       String?   @map("draft_file")
@@ -299,9 +301,9 @@ model TopicAssignment {
 }
 
 model Group {
-  id               String               @id @default(uuid())
+  id               String            @id @default(uuid())
   groupCode        String            @unique @map("group_code")
-  semesterId       String               @map("semester_id")
+  semesterId       String            @map("semester_id")
   status           String
   isAutoCreated    Boolean           @default(false) @map("is_auto_created")
   createdBy        String            @map("created_by")
@@ -313,6 +315,7 @@ model Group {
   mentor2Id        String?           @map("mentor_2_id")
   semester         Semester          @relation(fields: [semesterId], references: [id])
   creator          User              @relation("GroupCreator", fields: [createdBy], references: [id])
+  invitations      GroupInvitation[]
   members          GroupMember[]
   progressReports  ProgressReport[]
   defenseSchedules DefenseSchedule[]
@@ -321,9 +324,21 @@ model Group {
   @@map("groups")
 }
 
+model GroupInvitation {
+  id          String    @id @default(uuid())
+  groupId     String    @map("group_id")
+  studentId   String    @map("student_id")
+  status      String    @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  sentAt      DateTime  @default(now())
+  respondedAt DateTime?
+
+  group   Group   @relation(fields: [groupId], references: [id])
+  student Student @relation(fields: [studentId], references: [id])
+}
+
 model ProgressReport {
-  id                   String       @id @default(uuid())
-  groupId              String       @map("group_id")
+  id                   String    @id @default(uuid())
+  groupId              String    @map("group_id")
   mentorId             String    @map("mentor_id")
   weekNumber           Int       @map("week_number")
   content              String    @db.Text
@@ -339,8 +354,8 @@ model ProgressReport {
 }
 
 model AIVerificationLog {
-  id              String      @id @default(uuid())
-  topicId         String      @map("topic_id")
+  id              String   @id @default(uuid())
+  topicId         String   @map("topic_id")
   verification    String
   originalText    String   @map("original_text") @db.Text
   verifiedText    String   @map("verified_text") @db.Text
@@ -354,9 +369,9 @@ model AIVerificationLog {
 }
 
 model GroupMember {
-  id          String       @id @default(uuid())
-  groupId     String       @map("group_id")
-  studentId   String       @map("student_id")
+  id          String    @id @default(uuid())
+  groupId     String    @map("group_id")
+  studentId   String    @map("student_id")
   role        String
   joinedAt    DateTime  @default(now()) @map("joined_at")
   leaveAt     DateTime? @map("leave_at")
@@ -364,12 +379,13 @@ model GroupMember {
   isActive    Boolean   @default(true) @map("is_active")
   status      String
   group       Group     @relation(fields: [groupId], references: [id])
+  student     Student   @relation(fields: [studentId], references: [id])
 
   @@map("group_members")
 }
 
 model SystemLog {
-  id         String     @id @default(uuid())
+  id         String   @id @default(uuid())
   userId     String   @map("user_id")
   action     String
   entityType String   @map("entity_type")
@@ -384,9 +400,9 @@ model SystemLog {
 }
 
 model SemesterTopicMajor {
-  semesterId String     @map("semester_id")
-  topicId    String      @map("topic_id")
-  majorId    String      @map("major_id")
+  semesterId String   @map("semester_id")
+  topicId    String   @map("topic_id")
+  majorId    String   @map("major_id")
   status     String
   topic      Topic    @relation(fields: [topicId], references: [id])
   semester   Semester @relation(fields: [semesterId], references: [id])
@@ -397,7 +413,7 @@ model SemesterTopicMajor {
 }
 
 model EmailLog {
-  id             String      @id @default(uuid())
+  id             String   @id @default(uuid())
   userId         String   @map("user_id")
   recipientEmail String   @map("recipient_email")
   subject        String
@@ -411,7 +427,7 @@ model EmailLog {
 }
 
 model Notification {
-  id               String                     @id @default(uuid())
+  id               String                  @id @default(uuid())
   title            String
   content          String                  @db.Text
   notificationType String                  @map("notification_type")
@@ -424,11 +440,11 @@ model Notification {
 }
 
 model Decision {
-  id             String      @id @default(uuid()) @map("decision_id")
+  id             String   @id @default(uuid()) @map("decision_id")
   decisionNumber String   @map("decision_number")
   decisionTitle  String   @map("decision_title")
-  groupId        String      @map("group_id")
-  topicId        String      @map("topic_id")
+  groupId        String   @map("group_id")
+  topicId        String   @map("topic_id")
   draftFileUrl   String?  @map("draft_file_url")
   finalFileUrl   String?  @map("final_file_url")
   status         String
@@ -442,8 +458,8 @@ model Decision {
 }
 
 model ReviewCouncil {
-  id          String     @id @default(uuid())
-  semesterId  String      @map("semester_id")
+  id          String   @id @default(uuid())
+  semesterId  String   @map("semester_id")
   reviewType  String   @map("review_type")
   room        String
   councilCode String   @unique @map("council_code")
@@ -460,9 +476,9 @@ model ReviewCouncil {
 }
 
 model ReviewAssignment {
-  id               String       @id @default(uuid())
-  councilId        String       @map("council_id")
-  topicId          String       @map("topic_id")
+  id               String    @id @default(uuid())
+  councilId        String    @map("council_id")
+  topicId          String    @map("topic_id")
   reviewerId       String    @map("reviewer_id")
   score            Float?
   feedback         String?   @db.Text
@@ -476,7 +492,7 @@ model ReviewAssignment {
 }
 
 model Document {
-  id           String    @id @default(uuid())
+  id           String   @id @default(uuid())
   fileName     String   @map("file_name")
   filePath     String   @map("file_path")
   relatedTable String   @map("related_table")
@@ -489,9 +505,9 @@ model Document {
 }
 
 model CouncilMember {
-  id                String      @id @default(uuid())
-  councilId         String      @map("council_id")
-  defenseCouncilsId String?     @map("defensecouncils_id")
+  id                String   @id @default(uuid())
+  councilId         String   @map("council_id")
+  defenseCouncilsId String?  @map("defensecouncils_id")
   userId            String   @map("user_id")
   role              String
   assignedAt        DateTime @default(now()) @map("assigned_at")
@@ -502,9 +518,9 @@ model CouncilMember {
 }
 
 model Feedback {
-  id                 String             @id @default(uuid())
-  meetingId          String            @map("meeting_id")
-  reviewAssignmentId String?            @map("review_assignment_id")
+  id                 String          @id @default(uuid())
+  meetingId          String          @map("meeting_id")
+  reviewAssignmentId String?         @map("review_assignment_id")
   content            String          @db.Text
   rating             Int
   createdAt          DateTime        @default(now()) @map("created_at")
@@ -514,9 +530,9 @@ model Feedback {
 }
 
 model DefenseSchedule {
-  id                 String      @id @default(uuid())
-  councilId          String      @map("council_id")
-  groupId            String      @map("group_id")
+  id                 String   @id @default(uuid())
+  councilId          String   @map("council_id")
+  groupId            String   @map("group_id")
   defenseTime        DateTime @map("defense_time")
   location           String
   defenseRound       Int      @map("defense_round")
@@ -531,7 +547,7 @@ model DefenseSchedule {
 }
 
 model NotificationRecipient {
-  notificationId String          @map("notification_id")
+  notificationId String       @map("notification_id")
   userId         String       @map("user_id")
   isRead         Boolean      @default(false) @map("is_read")
   readAt         DateTime?    @map("read_at")
@@ -543,8 +559,8 @@ model NotificationRecipient {
 }
 
 model DetailMajorTopic {
-  majorId String    @map("major_id")
-  topicId String    @map("topic_id")
+  majorId String @map("major_id")
+  topicId String @map("topic_id")
   status  String
   major   Major  @relation(fields: [majorId], references: [id])
   topic   Topic  @relation(fields: [topicId], references: [id])

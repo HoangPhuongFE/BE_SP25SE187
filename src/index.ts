@@ -9,6 +9,8 @@ import yearRouter from "./routers/year.route";
 import semesterRouter from "./routers/semester.route";
 import importConditionRouter from "./routers/importCondition.router";
 import exportRotuer from "./routers/export.router";
+import groupRoutes from "./routers/group.routes";
+
 config();
 
 const app = express();
@@ -24,6 +26,7 @@ app.use('/api/year', yearRouter);
 app.use('/api/semester', semesterRouter);
 app.use('/api/import', importConditionRouter);
 app.use('/api/export', exportRotuer);
+app.use("/api/groups", groupRoutes);
 
 
 

@@ -1,4 +1,3 @@
-
 import { TokenPayload } from '../interfaces/auth.interface'; 
 
 declare global {
