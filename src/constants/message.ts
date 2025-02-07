@@ -1,4 +1,3 @@
-
 // Thông báo liên quan đến nhóm
 export const GROUP_MESSAGE = {
   GROUP_CREATED: "Group created successfully",
@@ -117,6 +116,23 @@ export const YEAR_MESSAGE = {
   YEAR_FETCHED: "Years fetched successfully",
 };
 
+export const TOPIC_MESSAGE = {
+  TOPIC_CREATED: "Topic created successfully",
+  TOPIC_UPDATED: "Topic updated successfully",
+  TOPIC_DELETED: "Topic deleted successfully",
+  TOPIC_NOT_FOUND: "Topic not found",
+  TOPIC_REGISTRATION_UPDATED: "Topic registration updated successfully",
+  TOPIC_REGISTRATION_NOT_FOUND: "Topic registration not found",
+  INVALID_STATUS: "Status is invalid",
+  INVALID_REVIEWER: "Reviewer is invalid",
+  DUPLICATE_TOPIC_CODE: "Topic code already exists",
+  INVALID_MAJOR: "Major is invalid",
+  SEMESTER_REQUIRED: "Semester is required",
+  INVALID_BUSINESS_INFO: "Business info is invalid",
+  MAX_STUDENTS_INVALID: "Number of students is invalid",
+  DESCRIPTION_REQUIRED: "Description is required",
+  NAME_REQUIRED: "Name is required",
+} as const;
 
 // Cập nhật vào danh sách MESSAGES chung
 export const MESSAGES = {
@@ -132,4 +148,5 @@ export const MESSAGES = {
   EXPORT: EXPORT_MESSAGE,
   GROUP: GROUP_MESSAGE, 
   EMAIL: EMAIL_MESSAGE,
+  TOPIC: TOPIC_MESSAGE,
 } as const;
