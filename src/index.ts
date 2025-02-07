@@ -1,4 +1,5 @@
 import express from "express";
+import cors from 'cors';
 import { envConfig } from "./constants/config";
 import userRouter from "./routers/user.router";
 import { config } from 'dotenv';
@@ -16,6 +17,12 @@ config();
 
 const app = express();
 
+// Thêm middleware CORS
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:5173'],
+  credentials: true
+}));
+
 app.use(express.json());
 
 // Routes
@@ -29,17 +36,6 @@ app.use('/api/import', importConditionRouter);
 app.use('/api/export', exportRotuer);
 app.use("/api/groups", groupRoutes);
 app.use("/api/topics", topicRouter);
-
-
-
-
-
-
-
-
-
-
-
 
 app.listen(envConfig.PORT, () => {
   console.log(`Server is running on port ${envConfig.PORT}`);
