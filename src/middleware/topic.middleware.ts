@@ -3,6 +3,7 @@ import { body, param, validationResult } from 'express-validator';
 import { AuthenticatedRequest } from './user.middleware';
 import { TOPIC_MESSAGE } from '../constants/message';
 import { PrismaClient } from '@prisma/client';
+import { GroupService } from '~/service/group.service';
 
 const prisma = new PrismaClient();
 
@@ -67,25 +68,70 @@ export const validateUpdateTopic = [
 ];
 
 export const validateTopicRegistration = [
-  param('registrationId').notEmpty().withMessage('Registration ID is required'),
-  body('status').isIn(['APPROVED', 'REJECTED']).withMessage(TOPIC_MESSAGE.INVALID_STATUS),
-  body('reviewerId').optional().isString().withMessage(TOPIC_MESSAGE.INVALID_REVIEWER),
-
+  body('name').notEmpty().withMessage(TOPIC_MESSAGE.NAME_REQUIRED),
+  body('description').notEmpty().withMessage(TOPIC_MESSAGE.DESCRIPTION_REQUIRED),
+  body('semesterId').notEmpty().withMessage('Semester ID là bắt buộc'),
+  body('majorId').notEmpty().withMessage('Major ID là bắt buộc'),
+  
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { registrationId } = req.params;
-    const registration = await prisma.topicRegistration.findUnique({
-      where: { id: registrationId }
-    });
+    const userId = req.user?.userId;
+    const userRoles = req.user?.roles || [];
 
-    if (!registration) {
-      return res.status(404).json({ message: TOPIC_MESSAGE.TOPIC_REGISTRATION_NOT_FOUND });
+    // Kiểm tra nếu là mentor
+    if (userRoles.includes('mentor')) {
+      const registeredTopicsCount = await prisma.topicRegistration.count({
+        where: {
+          userId,
+          role: 'mentor'
+        }
+      });
+
+      if (registeredTopicsCount >= 5) {
+        return res.status(400).json({ message: TOPIC_MESSAGE.MENTOR_MAX_TOPICS_REACHED });
+      }
+    }
+
+    // Kiểm tra nếu là leader
+    if (userRoles.includes('leader')) {
+      const student = await prisma.student.findUnique({
+        where: { userId },
+        include: {
+          groupMembers: {
+            include: {
+              group: {
+                include: {
+                  decisions: {
+                    include: {
+                      topic: {
+                        include: {
+                          topicRegistrations: true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      });
+
+      const hasGroupWithTopic = student?.groupMembers.some(
+        member => member.group.decisions.some(decision => decision.topic.topicRegistrations.some(registration => registration.status === 'pending'))
+      );
+
+
+
+      if (hasGroupWithTopic) {
+        return res.status(400).json({ message: TOPIC_MESSAGE.GROUP_ALREADY_HAS_TOPIC });
+      }
     }
 
     next();
   }
-]; 
+];

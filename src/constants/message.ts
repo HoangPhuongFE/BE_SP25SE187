@@ -132,7 +132,14 @@ export const TOPIC_MESSAGE = {
   MAX_STUDENTS_INVALID: "Number of students is invalid",
   DESCRIPTION_REQUIRED: "Description is required",
   NAME_REQUIRED: "Name is required",
+  MENTOR_MAX_TOPICS_REACHED: "Mentor has reached the maximum limit of 5 topics",
+  MENTOR_NO_BUSINESS_TOPICS: "Mentor cannot register a business topic",
+  LEADER_NO_BUSINESS_TOPICS: "Leader cannot register a business topic",
+  GROUP_ALREADY_HAS_TOPIC: "Group already has a topic",
+  TOPIC_REGISTRATION_CREATED: "Topic registration created successfully",
+
 } as const;
+
 
 // Cập nhật vào danh sách MESSAGES chung
 export const MESSAGES = {

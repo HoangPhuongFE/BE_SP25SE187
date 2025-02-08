@@ -103,4 +103,28 @@ export class TopicController {
       });
     }
   }
+
+  async registerTopic(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { name, description, semesterId, majorId } = req.body;
+      const userId = req.user!.userId;
+
+      const registration = await this.topicService.registerTopic({
+        name,
+        description,
+        userId,
+        semesterId,
+        majorId
+      });
+
+      res.status(HTTP_STATUS.CREATED).json({
+        message: TOPIC_MESSAGE.TOPIC_REGISTRATION_CREATED,
+        data: registration
+      });
+    } catch (error) {
+      res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: (error as Error).message
+      });
+    }
+  }
 } 
