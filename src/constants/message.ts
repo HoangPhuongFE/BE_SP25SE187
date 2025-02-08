@@ -140,6 +140,17 @@ export const TOPIC_MESSAGE = {
 
 } as const;
 
+export const MEETING_MESSAGE = {
+  MEETING_CREATED: "Meeting created successfully",
+  MEETING_UPDATED: "Meeting updated successfully",
+  MEETING_DELETED: "Meeting deleted successfully",
+  MEETING_NOT_FOUND: "Meeting not found",
+  UNAUTHORIZED_MENTOR: "You are not the mentor of this group",
+  INVALID_MEETING_TIME: "Invalid meeting time",
+  GROUP_NOT_FOUND: "Group not found",
+  DELETE_TIME_EXPIRED: "Cannot delete meeting before 1 day of the meeting",
+  UPDATE_TIME_EXPIRED: "Cannot update meeting before 1 day of the meeting",
+} as const;
 
 // Cập nhật vào danh sách MESSAGES chung
 export const MESSAGES = {
@@ -156,4 +167,5 @@ export const MESSAGES = {
   GROUP: GROUP_MESSAGE, 
   EMAIL: EMAIL_MESSAGE,
   TOPIC: TOPIC_MESSAGE,
+  MEETING: MEETING_MESSAGE,
 } as const;
