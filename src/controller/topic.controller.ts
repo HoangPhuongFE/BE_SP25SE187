@@ -52,7 +52,7 @@ export class TopicController {
       const { id } = req.params;
       const updateData = req.body;
 
-      const topic = await this.topicService.updateTopic(id, updateData);
+      const topic = await this.topicService.updateTopic(id, updateData, req.user!.userId);
 
       res.status(HTTP_STATUS.OK).json({
         message: TOPIC_MESSAGE.TOPIC_UPDATED,
@@ -123,6 +123,47 @@ export class TopicController {
       });
     } catch (error) {
       res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: (error as Error).message
+      });
+    }
+  }
+
+  // Lấy danh sách topic có phân trang
+  async getAllTopics(req: AuthenticatedRequest, res: Response) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const pageSize = parseInt(req.query.pageSize as string) || 10;
+      const semesterId = req.query.semesterId as string;
+      const majorId = req.query.majorId as string;
+
+      // Thêm validation cho page và pageSize
+      if (page < 1 || pageSize < 1) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: "Page and pageSize must be greater than 0"
+        });
+      }
+
+      const result = await this.topicService.getAllTopics({
+        page,
+        pageSize,
+        semesterId,
+        majorId
+      });
+
+      res.status(HTTP_STATUS.OK).json({
+        message: TOPIC_MESSAGE.TOPICS_FETCHED,
+        data: result
+      });
+    } catch (error) {
+      // Xử lý lỗi chi tiết hơn
+      if (error instanceof Error) {
+        if (error.message.includes("not valid")) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            message: error.message
+          });
+        }
+      }
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         message: (error as Error).message
       });
     }
