@@ -137,8 +137,9 @@ export const TOPIC_MESSAGE = {
   LEADER_NO_BUSINESS_TOPICS: "Leader cannot register a business topic",
   GROUP_ALREADY_HAS_TOPIC: "Group already has a topic",
   TOPIC_REGISTRATION_CREATED: "Topic registration created successfully",
-
+  TOPICS_FETCHED: "Topics fetched successfully",
 } as const;
+
 
 export const MEETING_MESSAGE = {
   MEETING_CREATED: "Meeting created successfully",

@@ -262,4 +262,59 @@ export class TopicService {
       }
     };
   }
+
+  async getAllTopics({
+    page,
+    pageSize,
+    semesterId,
+    majorId
+  }: {
+    page: number;
+    pageSize: number;
+    semesterId?: string;
+    majorId?: string;
+  }) {
+    const where = {
+      ...(semesterId && { semesterId }),
+      ...(majorId && {
+        detailMajorTopics: {
+          some: {
+            majorId
+          }
+        }
+      })
+    };
+
+    const [topics, totalItems] = await Promise.all([
+      prisma.topic.findMany({
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        where,
+        include: {
+          detailMajorTopics: {
+            include: {
+              major: true
+            }
+          },
+          semester: {
+            include: {
+              year: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      }),
+      prisma.topic.count({ where })
+    ]);
+
+    return {
+      data: topics,
+      currentPage: page,
+      totalPages: Math.ceil(totalItems / pageSize),
+      totalItems,
+      pageSize
+    };
+  }
 } 

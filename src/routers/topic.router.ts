@@ -38,5 +38,10 @@ router.put(
   topicController.approveTopicRegistration.bind(topicController)
 );
 
+router.get(
+  "/",
+  authenticateToken,
+  topicController.getAllTopics.bind(topicController)
+);
 
 export default router; 

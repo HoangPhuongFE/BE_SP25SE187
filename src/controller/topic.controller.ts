@@ -127,4 +127,30 @@ export class TopicController {
       });
     }
   }
+
+  // Lấy danh sách topic có phân trang
+  async getAllTopics(req: AuthenticatedRequest, res: Response) {
+    try {
+      const page = parseInt(req.query.page as string) || 1;
+      const pageSize = parseInt(req.query.pageSize as string) || 10;
+      const semesterId = req.query.semesterId as string;
+      const majorId = req.query.majorId as string;
+
+      const result = await this.topicService.getAllTopics({
+        page,
+        pageSize,
+        semesterId,
+        majorId
+      });
+
+      res.status(HTTP_STATUS.OK).json({
+        message: TOPIC_MESSAGE.TOPICS_FETCHED,
+        data: result
+      });
+    } catch (error) {
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
 } 
