@@ -10,7 +10,7 @@ const topicController = new TopicController();
 router.post(
   "/",
   authenticateToken,
-  checkRole(["academic_officer"]),
+  checkRole(["academic_officer", "mentor", "leader"]),
   validateCreateTopic,
   topicController.createTopic.bind(topicController)
 );
@@ -18,7 +18,7 @@ router.post(
 router.put(
   "/:id",
   authenticateToken,
-  checkRole(["academic_officer"]),
+  checkRole(["academic_officer", "mentor", "leader"]),
   validateUpdateTopic,
   topicController.updateTopic.bind(topicController)
 );
@@ -26,16 +26,17 @@ router.put(
 router.delete(
   "/:id",
   authenticateToken,
-  checkRole(["academic_officer"]),
+  checkRole(["academic_officer", "mentor"]),
   topicController.deleteTopic.bind(topicController)
 );
 
 router.put(
   "/registration/:registrationId",
   authenticateToken,
-  checkRole(["academic_officer"]),
+  checkRole(["academic_officer", "mentor"]),
   validateTopicRegistration,
   topicController.approveTopicRegistration.bind(topicController)
 );
+
 
 export default router; 
