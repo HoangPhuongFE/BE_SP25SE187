@@ -52,7 +52,7 @@ export class TopicController {
       const { id } = req.params;
       const updateData = req.body;
 
-      const topic = await this.topicService.updateTopic(id, updateData);
+      const topic = await this.topicService.updateTopic(id, updateData, req.user!.userId);
 
       res.status(HTTP_STATUS.OK).json({
         message: TOPIC_MESSAGE.TOPIC_UPDATED,

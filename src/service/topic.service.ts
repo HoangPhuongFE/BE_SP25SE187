@@ -106,27 +106,63 @@ export class TopicService {
     return topic;
   }
 
-  async updateTopic(id: string, data: any) {
+  async updateTopic(id: string, data: any, userId: string) {
     if (!isUUID(id)) {
       throw new Error('ID topic is not valid');
     }
 
-    if (data.majors) {
-      for (const majorId of data.majors) {
-        if (!isUUID(majorId)) {
-          throw new Error('ID major is not valid');
+
+    // Kiểm tra topic tồn tại
+    const topic = await prisma.topic.findUnique({
+      where: { id },
+      include: {
+        topicRegistrations: {
+          where: { userId }
         }
       }
+    });
+
+    if (!topic) {
+      throw new Error(TOPIC_MESSAGE.TOPIC_NOT_FOUND);
     }
 
-    const topic = await prisma.topic.update({
+    // Kiểm tra quyền update
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { roles: { include: { role: true } } }
+    });
+
+    const userRoles = user?.roles.map(ur => ur.role.name);
+
+    if (userRoles?.includes('mentor')) {
+      // Kiểm tra số lượng topic đã đăng ký của mentor
+      const registeredCount = await prisma.topicRegistration.count({
+        where: { 
+          userId,
+          role: 'mentor',
+          status: 'approved'
+        }
+      });
+
+      if (registeredCount >= 5 && !topic.topicRegistrations.length) {
+        throw new Error(TOPIC_MESSAGE.MENTOR_MAX_TOPICS_REACHED);
+      }
+    } else if (userRoles?.includes('student')) {
+      // Sinh viên chỉ được update khi topic bị reject
+      const registration = topic.topicRegistrations[0];
+      if (!registration || registration.status !== 'rejected') {
+        throw new Error(TOPIC_MESSAGE.STUDENT_CANNOT_UPDATE);
+      }
+    } else {
+      throw new Error(TOPIC_MESSAGE.UNAUTHORIZED_UPDATE);
+    }
+
+    // Thực hiện update
+    return prisma.topic.update({
       where: { id },
       data: {
         name: data.name,
         description: data.description,
-        isBusiness: data.isBusiness,
-        businessPartner: data.businessPartner,
-        status: data.status,
         updatedAt: new Date(),
         detailMajorTopics: data.majors ? {
           deleteMany: {},
@@ -144,8 +180,6 @@ export class TopicService {
         }
       }
     });
-
-    return topic;
   }
 
   async deleteTopic(id: string) {
@@ -192,6 +226,22 @@ export class TopicService {
   }) {
     const { name, description, userId, semesterId, majorId } = data;
 
+    // Kiểm tra UUID cho tất cả các ID
+    if (!isUUID(userId)) {
+      throw new Error('ID user is not valid');
+    }
+
+
+    if (!isUUID(semesterId)) {
+      throw new Error('ID semester is not valid');
+    }
+
+
+    if (!isUUID(majorId)) {
+      throw new Error('ID major is not valid');
+    }
+
+
     // Kiểm tra user và role
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -205,8 +255,9 @@ export class TopicService {
     });
 
     if (!user) {
-      throw new Error('Người dùng không tồn tại');
+      throw new Error('User does not exist');
     }
+
 
     // Kiểm tra role của user
     const userRoles = user.roles.map(ur => ur.role.name);
@@ -274,6 +325,17 @@ export class TopicService {
     semesterId?: string;
     majorId?: string;
   }) {
+    // Kiểm tra UUID nếu có semesterId hoặc majorId
+    if (semesterId && !isUUID(semesterId)) {
+      throw new Error('ID semester is not valid');
+    }
+
+
+    if (majorId && !isUUID(majorId)) {
+      throw new Error('ID major is not valid');
+    }
+
+
     const where = {
       ...(semesterId && { semesterId }),
       ...(majorId && {

@@ -138,6 +138,9 @@ export const TOPIC_MESSAGE = {
   GROUP_ALREADY_HAS_TOPIC: "Group already has a topic",
   TOPIC_REGISTRATION_CREATED: "Topic registration created successfully",
   TOPICS_FETCHED: "Topics fetched successfully",
+  STUDENT_CANNOT_UPDATE: "Student cannot update topic when it is not rejected",
+  UNAUTHORIZED_UPDATE: "Unauthorized update",
+
 } as const;
 
 
