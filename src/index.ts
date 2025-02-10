@@ -12,6 +12,7 @@ import importConditionRouter from "./routers/importCondition.router";
 import exportRotuer from "./routers/export.router";
 import groupRoutes from "./routers/group.routes";
 import topicRouter from "./routers/topic.router";
+import meetingRouter from "./routers/meeting.router";
 
 config();
 
@@ -38,6 +39,7 @@ app.use('/api/import', importConditionRouter);
 app.use('/api/export', exportRotuer);
 app.use("/api/groups", groupRoutes);
 app.use("/api/topics", topicRouter);
+app.use('/api/meetings', meetingRouter);
 
 app.listen(envConfig.PORT, () => {
   console.log(`Server is running on port ${envConfig.PORT}`);
