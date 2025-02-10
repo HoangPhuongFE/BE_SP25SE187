@@ -136,6 +136,13 @@ export class TopicController {
       const semesterId = req.query.semesterId as string;
       const majorId = req.query.majorId as string;
 
+      // Thêm validation cho page và pageSize
+      if (page < 1 || pageSize < 1) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: "Page and pageSize must be greater than 0"
+        });
+      }
+
       const result = await this.topicService.getAllTopics({
         page,
         pageSize,
@@ -148,6 +155,14 @@ export class TopicController {
         data: result
       });
     } catch (error) {
+      // Xử lý lỗi chi tiết hơn
+      if (error instanceof Error) {
+        if (error.message.includes("not valid")) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            message: error.message
+          });
+        }
+      }
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         message: (error as Error).message
       });

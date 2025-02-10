@@ -9,50 +9,32 @@ const prisma = new PrismaClient();
 
 export class TopicService {
   private async generateTopicCode(semesterId: string, majorId: string): Promise<string> {
-    // Lấy thông tin học kỳ và năm
-    const semester = await prisma.semester.findUnique({
-      where: { id: semesterId },
-      include: {
-        year: true
-      }
-    });
+    const [semester, major] = await Promise.all([
+      prisma.semester.findUnique({
+        where: { id: semesterId },
+        include: { year: true }
+      }),
+      prisma.major.findUnique({
+        where: { id: majorId }
+      })
+    ]);
 
-    if (!semester) {
-      throw new Error('Học kỳ không tồn tại');
-    }
+    if (!semester) throw new Error('Semester not found');
+    if (!major) throw new Error('Major not found');
 
-    // Lấy thông tin ngành
-    const major = await prisma.major.findUnique({
-      where: { id: majorId }
-    });
 
-    if (!major) {
-      throw new Error('Ngành học không tồn tại');
-    }
+    const semesterPrefix = {
+      'Spring': 'SP',
+      'Summer': 'SU',
+      'Fall': 'FA'
+    }[semester.code.split(' ')[0]] || 'FA';
 
-    // Xác định prefix học kỳ (SP: Spring, SU: Summer, FA: Fall)
-    const semesterPrefix = semester.code.startsWith('Spring') ? 'SP' : 
-                          semester.code.startsWith('Summer') ? 'SU' : 'FA';
-    
-    // Lấy 2 số cuối của năm
     const yearSuffix = semester.year.year.toString().slice(-2);
-    
-    // Lấy mã ngành (SE, IA, etc.)
-    const majorCode = major.name;
-
-
-    // Đếm số đề tài trong học kỳ này
     const topicCount = await prisma.topic.count({
-      where: {
-        semesterId: semester.id
-      }
+      where: { semesterId: semester.id }
     });
 
-    // Tạo số thứ tự 3 chữ số
-    const sequenceNumber = (topicCount + 1).toString().padStart(3, '0');
-
-    // Kết hợp thành mã đề tài
-    return `${semesterPrefix}${yearSuffix}${majorCode}${sequenceNumber}`;
+    return `${semesterPrefix}${yearSuffix}${major.name}${(topicCount + 1).toString().padStart(3, '0')}`;
   }
 
   async createTopic(data: {
@@ -196,25 +178,56 @@ export class TopicService {
     registrationId: string,
     status: string,
     reviewerId?: string
-  ) {
+  ): Promise<any> {
     if (!isUUID(registrationId)) {
       throw new Error('ID registration is not valid');
     }
 
-    if (reviewerId && !isUUID(reviewerId)) {
-      throw new Error('ID reviewer is not valid');
-    }
-
-    const registration = await prisma.topicRegistration.update({
-      where: { id: registrationId },
-      data: {
-        status,
-        reviewerId,
-        reviewedAt: new Date()
-      }
+    // Kiểm tra tồn tại của registration
+    const registration = await prisma.topicRegistration.findUnique({
+      where: { id: registrationId }
     });
 
-    return registration;
+    if (!registration) {
+      throw new Error('Topic registration not found');
+    }
+
+    // Kiểm tra reviewer nếu có
+    if (reviewerId) {
+      if (!isUUID(reviewerId)) {
+        throw new Error('ID reviewer is not valid');
+      }
+
+      const reviewer = await prisma.user.findUnique({
+        where: { id: reviewerId }
+      });
+
+      if (!reviewer) {
+        throw new Error('Reviewer not found');
+      }
+    }
+
+    // Sử dụng transaction
+    return prisma.$transaction(async (tx) => {
+      const updatedRegistration = await tx.topicRegistration.update({
+        where: { id: registrationId },
+        data: {
+          status,
+          reviewerId,
+          reviewedAt: new Date()
+        }
+      });
+
+      // Cập nhật trạng thái topic nếu cần
+      if (status === 'approved') {
+        await tx.topic.update({
+          where: { id: registration.topicId },
+          data: { status: 'APPROVED' }
+        });
+      }
+
+      return updatedRegistration;
+    });
   }
 
   async registerTopic(data: {
