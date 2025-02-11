@@ -83,4 +83,18 @@ export class SemesterController {
       return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
     }
   }
+
+ 
+  async getAllSemesters(req: Request, res: Response) {
+    try {
+      const semesters = await this.semesterService.getAllSemesters();
+      return res.status(200).json({
+        message: SEMESTER_MESSAGE.SEMESTERS_FETCHED,
+        data: semesters,
+      });
+    } catch (error) {
+      console.error("Error fetching all semesters:", error);
+      return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
+    }
+  }
 }

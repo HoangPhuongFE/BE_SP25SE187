@@ -53,4 +53,13 @@ export class SemesterService {
       where: { id },
     });
   }
+  async getAllSemesters() {
+    const semesters = await prisma.semester.findMany();
+    console.log("Semesters:", semesters); // Kiểm tra xem có dữ liệu không
+    return semesters;
+  }
+
+
+
+
 }
