@@ -3,8 +3,7 @@ import { hashPassword, comparePassword } from '../utils/hash';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { LoginDTO, RegisterDTO } from '~/types/type';
-import bcrypt from 'bcrypt';
-
+import bcrypt from 'bcryptjs';
 
 import { AUTH_MESSAGE ,USER_MESSAGE } from '~/constants/message';
 const prisma = new PrismaClient();

@@ -1,30 +1,30 @@
-import ExcelJS from "exceljs";
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcrypt";
+import ExcelJS from 'exceljs';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs'; 
 
 const prisma = new PrismaClient();
 
 function extractCellValue(cellValue: any): string {
-  if (typeof cellValue === "object" && cellValue?.text) {
+  if (typeof cellValue === 'object' && cellValue?.text) {
     return cellValue.text;
   }
-  return String(cellValue || "").trim();
+  return String(cellValue || '').trim();
 }
 
 export class ImportStudentService {
   async importExcel(filePath: string, userId: string, semesterId: string) {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(filePath);
-
     const worksheet = workbook.getWorksheet(1);
+
     if (!worksheet) {
-      throw new Error("Worksheet is undefined");
+      throw new Error('Worksheet is undefined');
     }
 
     const errors: string[] = [];
     let successCount = 0;
-    const DEFAULT_PASSWORD = "123456"; 
-    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10); 
+    const DEFAULT_PASSWORD = '123456';
+    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10); // Sử dụng bcryptjs
 
     for (let i = 2; i <= worksheet.rowCount; i++) {
       const row = worksheet.getRow(i);
@@ -33,8 +33,8 @@ export class ImportStudentService {
       const specialty = extractCellValue(row.getCell(3).value);
 
       try {
-        if (!email) throw new Error("Email không được để trống");
-        if (!profession) throw new Error("Ngành (Profession) không được để trống");
+        if (!email) throw new Error('Email không được để trống');
+        if (!profession) throw new Error('Ngành (Profession) không được để trống');
 
         let major = await prisma.major.findUnique({ where: { name: profession } });
         if (!major) {
@@ -55,14 +55,14 @@ export class ImportStudentService {
           user = await prisma.user.create({
             data: {
               email,
-              username: email.split("@")[0],
-              passwordHash: hashedPassword, 
+              username: email.split('@')[0],
+              passwordHash: hashedPassword,
             },
           });
         }
-            
+
         let student = await prisma.student.findFirst({
-          where: { studentCode: email.split("@")[0] },
+          where: { studentCode: email.split('@')[0] },
         });
 
         if (!student) {
@@ -71,8 +71,8 @@ export class ImportStudentService {
               userId: user.id,
               majorId: major.id,
               specializationId: specialization?.id || null,
-              studentCode: email.split("@")[0],
-              importSource: "excelImport",
+              studentCode: email.split('@')[0],
+              importSource: 'excelImport',
             },
           });
         }
@@ -94,29 +94,25 @@ export class ImportStudentService {
         successCount++;
       } catch (error) {
         console.error(`Error processing row ${i}:`, error);
-        if (error instanceof Error) {
-          errors.push(`Dòng ${i}: ${error.message}`);
-        } else {
-          errors.push(`Dòng ${i}: Lỗi không xác định`);
-        }
+        errors.push(`Dòng ${i}: ${(error as Error).message}`);
       }
     }
 
-    const fileName = filePath.split("/").pop();
+    const fileName = filePath.split('/').pop();
     await prisma.importLog.create({
       data: {
-        source: "Excel Import",
-        fileName: fileName || "unknown",
+        source: 'Excel Import',
+        fileName: fileName || 'unknown',
         importById: userId,
         totalRecords: worksheet.rowCount - 1,
         successRecords: successCount,
         errorRecords: errors.length,
-        errorsDetails: errors.join("\n"),
+        errorsDetails: errors.join('\n'),
       },
     });
 
     if (errors.length) {
-      throw new Error(`Import hoàn thành với lỗi: ${errors.join("\n")}`);
+      throw new Error(`Import hoàn thành với lỗi: ${errors.join('\n')}`);
     }
   }
 }
