@@ -60,7 +60,7 @@ export class UserService {
     }
 
     // (Tuỳ chọn) Kiểm tra vai trò nếu bạn muốn giới hạn vai trò được phép đăng nhập
-    if (!user.roles.some((role) => role.isActive)) {
+    if (!user.roles.some((role: { isActive: any; }) => role.isActive)) {
       throw new Error(USER_MESSAGE.UNAUTHORIZED); // Vai trò không được phép
     }
 
