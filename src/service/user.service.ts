@@ -3,7 +3,10 @@ import { hashPassword, comparePassword } from '../utils/hash';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { LoginDTO, RegisterDTO } from '~/types/type';
+import bcrypt from 'bcrypt';
 
+
+import { AUTH_MESSAGE ,USER_MESSAGE } from '~/constants/message';
 const prisma = new PrismaClient();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -36,78 +39,55 @@ export class UserService {
     return user;
   }
 
-  async login(data: LoginDTO) {
+
+
+
+  async login({ email, password }: { email: string; password: string }) {
+    // Tìm người dùng theo email
     const user = await prisma.user.findUnique({
-      where: { email: data.email },
-      include: {
-        roles: {
-          include: {
-            role: true,
-          },
-        },
-      },
+      where: { email },
+      include: { roles: true },
     });
 
-    if (!user) throw new Error('User not found');
+    if (!user) {
+      throw new Error(USER_MESSAGE.USER_NOT_FOUND); // Người dùng không tồn tại
+    }
 
-    const isValidPassword = await comparePassword(data.password, user.passwordHash);
-    if (!isValidPassword) throw new Error('Invalid password');
+    // So sánh mật khẩu đã mã hóa với mật khẩu nhập vào
+    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordValid) {
+      throw new Error(USER_MESSAGE.INVALID_PASSWORD); // Mật khẩu không đúng
+    }
 
+    // (Tuỳ chọn) Kiểm tra vai trò nếu bạn muốn giới hạn vai trò được phép đăng nhập
+    if (!user.roles.some((role) => role.isActive)) {
+      throw new Error(USER_MESSAGE.UNAUTHORIZED); // Vai trò không được phép
+    }
+
+    // Sinh accessToken và refreshToken
     const accessToken = this.generateAccessToken(user);
-    const refreshToken = await this.generateRefreshToken(user);
+    const refreshToken = this.generateRefreshToken(user);
 
     return { accessToken, refreshToken };
   }
 
-  private generateAccessToken(user: any) {
-    if (!process.env.JWT_SECRET_ACCESS_TOKEN) {
-      throw new Error('JWT_SECRET_ACCESS_TOKEN is not defined');
-    }
-
-    const roles = user.roles
-      ?.filter((userRole: any) => userRole.isActive)
-      ?.map((userRole: any) => userRole.role?.name)
-      ?.filter(Boolean) || [];
-
+  generateAccessToken(user: any) {
     return jwt.sign(
-      {
-        userId: user.id,
-        roles,
-      },
-      process.env.JWT_SECRET_ACCESS_TOKEN,
-      { expiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN || '15m' },
+      { userId: user.id, email: user.email, roles: user.roles.map((r: { roleId: any; }) => r.roleId) },
+      process.env.JWT_SECRET || 'secret_key',
+      { expiresIn: '1h' }
     );
   }
 
-  private async generateRefreshToken(user: any) {
-    if (!process.env.JWT_SECRET_REFRESH_TOKEN) {
-      throw new Error('JWT_SECRET_REFRESH_TOKEN is not defined');
-    }
-
-    const roles = user.roles
-      ?.filter((userRole: any) => userRole.isActive)
-      ?.map((userRole: any) => userRole.role?.name)
-      ?.filter(Boolean) || [];
-
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        roles,
-      },
-      process.env.JWT_SECRET_REFRESH_TOKEN,
-      { expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d' },
+  generateRefreshToken(user: any) {
+    return jwt.sign(
+      { userId: user.id },
+      process.env.JWT_REFRESH_SECRET || 'refresh_secret_key',
+      { expiresIn: '7d' }
     );
-
-    await prisma.refreshToken.create({
-      data: {
-        token,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
-
-    return token;
   }
+
+
 
   async loginWithGoogle(idToken: string) {
     const ticket = await googleClient.verifyIdToken({

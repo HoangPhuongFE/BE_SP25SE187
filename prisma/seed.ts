@@ -40,7 +40,7 @@ async function createDefaultUsers() {
     {
       email: 'lecturer@gmail.com',
       username: 'lecturer',
-      password: await hashPassword('12345'),
+      password: await hashPassword('lecturer12345'),
       fullName: 'Lecturer User',
       roleId: 'lecturer-role-id',
     },
