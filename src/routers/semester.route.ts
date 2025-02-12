@@ -6,6 +6,8 @@ const semesterController = new SemesterController();
 
 router.get("/all", semesterController.getAllSemesters.bind(semesterController));
 
+router.get("/detail/:id", semesterController.getSemesterById.bind(semesterController));
+
 router.get("/:yearId", semesterController.getSemestersByYear.bind(semesterController));
 
 router.post("/", semesterController.createSemester.bind(semesterController));

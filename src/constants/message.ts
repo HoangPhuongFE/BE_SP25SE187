@@ -83,6 +83,9 @@ export const SEMESTER_MESSAGE = {
   SEMESTER_STUDENTS_FETCHED: "Students for semester fetched successfully",
   INVALID_SEMESTER_ID: "Invalid semester ID provided",
   SEMESTERS_FETCHED: "Semesters fetched successfully",
+  SEMESTER_FETCHED: "Semester fetched successfully",
+  SEMESTER_DETAIL_FETCHED: "Semester detail fetched successfully",
+  SEMESTER_DETAIL_NOT_FOUND: "Semester detail not found",
 } as const;
 
 // Thông báo cho sinh viên

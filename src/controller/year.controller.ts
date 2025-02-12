@@ -36,25 +36,29 @@ export class YearController {
       return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
     }
   }
-
+  
   // Cập nhật Year
   async updateYear(req: Request, res: Response) {
     try {
       const { id } = req.params;
       const { year } = req.body;
 
-      // ID check logic
-      if (!id || isNaN(Number(id))) {
-        return res.status(400).json({ message: "Invalid ID parameter." });
+      // Kiểm tra id hợp lệ (UUID format)
+      if (!id || typeof id !== 'string' || !id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        return res.status(400).json({ message: "ID không hợp lệ" });
       }
+
       if (!year || typeof year !== "number") {
-        return res.status(400).json({ message: "Year is required and must be a number." });
+        return res.status(400).json({ message: "Year phải là một số" });
       }
 
       const updatedYear = await this.yearService.updateYear(id, year);
       return res.status(200).json({ message: YEAR_MESSAGE.YEAR_UPDATED, data: updatedYear });
     } catch (error) {
       console.error("Error updating year:", error);
+      if ((error as any).code === 'P2025') {
+        return res.status(404).json({ message: YEAR_MESSAGE.YEAR_NOT_FOUND });
+      }
       return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
     }
   }

@@ -84,7 +84,6 @@ export class SemesterController {
     }
   }
 
- 
   async getAllSemesters(req: Request, res: Response) {
     try {
       const semesters = await this.semesterService.getAllSemesters();
@@ -95,6 +94,37 @@ export class SemesterController {
     } catch (error) {
       console.error("Error fetching all semesters:", error);
       return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
+    }
+  }
+
+  async getSemesterById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ 
+          message: SEMESTER_MESSAGE.INVALID_SEMESTER_ID 
+        });
+      }
+
+      const semester = await this.semesterService.getSemesterById(id);
+      
+      return res.status(200).json({
+        message: SEMESTER_MESSAGE.SEMESTER_FETCHED,
+        data: semester
+      });
+    } catch (error) {
+      console.error("Error fetching semester by ID:", error);
+      
+      if (error instanceof Error && error.message === SEMESTER_MESSAGE.SEMESTER_NOT_FOUND) {
+        return res.status(404).json({ 
+          message: SEMESTER_MESSAGE.SEMESTER_NOT_FOUND 
+        });
+      }
+      
+      return res.status(500).json({ 
+        message: GENERAL_MESSAGE.SERVER_ERROR 
+      });
     }
   }
 }
