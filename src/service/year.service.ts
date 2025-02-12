@@ -22,8 +22,12 @@ export class YearService {
   }
 
   async deleteYear(id: string) {
+    await prisma.semester.deleteMany({
+      where: { yearId: id },
+    });
     return prisma.year.delete({
       where: { id },
     });
   }
+  
 }

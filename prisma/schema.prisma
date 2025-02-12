@@ -93,14 +93,22 @@ model Semester {
   registrationDeadline  DateTime               @map("registration_deadline")
   status                String
   createdAt             DateTime               @default(now()) @map("created_at")
-  semesterStudents      SemesterStudent[] // Quan hệ với bảng SemesterStudent
+  semesterStudents      SemesterStudent[]
   reviewDefenseCouncils ReviewDefenseCouncil[]
   topics                Topic[]
   groups                Group[]
   reviewCouncils        ReviewCouncil[]
   semesterTopicMajors   SemesterTopicMajor[]
   yearId                String
-  year                  Year                   @relation(fields: [yearId], references: [id])
+  year                  Year                   @relation("YearSemesters", fields: [yearId], references: [id], onDelete: Cascade)
+}
+
+model Year {
+  id        String     @id @default(uuid())
+  year      Int
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  semesters Semester[] @relation("YearSemesters") // Thêm "YearSemesters" vào đây
 }
 
 model SemesterStudent {
@@ -116,14 +124,6 @@ model SemesterStudent {
   student  Student  @relation(fields: [studentId], references: [id])
 
   @@unique([semesterId, studentId]) // Đảm bảo mỗi sinh viên chỉ được liên kết với một học kỳ duy nhất
-}
-
-model Year {
-  id        String     @id @default(uuid())
-  year      Int        @unique
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  semesters Semester[] // Quan hệ 1-N với Semester
 }
 
 model Major {
