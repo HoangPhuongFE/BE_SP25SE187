@@ -14,6 +14,7 @@ async function createRoles() {
     { name: 'reviewer', description: 'Người phản biện' },
     { name: 'chairman', description: 'Chủ tịch hội đồng' },
     { name: 'secretary', description: 'Thư ký hội đồng' },
+    { name: 'lecturer', description: 'Giảng viên' },
     { name: 'mentor', description: 'Người hướng dẫn (Mentor)' },
     { name: 'leader', description: 'Trưởng nhóm' },
     { name: 'student', description: 'Sinh viên (Student Groups/Students)' },
