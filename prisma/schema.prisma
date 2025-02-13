@@ -278,7 +278,7 @@ model Topic {
 
   @@map("topics")
 }
-
+// 
 model TopicAssignment {
   id              String    @id @default(uuid())
   topicId         String    @map("topic_id")
