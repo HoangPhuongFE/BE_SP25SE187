@@ -93,7 +93,7 @@ export class ImportStudentService {
 
         successCount++;
       } catch (error) {
-        console.error(`Error processing row ${i}:`, error);
+       // console.error(`Error processing row ${i}:`, error);
         errors.push(`Dòng ${i}: ${(error as Error).message}`);
       }
     }
