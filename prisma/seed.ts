@@ -20,7 +20,7 @@ async function createRoles() {
     { name: 'student', description: 'Sinh viên (Student Groups/Students)' },
     { name: 'admin', description: 'Quản trị viên (Admin)' }
   ];
-  
+
 
   for (const role of roles) {
     const createdRole = await prisma.role.create({ data: role });
@@ -31,9 +31,44 @@ async function createRoles() {
 async function createDefaultUsers() {
   const defaultUsers = [
     {
+      email: 'academic.officer@gmail.com',
+      username: 'academic_officer',
+      password: await hashPassword('123456'),
+      fullName: 'Academic Officer User',
+      roleName: 'academic_officer',
+    },
+    {
+      email: 'thesis.manager@gmail.com',
+      username: 'graduation_thesis_manager',
+      password: await hashPassword('123456'),
+      fullName: 'Graduation Thesis Manager User',
+      roleName: 'graduation_thesis_manager',
+    },
+    {
+      email: 'examination.officer@gmail.com',
+      username: 'examination_officer',
+      password: await hashPassword('123456'),
+      fullName: 'Examination Officer User',
+      roleName: 'examination_officer',
+    },
+    {
+      email: 'mentor00@gmail.com',
+      username: 'mentor00',
+      password: await hashPassword('123456'),
+      fullName: 'Mentor User',
+      roleName: 'mentor',
+    },
+    {
+      email: 'mentor11@gmail.com',
+      username: 'mentor11',
+      password: await hashPassword('123456'),
+      fullName: 'Mentor User11',
+      roleName: 'mentor',
+    },
+    {
       email: 'lecturer@gmail.com',
       username: 'lecturer',
-      password: await hashPassword('lecturer12345'),
+      password: await hashPassword('123456'),
       fullName: 'Lecturer User',
       roleName: 'lecturer',
     },
@@ -79,7 +114,7 @@ async function createYearsAndSemesters() {
   await prisma.year.deleteMany();
   console.log('Deleted all existing years and semesters.');
 
-  const years = [{ year: 2025 }, { year: 2026 }];
+  const years = [{ year: 2024 }, { year: 2025 }, { year: 2026 }];
   const createdYears: { [key: number]: string } = {};
 
   for (const year of years) {
@@ -89,12 +124,15 @@ async function createYearsAndSemesters() {
   }
 
   const semesters = [
-    { code: 'SPRING', startDate: new Date('2025-01-01'), endDate: new Date('2025-04-30'), registrationDeadline: new Date('2024-12-15'), status: 'COMPLETE', yearId: createdYears[2025] },
-    { code: 'SUMMER', startDate: new Date('2025-05-01'), endDate: new Date('2025-08-31'), registrationDeadline: new Date('2025-04-15'), status: 'ACTIVE', yearId: createdYears[2025] },
-    { code: 'FALL', startDate: new Date('2025-09-01'), endDate: new Date('2025-12-31'), registrationDeadline: new Date('2025-08-15'), status: 'ACTIVE', yearId: createdYears[2025] },
-    { code: 'SPRING', startDate: new Date('2026-01-01'), endDate: new Date('2026-04-30'), registrationDeadline: new Date('2025-12-15'), status: 'ACTIVE', yearId: createdYears[2026] },
-    { code: 'SUMMER', startDate: new Date('2026-05-01'), endDate: new Date('2026-08-31'), registrationDeadline: new Date('2026-04-15'), status: 'ACTIVE', yearId: createdYears[2026] },
-    { code: 'FALL', startDate: new Date('2026-09-01'), endDate: new Date('2026-12-31'), registrationDeadline: new Date('2026-08-15'), status: 'ACTIVE', yearId: createdYears[2026] },
+    { code: 'SPRING2024', startDate: new Date('2025-01-01'), endDate: new Date('2024-04-30'), status: 'COMPLETE', yearId: createdYears[2024] },
+    { code: 'SUMMER2024', startDate: new Date('2025-05-01'), endDate: new Date('2024-08-31'), status: 'COMPLETE', yearId: createdYears[2024] },
+    { code: 'FALL2024', startDate: new Date('2025-09-01'), endDate: new Date('2024-12-31'), status: 'COMPLETE', yearId: createdYears[2024] },
+    { code: 'SPRING2025', startDate: new Date('2025-01-01'), endDate: new Date('2025-04-30'), status: 'ACTIVE', yearId: createdYears[2025] },
+    { code: 'SUMMER2025', startDate: new Date('2025-05-01'), endDate: new Date('2025-08-31'), status: 'UPCOMING', yearId: createdYears[2025] },
+    { code: 'FALL2025', startDate: new Date('2025-09-01'), endDate: new Date('2025-12-31'), status: 'UPCOMING', yearId: createdYears[2025] },
+    { code: 'SPRING2026', startDate: new Date('2026-01-01'), endDate: new Date('2026-04-30'), status: 'UPCOMING', yearId: createdYears[2026] },
+    { code: 'SUMMER2026', startDate: new Date('2026-05-01'), endDate: new Date('2026-08-31'), status: 'UPCOMING', yearId: createdYears[2026] },
+    { code: 'FALL2026', startDate: new Date('2026-09-01'), endDate: new Date('2026-12-31'), status: 'UPCOMING', yearId: createdYears[2026] },
   ];
 
   for (const semester of semesters) {

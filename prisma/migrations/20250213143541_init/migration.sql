@@ -77,7 +77,6 @@ CREATE TABLE `Semester` (
     `code` VARCHAR(191) NOT NULL,
     `start_date` DATETIME(3) NOT NULL,
     `end_date` DATETIME(3) NOT NULL,
-    `registration_deadline` DATETIME(3) NOT NULL,
     `status` VARCHAR(191) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `yearId` VARCHAR(191) NOT NULL,
