@@ -23,7 +23,6 @@ export class SemesterService {
         code,
         startDate,
         endDate,
-        registrationDeadline,
         status,
       },
     });
@@ -43,7 +42,6 @@ export class SemesterService {
         code,
         startDate,
         endDate,
-        registrationDeadline,
         status,
       },
     });
