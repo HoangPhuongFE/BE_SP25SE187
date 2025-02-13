@@ -73,7 +73,7 @@ export class UserService {
   generateAccessToken(user: any) {
     return jwt.sign(
       { userId: user.id, email: user.email, roles: user.roles.map((r: { roleId: any; }) => r.roleId) },
-      process.env.JWT_SECRET || 'secret_key',
+      process.env.JWT_SECRET_ACCESS_TOKEN  || 'secret_key',
       { expiresIn: '1h' }
     );
   }

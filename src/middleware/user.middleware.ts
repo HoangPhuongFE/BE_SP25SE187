@@ -59,6 +59,7 @@ export const validateLogin = [
   }
 ];
 
+
 export const authenticateToken = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -67,32 +68,57 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
     return res.status(401).json({ message: 'Unauthorized: Missing token.' });
   }
 
+  // Kiểm tra nếu secret không được thiết lập
+  if (!process.env.JWT_SECRET_ACCESS_TOKEN) {
+    console.error('JWT_SECRET_ACCESS_TOKEN không được thiết lập.');
+    return res.status(500).json({ message: 'Lỗi máy chủ: Thiếu secret key.' });
+  }
+
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET_ACCESS_TOKEN!) as TokenPayload;
-
     req.user = payload; // Gắn thông tin user vào req.user
-    console.log('Authenticated User:', req.user); // Debug thông tin user
-
+    console.log('Authenticated User:', req.user); // Log thông tin để debug
     next();
-  } catch (error) {
-    console.error('Token verification error:', error);
-    return res.status(403).json({ message: 'Unauthorized: Invalid or expired token.' });
+  } catch (error: any) {
+    if (error.name === 'TokenExpiredError') {
+      console.error('Token đã hết hạn:', error);
+      return res.status(401).json({ message: 'Unauthorized: Token đã hết hạn.' });
+    } else if (error.name === 'JsonWebTokenError') {
+      console.error('Chữ ký token không hợp lệ:', error);
+      return res.status(401).json({ message: 'Unauthorized: Chữ ký token không hợp lệ.' });
+    } else {
+      console.error('Lỗi xác thực token:', error);
+      return res.status(500).json({ message: 'Lỗi máy chủ nội bộ.' });
+    }
   }
 };
 
 
+
+
+
 export const checkRole = (allowedRoles: string[]) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return res.status(401).json({ message: USER_MESSAGE.UNAUTHORIZED });
+      return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const hasRole = req.user.roles.some(role => allowedRoles.includes(role));
-    
+    // Lấy danh sách role từ database dựa trên roleId
+    const roles = await prisma.role.findMany({
+      where: { id: { in: req.user.roles } },
+    });
+
+    const userRoleNames = roles.map(role => role.name);
+
+    console.log('User Role Names:', userRoleNames); // Log kiểm tra vai trò
+
+    const hasRole = userRoleNames.some(role => allowedRoles.includes(role));
+
     if (!hasRole) {
-      return res.status(403).json({ message: USER_MESSAGE.FORBIDDEN });
+      return res.status(403).json({ message: 'Forbidden access' });
     }
 
     next();
   };
 };
+
