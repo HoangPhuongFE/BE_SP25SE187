@@ -1,21 +1,22 @@
 import { PrismaClient } from "@prisma/client";
 import { SEMESTER_MESSAGE } from "~/constants/message";
-import { paginate } from "~/helpers/pagination.helper";
+import { paginate } from "~/helpers/pagination.helper"; // Nếu bạn có helper này
 
 const prisma = new PrismaClient();
 
 export class SemesterService {
+  // Lấy danh sách semester theo yearId, phân trang
   async getSemestersByYear(yearId: string, page: number, pageSize: number) {
     return paginate(prisma.semester, { page, pageSize }, { where: { yearId } });
   }
 
+  // Tạo mới semester
   async createSemester(
     yearId: string,
     code: string,
     startDate: Date,
     endDate: Date,
-    registrationDeadline: Date,
-    status: string
+    status: string,
   ) {
     return prisma.semester.create({
       data: {
@@ -28,13 +29,13 @@ export class SemesterService {
     });
   }
 
+  // Cập nhật semester
   async updateSemester(
     id: string,
     code: string,
     startDate: Date,
     endDate: Date,
-    registrationDeadline: Date,
-    status: string
+    status: string,
   ) {
     return prisma.semester.update({
       where: { id },
@@ -47,23 +48,27 @@ export class SemesterService {
     });
   }
 
+  // Xóa semester
   async deleteSemester(id: string) {
     return prisma.semester.delete({
       where: { id },
     });
   }
+
+  // Lấy tất cả semester
   async getAllSemesters() {
     const semesters = await prisma.semester.findMany();
-    console.log("Semesters:", semesters); // Kiểm tra xem có dữ liệu không
+    console.log("Semesters:", semesters);
     return semesters;
   }
 
+  // Lấy semester theo id, kèm quan hệ year
   async getSemesterById(id: string) {
     const semester = await prisma.semester.findUnique({
       where: { id },
       include: {
-        year: true // Chỉ include thông tin về năm học
-      }
+        year: true, 
+      },
     });
 
     if (!semester) {
@@ -72,8 +77,4 @@ export class SemesterService {
 
     return semester;
   }
-
-
-
-
 }
