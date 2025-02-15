@@ -12,6 +12,7 @@ import exportRouter from './routers/export.router';
 import groupRoutes from './routers/group.routes';
 import topicRouter from './routers/topic.router';
 import meetingRouter from './routers/meeting.router';
+import emailRouter from './routers/email.router';
 
 config();
 const app = express();
@@ -40,6 +41,7 @@ app.use('/api/export', exportRouter);
 app.use('/api/groups', groupRoutes);
 app.use('/api/topics', topicRouter);
 app.use('/api/meetings', meetingRouter);
+app.use('/api', emailRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
