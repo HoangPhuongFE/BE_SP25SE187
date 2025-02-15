@@ -86,5 +86,20 @@ async getStudentsBySemester(req: Request, res: Response) {
     return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
   }
 }
+async deleteAllStudentsBySemesterHandler(req: Request, res: Response) {
+  const { semesterId } = req.params;
+
+  if (!semesterId) {
+    return res.status(400).json({ message: "Missing semesterId." });
+  }
+
+  try {
+    const result = await this.studentService.deleteAllStudentsInSemester(semesterId);
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error in deleteAllStudentsBySemesterHandler:", error);
+    return res.status(500).json({ message: "Failed to delete all students in the semester." });
+  }
+}
 
 }

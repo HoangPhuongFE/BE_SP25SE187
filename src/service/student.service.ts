@@ -114,4 +114,29 @@ export class StudentService {
       status: entry.status,
     }));
   }
+
+  async deleteAllStudentsInSemester(semesterId: string) {
+    try {
+      // Xóa tất cả các bản ghi trong bảng semesterStudent
+      await prisma.semesterStudent.deleteMany({
+        where: { semesterId }
+      });
+  
+      // Xóa sinh viên không còn liên kết với bất kỳ semester nào
+      await prisma.student.deleteMany({
+        where: {
+          semesterStudents: {
+            none: {}  // Không còn bất kỳ liên kết nào trong semesterStudent
+          }
+        }
+      });
+  
+      return { message: "All students in the semester have been deleted successfully." };
+    } catch (error) {
+      console.error("Error deleting students:", error);
+      throw new Error("Failed to delete students in semester.");
+    }
+  }
+  
+  
 }
