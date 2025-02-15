@@ -21,7 +21,7 @@ export class ImportConditionService {
     }
 
     const errors: string[] = [];
-    const dataToImport: { email: string; status: string; rowIndex: number; }[] = [];
+    const dataToImport: { email: string; status: string; rowIndex: number }[] = [];
 
     // Kiểm tra toàn bộ dữ liệu trước khi import
     worksheet.eachRow({ includeEmpty: false }, (row, rowIndex) => {
@@ -61,13 +61,23 @@ export class ImportConditionService {
 
         const isEligible = status.toLowerCase() === 'qualified';
 
+        // Lấy record hiện tại trong bảng SemesterStudent
+        const existingRecord = await prisma.semesterStudent.findUnique({
+          where: {
+            semesterId_studentId: { semesterId, studentId: student.id },
+          },
+        });
+
+        // Kiểm tra nếu `status` hiện tại là "active" thì không cập nhật `status`
+        const newStatus = existingRecord?.status === 'active' ? 'active' : status.toLowerCase();
+
         // Upsert dữ liệu vào bảng SemesterStudent
         await prisma.semesterStudent.upsert({
           where: {
             semesterId_studentId: { semesterId, studentId: student.id },
           },
           update: {
-            status: status.toLowerCase(),
+            status: newStatus, // Chỉ cập nhật nếu không phải "active"
             isEligible,
             qualificationStatus: isEligible ? 'qualified' : 'not qualified',
           },

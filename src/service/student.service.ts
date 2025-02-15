@@ -50,16 +50,34 @@ export class StudentService {
   // Xoá student
   async deleteStudent(studentId: string) {
     try {
+      // Xóa các bản ghi liên quan trong các bảng khác trước
+      await prisma.semesterStudent.deleteMany({
+        where: { studentId },
+      });
+  
+      await prisma.groupMember.deleteMany({
+        where: { studentId },
+      });
+  
+      await prisma.groupInvitation.deleteMany({
+        where: { studentId },
+      });
+  
+      // Cuối cùng, xóa bản ghi student
       return await prisma.student.delete({
-        where: { userId: studentId },
+        where: { id: studentId },
       });
     } catch (error) {
       if ((error as any).code === "P2025") {
         throw new Error("Student not found");
+      } else if ((error as any).code === "P2003") {
+        throw new Error("Cannot delete student due to related records in other tables.");
       }
       throw error;
     }
   }
+  
+  
 
   // Lấy danh sách student theo Semester
   async getStudentsBySemester(semesterId: string) {
