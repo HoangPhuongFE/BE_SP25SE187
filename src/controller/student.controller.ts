@@ -47,20 +47,30 @@ export class StudentController {
     }
   }
 
-  // Xoá student
-  async deleteStudentHandler(req: Request, res: Response) {
-    try {
-      const studentId = req.params.studentId;
-      await this.studentService.deleteStudent(studentId);
-      return res.status(200).json({ message: MESSAGES.STUDENT.STUDENT_DELETED });
-    } catch (error) {
-      if ((error as Error).message === "Student not found") {
-        return res.status(404).json({ message: MESSAGES.STUDENT.STUDENT_NOT_FOUND });
-      }
-      console.error("Error deleting student:", error);
-      return res.status(500).json({ message: MESSAGES.GENERAL.SERVER_ERROR });
+  // Xoá student theo studentId
+async deleteStudentHandler(req: Request, res: Response) {
+  try {
+    const studentId = req.params.studentId;
+
+    // Kiểm tra nếu studentId không hợp lệ
+    if (!studentId || typeof studentId !== "string") {
+      return res.status(400).json({ message: "Invalid studentId" });
     }
+
+    await this.studentService.deleteStudent(studentId);
+    
+    return res.status(200).json({
+      message: MESSAGES.STUDENT.STUDENT_DELETED,
+    });
+  } catch (error) {
+    if ((error as Error).message === "Student not found") {
+      return res.status(404).json({ message: MESSAGES.STUDENT.STUDENT_NOT_FOUND });
+    }
+    console.error("Error deleting student:", error);
+    return res.status(500).json({ message: MESSAGES.GENERAL.SERVER_ERROR });
   }
+}
+
 
   // Lấy danh sách student theo Semester
 async getStudentsBySemester(req: Request, res: Response) {
