@@ -63,22 +63,18 @@ export class StudentController {
   }
 
   // Lấy danh sách student theo Semester
-  async getStudentsBySemester(req: Request, res: Response) {
-    try {
-      const { semesterId } = req.params;
-      const students = await this.studentService.getStudentsBySemester(semesterId);
+async getStudentsBySemester(req: Request, res: Response) {
+  try {
+    const { semesterId } = req.params;
+    const students = await this.studentService.getStudentsBySemester(semesterId);
 
-      if (students.length === 0) {
-        return res.status(404).json({ message: MESSAGES.STUDENT.STUDENT_LIST_EMPTY });
-      }
-
-      return res.status(200).json({ 
-        message: STUDENT_MESSAGE.STUDENTS_FETCHED, 
-        data: students 
-      });
-    } catch (error) {
-      console.error("Error fetching students by semester:", error);
-      return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
-    }
+    return res.status(200).json({
+      data: students,
+    });
+  } catch (error) {
+    console.error("Error fetching students by semester:", error);
+    return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
   }
+}
+
 }
