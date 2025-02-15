@@ -7,34 +7,55 @@ const prisma = new PrismaClient();
 export class StudentService {
   // Lấy danh sách sinh viên toàn bộ (nếu cần)
   async fetchStudentList() {
-    return prisma.student.findMany({
+    const students = await prisma.semesterStudent.findMany({
       include: {
-        user: true,
-        major: true,
-        specialization: true,
+        student: {
+          include: {
+            user: true,
+            major: true,
+            specialization: true,
+          },
+        },
       },
     });
+  
+    return students.map((entry) => ({
+      id: entry.student.id,
+      email: entry.student.user?.email || "",
+      major: entry.student.major?.name || "",
+      specialization: entry.student.specialization?.name || "",
+      status: entry.status,
+      qualificationStatus: entry.qualificationStatus,
+      semesterId: entry.semesterId,
+    }));
   }
+  
+  
 
   // Lấy danh sách sinh viên phân trang
   async getPaginatedStudents(page: number, pageSize: number) {
-    return paginate(prisma.student, { page, pageSize }, {
+    return paginate(prisma.semesterStudent, { page, pageSize }, {
       include: {
-        user: true,
-        major: true,
-        specialization: true,
+        student: {
+          include: {
+            user: true,
+            major: true,
+            specialization: true,
+          },
+        },
       },
     });
   }
+  
 
   // Cập nhật student
-  async updateStudent(studentId: string, data: { majorId: string; specializationId?: string | null }) {
+  async updateStudent(studentId: string, data: { majorId: string; specializationId?: string | null; qualificationStatus?: string }) {
     if (!isUUID(studentId)) {
       throw new Error("Invalid Student ID format");
     }
-
+  
     return prisma.student.update({
-      where: { userId: studentId },
+      where: { id: studentId },
       data: {
         majorId: data.majorId,
         specializationId: data.specializationId,
@@ -46,6 +67,7 @@ export class StudentService {
       },
     });
   }
+  
 
   // Xoá student
   async deleteStudent(studentId: string) {
@@ -112,6 +134,7 @@ export class StudentService {
       major: entry.student.major?.name || "",
       specialization: entry.student.specialization?.name || "",
       status: entry.status,
+      qualificationStatus: entry.qualificationStatus,
     }));
   }
 
