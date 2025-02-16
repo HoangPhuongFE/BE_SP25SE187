@@ -17,7 +17,7 @@ model User {
   student_code           String
   profession             String?
   specialty              String?
-  programming_language   String
+  programming_language   String?
   isActive               Boolean                 @default(true)
   lastLogin              DateTime?
   createdAt              DateTime                @default(now())
