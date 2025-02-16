@@ -66,7 +66,7 @@ export class TopicService {
         description: data.description,
         isBusiness: data.isBusiness || false,
         businessPartner: data.businessPartner,
-        status: 'PENDING',
+        status: 'APPROVED',
         createdBy: data.createdBy,
         semesterId: data.semesterId,
         detailMajorTopics: {
@@ -331,12 +331,20 @@ export class TopicService {
     page,
     pageSize,
     semesterId,
-    majorId
+    majorId,
+    status,
+    isBusiness,
+    search,
+    createdBy
   }: {
     page: number;
     pageSize: number;
     semesterId?: string;
     majorId?: string;
+    status?: string;
+    isBusiness?: boolean;
+    search?: string;
+    createdBy?: string;
   }) {
     // Kiểm tra UUID nếu có semesterId hoặc majorId
     if (semesterId && !isUUID(semesterId)) {
@@ -357,6 +365,16 @@ export class TopicService {
             majorId
           }
         }
+      }),
+      ...(status && { status }),
+      ...(isBusiness !== undefined && { isBusiness }),
+      ...(createdBy && { createdBy }),
+      ...(search && {
+        OR: [
+          { name: { contains: search } },
+          { description: { contains: search } },
+          { topicCode: { contains: search } }
+        ]
       })
     };
 
@@ -375,6 +393,18 @@ export class TopicService {
             include: {
               year: true
             }
+          },
+          creator: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true
+            }
+          },
+          topicRegistrations: {
+            include: {
+              topic: true
+            }
           }
         },
         orderBy: {
@@ -391,5 +421,170 @@ export class TopicService {
       totalItems,
       pageSize
     };
+  }
+
+  async approveTopicRegistration(
+    registrationId: string,
+    status: 'approved' | 'rejected',
+    reviewerId: string
+  ) {
+    if (!isUUID(registrationId)) {
+      throw new Error('ID đăng ký không hợp lệ');
+    }
+
+    const registration = await prisma.topicRegistration.findUnique({
+      where: { id: registrationId },
+      include: {
+        topic: true,
+      }
+    });
+
+    if (!registration) {
+      throw new Error(TOPIC_MESSAGE.TOPIC_REGISTRATION_NOT_FOUND);
+    }
+
+    // Kiểm tra reviewer có quyền duyệt không (phải là Graduation Thesis Manager)
+    const reviewer = await prisma.user.findUnique({
+      where: { id: reviewerId },
+      include: { roles: { include: { role: true } } }
+    });
+
+    if (!reviewer || !reviewer.roles.some(r => r.role.name === 'thesis_manager')) {
+      throw new Error('Chỉ Quản lý khóa luận mới có quyền duyệt đề tài');
+    }
+
+    // Cập nhật trạng thái đăng ký và topic
+    const updatedRegistration = await prisma.$transaction(async (tx) => {
+      // Cập nhật trạng thái đăng ký
+      const registration = await tx.topicRegistration.update({
+        where: { id: registrationId },
+        data: {
+          status,
+          reviewedAt: new Date(),
+          reviewerId,
+        },
+        include: {
+          topic: true,
+        }
+      });
+
+      // Nếu duyệt đồng ý, cập nhật trạng thái topic
+      if (status === 'approved') {
+        await tx.topic.update({
+          where: { id: registration.topicId },
+          data: { status: 'APPROVED' }
+        });
+      }
+
+      return registration;
+    });
+
+    return updatedRegistration;
+  }
+
+  async createTopicReviewCouncil(
+    registrationId: string,
+    data: {
+      numberOfMembers: number;
+      mentorIds: string[];
+      reviewerId: string;
+    }
+  ) {
+    if (!isUUID(registrationId)) {
+      throw new Error('ID đăng ký không hợp lệ');
+    }
+
+    // Kiểm tra số lượng thành viên hội đồng
+    if (data.numberOfMembers < 1) {
+      throw new Error('Số lượng thành viên hội đồng phải lớn hơn 0');
+    }
+
+    // Kiểm tra số lượng mentor phải khớp với numberOfMembers
+    if (data.mentorIds.length !== data.numberOfMembers) {
+      throw new Error('Số lượng mentor phải khớp với số lượng thành viên hội đồng');
+    }
+
+    // Kiểm tra tồn tại của registration
+    const registration = await prisma.topicRegistration.findUnique({
+      where: { id: registrationId },
+      include: {
+        topic: true,
+      }
+    });
+
+    if (!registration) {
+      throw new Error(TOPIC_MESSAGE.TOPIC_REGISTRATION_NOT_FOUND);
+    }
+
+    // Kiểm tra reviewer có phải là Graduation Thesis Manager không
+    const reviewer = await prisma.user.findUnique({
+      where: { id: data.reviewerId },
+      include: { roles: { include: { role: true } } }
+    });
+
+    if (!reviewer || !reviewer.roles.some(r => r.role.name === 'thesis_manager')) {
+      throw new Error('Chỉ Quản lý khóa luận mới có quyền tạo hội đồng duyệt');
+    }
+
+    // Kiểm tra các mentor có tồn tại và có role mentor không
+    const mentors = await prisma.user.findMany({
+      where: {
+        id: { in: data.mentorIds },
+        roles: {
+          some: {
+            role: {
+              name: 'mentor'
+            }
+          }
+        }
+      }
+    });
+
+    if (mentors.length !== data.mentorIds.length) {
+      throw new Error('Một hoặc nhiều mentor không tồn tại hoặc không có quyền mentor');
+    }
+
+    // Kiểm tra xem có mentor nào trùng lặp không
+    const uniqueMentorIds = new Set(data.mentorIds);
+    if (uniqueMentorIds.size !== data.mentorIds.length) {
+      throw new Error('Không thể chọn cùng một mentor nhiều lần');
+    }
+
+    // Tạo council và council members trong một transaction
+    const council = await prisma.$transaction(async (tx) => {
+      // Tạo council
+      const council = await tx.council.create({
+        data: {
+          name: `Council-${registration.topic.topicCode}`,
+          topicAssId: registration.topicId,
+          status: 'PENDING',
+          members: {
+            create: data.mentorIds.map(mentorId => ({
+              userId: mentorId,
+              role: 'REVIEWER',
+              status: 'PENDING',
+              assignedAt: new Date()
+            }))
+          }
+        },
+        include: {
+          members: true
+        }
+      });
+
+      // Cập nhật trạng thái của topic registration
+      await tx.topicRegistration.update({
+        where: { id: registrationId },
+        data: {
+          status: 'pending_review',
+          reviewerId: data.reviewerId,
+          reviewedAt: new Date()
+        }
+      });
+
+      return council;
+    });
+
+    return council;
   }
 } 

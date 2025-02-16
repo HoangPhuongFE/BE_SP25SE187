@@ -135,3 +135,92 @@ export const validateTopicRegistration = [
     next();
   }
 ];
+
+export const validateTopicApproval = [
+  param('registrationId').notEmpty().withMessage('ID đăng ký là bắt buộc'),
+  body('status')
+    .isIn(['approved', 'rejected'])
+    .withMessage('Trạng thái không hợp lệ'),
+
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { registrationId } = req.params;
+    const registration = await prisma.topicRegistration.findUnique({
+      where: { id: registrationId },
+      include: {
+        topic: true
+      }
+    });
+
+    if (!registration) {
+      return res.status(404).json({ 
+        message: TOPIC_MESSAGE.TOPIC_REGISTRATION_NOT_FOUND 
+      });
+    }
+
+    // Chỉ duyệt đề tài được đăng ký bởi mentor hoặc student
+    if (registration.topic.createdBy === req.user?.userId) {
+      return res.status(403).json({
+        message: 'Không thể duyệt đề tài do chính mình tạo'
+      });
+    }
+
+    next();
+  }
+];
+
+export const validateCreateCouncil = [
+  param('registrationId').notEmpty().withMessage('ID đăng ký là bắt buộc'),
+  body('numberOfMembers')
+    .isInt({ min: 1 })
+    .withMessage('Số lượng thành viên hội đồng phải lớn hơn 0'),
+  body('mentorIds')
+    .isArray()
+    .withMessage('Danh sách mentor phải là một mảng')
+    .custom((value, { req }) => {
+      if (value.length !== req.body.numberOfMembers) {
+        throw new Error('Số lượng mentor phải khớp với số lượng thành viên hội đồng');
+      }
+      return true;
+    }),
+
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { registrationId } = req.params;
+    const registration = await prisma.topicRegistration.findUnique({
+      where: { id: registrationId },
+      include: {
+        topic: true
+      }
+    });
+
+    if (!registration) {
+      return res.status(404).json({ 
+        message: TOPIC_MESSAGE.TOPIC_REGISTRATION_NOT_FOUND 
+      });
+    }
+
+    // Kiểm tra xem đã có hội đồng duyệt chưa
+    const existingCouncil = await prisma.council.findFirst({
+      where: {
+        topicAssId: registration.topicId
+      }
+    });
+
+    if (existingCouncil) {
+      return res.status(400).json({
+        message: 'Đề tài này đã có hội đồng duyệt'
+      });
+    }
+
+    next();
+  }
+];

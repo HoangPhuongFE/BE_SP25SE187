@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { TopicController } from "../controller/topic.controller";
 import { authenticateToken, checkRole } from "../middleware/user.middleware";
-import { validateCreateTopic, validateUpdateTopic, validateTopicRegistration } from '../middleware/topic.middleware';
+import { validateCreateTopic, validateUpdateTopic, validateTopicRegistration, validateCreateCouncil } from '../middleware/topic.middleware';
 
 const router = Router();
 const topicController = new TopicController();
 
-// Routes cho academic officer (tạo và quản lý topic chính thức)
+// Routes cho academic officer (tạo đề tài chính thức - auto approved)
 router.post(
   "/",
   authenticateToken,
@@ -47,13 +47,13 @@ router.put(
   topicController.updateTopic.bind(topicController)
 );
 
-// Routes cho academic officer (duyệt đăng ký topic)
-router.put(
-  "/registration/:registrationId/approve",
+// Routes cho Graduation Thesis Manager (tạo hội đồng duyệt đề tài)
+router.post(
+  "/registration/:registrationId/council",
   authenticateToken,
-  checkRole(["academic_officer"]),
-  validateTopicRegistration,
-  topicController.approveTopicRegistration.bind(topicController)
+  checkRole(["thesis_manager"]),
+  validateCreateCouncil,
+  topicController.createTopicReviewCouncil.bind(topicController)
 );
 
 // Route lấy danh sách topic (cho tất cả user đã đăng nhập)

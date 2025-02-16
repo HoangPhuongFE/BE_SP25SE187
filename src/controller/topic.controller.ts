@@ -85,9 +85,16 @@ export class TopicController {
   async approveTopicRegistration(req: AuthenticatedRequest, res: Response) {
     try {
       const { registrationId } = req.params;
-      const { status, reviewerId } = req.body;
+      const { status } = req.body;
+      const reviewerId = req.user!.userId;
 
-      const registration = await this.topicService.updateTopicRegistration(
+      if (!['approved', 'rejected'].includes(status)) {
+        return res.status(400).json({
+          message: TOPIC_MESSAGE.INVALID_STATUS
+        });
+      }
+
+      const registration = await this.topicService.approveTopicRegistration(
         registrationId,
         status,
         reviewerId
@@ -98,6 +105,18 @@ export class TopicController {
         data: registration
       });
     } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === TOPIC_MESSAGE.TOPIC_REGISTRATION_NOT_FOUND) {
+          return res.status(HTTP_STATUS.NOT_FOUND).json({
+            message: error.message
+          });
+        }
+        if (error.message === TOPIC_MESSAGE.INVALID_REVIEWER) {
+          return res.status(HTTP_STATUS.FORBIDDEN).json({
+            message: error.message
+          });
+        }
+      }
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         message: (error as Error).message
       });
@@ -135,6 +154,10 @@ export class TopicController {
       const pageSize = parseInt(req.query.pageSize as string) || 10;
       const semesterId = req.query.semesterId as string;
       const majorId = req.query.majorId as string;
+      const status = req.query.status as string;
+      const isBusiness = req.query.isBusiness === 'true';
+      const search = req.query.search as string;
+      const createdBy = req.query.createdBy as string;
 
       // Thêm validation cho page và pageSize
       if (page < 1 || pageSize < 1) {
@@ -147,7 +170,11 @@ export class TopicController {
         page,
         pageSize,
         semesterId,
-        majorId
+        majorId,
+        status,
+        isBusiness,
+        search,
+        createdBy
       });
 
       res.status(HTTP_STATUS.OK).json({
@@ -155,7 +182,6 @@ export class TopicController {
         data: result
       });
     } catch (error) {
-      // Xử lý lỗi chi tiết hơn
       if (error instanceof Error) {
         if (error.message.includes("not valid")) {
           return res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -165,6 +191,42 @@ export class TopicController {
       }
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         message: (error as Error).message
+      });
+    }
+  }
+
+  async createTopicReviewCouncil(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { registrationId } = req.params;
+      const { numberOfMembers, mentorIds } = req.body;
+      const reviewerId = req.user!.userId;
+
+      const council = await this.topicService.createTopicReviewCouncil(
+        registrationId,
+        {
+          numberOfMembers,
+          mentorIds,
+          reviewerId
+        }
+      );
+
+      res.status(HTTP_STATUS.CREATED).json({
+        message: 'Hội đồng duyệt đề tài đã được tạo thành công',
+        data: council
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === TOPIC_MESSAGE.TOPIC_REGISTRATION_NOT_FOUND) {
+          return res.status(HTTP_STATUS.NOT_FOUND).json({
+            message: error.message
+          });
+        }
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: error.message
+        });
+      }
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: 'Lỗi server'
       });
     }
   }
