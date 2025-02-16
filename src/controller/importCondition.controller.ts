@@ -4,10 +4,8 @@ import { DATA_MESSAGE } from '../constants/message';
 import { ImportConditionService } from '../service/importCondition.service';
 
 export class ImportConditionController {
-  
   private importConditionService = new ImportConditionService();
 
- 
   async importConditionListHandler(req: AuthenticatedRequest, res: Response) {
     const filePath = req.file?.path;
     const fileName = req.file?.originalname;
@@ -25,12 +23,15 @@ export class ImportConditionController {
     }
 
     try {
-  
       const importResult = await this.importConditionService.importConditionExcel(
         filePath,
         semesterId,
         req.user.userId
       );
+
+      if (importResult.status === 'error') {
+        return res.status(400).json(importResult);
+      }
 
       return res.status(200).json({
         message: DATA_MESSAGE.IMPORT_SUCCESS,

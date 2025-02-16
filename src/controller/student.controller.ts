@@ -47,38 +47,59 @@ export class StudentController {
     }
   }
 
-  // Xoá student
-  async deleteStudentHandler(req: Request, res: Response) {
-    try {
-      const studentId = req.params.studentId;
-      await this.studentService.deleteStudent(studentId);
-      return res.status(200).json({ message: MESSAGES.STUDENT.STUDENT_DELETED });
-    } catch (error) {
-      if ((error as Error).message === "Student not found") {
-        return res.status(404).json({ message: MESSAGES.STUDENT.STUDENT_NOT_FOUND });
-      }
-      console.error("Error deleting student:", error);
-      return res.status(500).json({ message: MESSAGES.GENERAL.SERVER_ERROR });
+  // Xoá student theo studentId
+async deleteStudentHandler(req: Request, res: Response) {
+  try {
+    const studentId = req.params.studentId;
+
+    // Kiểm tra nếu studentId không hợp lệ
+    if (!studentId || typeof studentId !== "string") {
+      return res.status(400).json({ message: "Invalid studentId" });
     }
+
+    await this.studentService.deleteStudent(studentId);
+    
+    return res.status(200).json({
+      message: MESSAGES.STUDENT.STUDENT_DELETED,
+    });
+  } catch (error) {
+    if ((error as Error).message === "Student not found") {
+      return res.status(404).json({ message: MESSAGES.STUDENT.STUDENT_NOT_FOUND });
+    }
+    console.error("Error deleting student:", error);
+    return res.status(500).json({ message: MESSAGES.GENERAL.SERVER_ERROR });
   }
+}
+
 
   // Lấy danh sách student theo Semester
-  async getStudentsBySemester(req: Request, res: Response) {
-    try {
-      const { semesterId } = req.params;
-      const students = await this.studentService.getStudentsBySemester(semesterId);
+async getStudentsBySemester(req: Request, res: Response) {
+  try {
+    const { semesterId } = req.params;
+    const students = await this.studentService.getStudentsBySemester(semesterId);
 
-      if (students.length === 0) {
-        return res.status(404).json({ message: MESSAGES.STUDENT.STUDENT_LIST_EMPTY });
-      }
-
-      return res.status(200).json({ 
-        message: STUDENT_MESSAGE.STUDENTS_FETCHED, 
-        data: students 
-      });
-    } catch (error) {
-      console.error("Error fetching students by semester:", error);
-      return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
-    }
+    return res.status(200).json({
+      data: students,
+    });
+  } catch (error) {
+    console.error("Error fetching students by semester:", error);
+    return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
   }
+}
+async deleteAllStudentsBySemesterHandler(req: Request, res: Response) {
+  const { semesterId } = req.params;
+
+  if (!semesterId) {
+    return res.status(400).json({ message: "Missing semesterId." });
+  }
+
+  try {
+    const result = await this.studentService.deleteAllStudentsInSemester(semesterId);
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Error in deleteAllStudentsBySemesterHandler:", error);
+    return res.status(500).json({ message: "Failed to delete all students in the semester." });
+  }
+}
+
 }

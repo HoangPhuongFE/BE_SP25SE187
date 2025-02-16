@@ -49,18 +49,16 @@ export class UserService {
     });
 
     if (!user) {
-      throw new Error(USER_MESSAGE.USER_NOT_FOUND); // Người dùng không tồn tại
+      throw new Error(USER_MESSAGE.USER_NOT_FOUND); 
     }
 
-    // So sánh mật khẩu đã mã hóa với mật khẩu nhập vào
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new Error(USER_MESSAGE.INVALID_PASSWORD); // Mật khẩu không đúng
+      throw new Error(USER_MESSAGE.INVALID_PASSWORD); 
     }
 
-    // (Tuỳ chọn) Kiểm tra vai trò nếu bạn muốn giới hạn vai trò được phép đăng nhập
     if (!user.roles.some((role: { isActive: any; }) => role.isActive)) {
-      throw new Error(USER_MESSAGE.UNAUTHORIZED); // Vai trò không được phép
+      throw new Error(USER_MESSAGE.UNAUTHORIZED); 
     }
 
     // Sinh accessToken và refreshToken

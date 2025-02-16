@@ -11,5 +11,6 @@ router.post("/invite", authenticateToken, groupController.inviteMember.bind(grou
 
 router.post("/respond", authenticateToken, groupController.respondToInvitation.bind(groupController));
 
+router.get("/:groupId", authenticateToken, groupController.getGroupInfo.bind(groupController));
 
 export default router;

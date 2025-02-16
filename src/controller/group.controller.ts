@@ -35,6 +35,20 @@ export class GroupController {
     }
   }
 
+  async getGroupInfo(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { groupId } = req.params;
+      // Gọi service để lấy thông tin nhóm
+      const groupData = await groupService.getGroupInfo(groupId);
+      if (!groupData) {
+        return res.status(404).json({ message: "Không tìm thấy nhóm" });
+      }
+      return res.json(groupData);
+    } catch (error) {
+      return res.status(500).json({ message: (error as Error).message });
+    }
+  }
+
 
 }
 

@@ -34,7 +34,7 @@ export class GroupService {
   }
 
   /**
-   * ✅ Mời thành viên vào nhóm (Gửi email)
+  Mời thành viên vào nhóm (Gửi email)
    */
   async inviteMember(groupId: string, studentId: string, invitedById: string) {
     // Kiểm tra nhóm có tồn tại không
@@ -113,7 +113,7 @@ export class GroupService {
   }
 
   /**
-   * ✅ Xử lý phản hồi lời mời nhóm
+    Xử lý phản hồi lời mời nhóm
    */
   async respondToInvitation(invitationId: string, userId: string, response: "ACCEPTED" | "REJECTED") {
     // Lấy studentId từ userId
@@ -159,7 +159,23 @@ export class GroupService {
 }
 
 
-
+async getGroupInfo(groupId: string) {
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    include: {
+      members: {
+        include: {
+          student: {
+            include: {
+              user: true, 
+            },
+          },
+        },
+      },
+    },
+  });
+  return group;
+}
 
 
   

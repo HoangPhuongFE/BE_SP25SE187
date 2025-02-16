@@ -10,7 +10,6 @@ function extractCellValue(cellValue: any): string {
   return String(cellValue || '').trim();
 }
 
-
 export class ImportConditionService {
   async importConditionExcel(filePath: string, semesterId: string, userId: string) {
     const workbook = new ExcelJS.Workbook();
@@ -18,59 +17,93 @@ export class ImportConditionService {
 
     const worksheet = workbook.getWorksheet(1);
     if (!worksheet) {
-      throw new Error('Worksheet is undefined');
+      throw new Error('Không tìm thấy worksheet');
     }
 
     const errors: string[] = [];
-    let successCount = 0;
+    const dataToImport: { email: string; status: string; rowIndex: number }[] = [];
 
-    for (let i = 2; i <= worksheet.rowCount; i++) {
-      const row = worksheet.getRow(i);
+    // Kiểm tra toàn bộ dữ liệu trước khi import
+    worksheet.eachRow({ includeEmpty: false }, (row, rowIndex) => {
+      if (rowIndex < 2) return; // Bỏ qua dòng tiêu đề
+
       const email = extractCellValue(row.getCell(1).value);
       const status = extractCellValue(row.getCell(2).value);
 
-      try {
-        if (!email) throw new Error('Email is required');
-        if (!status) throw new Error('Status is required');
+      if (!email || !status) {
+        errors.push(`Dòng ${rowIndex}: Thiếu email hoặc trạng thái.`);
+      } else {
+        dataToImport.push({ email, status, rowIndex });
+      }
+    });
 
+    // Nếu có lỗi, dừng lại và trả về danh sách lỗi
+    if (errors.length > 0) {
+      return {
+        status: 'error',
+        message: 'Dữ liệu có lỗi, vui lòng sửa và thử lại.',
+        errors,
+      };
+    }
+
+    // Tiến hành import nếu không có lỗi
+    let successCount = 0;
+    for (const { email, status, rowIndex } of dataToImport) {
+      try {
         const student = await prisma.student.findFirst({
           where: { user: { email } },
         });
+
         if (!student) {
-          throw new Error(`Student with email ${email} not found`);
+          errors.push(`Dòng ${rowIndex}: Không tìm thấy sinh viên với email ${email}`);
+          continue;
         }
 
-        // Upsert vào bảng SemesterStudent (đều là string ID)
+        const isEligible = status.toLowerCase() === 'qualified';
+
+        // Lấy record hiện tại trong bảng SemesterStudent
+        const existingRecord = await prisma.semesterStudent.findUnique({
+          where: {
+            semesterId_studentId: { semesterId, studentId: student.id },
+          },
+        });
+
+        // Kiểm tra nếu `status` hiện tại là "active" thì không cập nhật `status`
+        const newStatus = existingRecord?.status === 'active' ? 'active' : status.toLowerCase();
+
+        // Upsert dữ liệu vào bảng SemesterStudent
         await prisma.semesterStudent.upsert({
           where: {
             semesterId_studentId: { semesterId, studentId: student.id },
           },
-          update: { status },
-          create: { semesterId, studentId: student.id, status },
+          update: {
+            status: newStatus, // Chỉ cập nhật nếu không phải "active"
+            isEligible,
+            qualificationStatus: isEligible ? 'qualified' : 'not qualified',
+          },
+          create: {
+            semesterId,
+            studentId: student.id,
+            status: status.toLowerCase(),
+            isEligible,
+            qualificationStatus: isEligible ? 'qualified' : 'not qualified',
+          },
         });
 
         successCount++;
       } catch (error) {
-        console.error(`Error processing row ${i}:`, error);
-        if (error instanceof Error) {
-          errors.push(`Row ${i}: ${error.message}`);
-        } else {
-          errors.push(`Row ${i}: Unknown error`);
-        }
+        console.error(`Lỗi khi xử lý dòng ${rowIndex}:`, error);
+        errors.push(`Dòng ${rowIndex}: Lỗi không xác định.`);
       }
     }
 
-    // Tính tổng số bản ghi
-    const totalRecords = worksheet.rowCount - 1;
-
-    // Lưu log import
     const fileName = filePath.split('/').pop();
     await prisma.importLog.create({
       data: {
-        source: 'Condition Import',
-        fileName: fileName || 'unknown',
+        source: 'Nhập điều kiện',
+        fileName: fileName || 'không xác định',
         importById: userId,
-        totalRecords,
+        totalRecords: dataToImport.length,
         successRecords: successCount,
         errorRecords: errors.length,
         errorsDetails: errors.join('\n'),
@@ -78,7 +111,9 @@ export class ImportConditionService {
     });
 
     return {
-      totalRecords,
+      status: 'success',
+      message: 'Dữ liệu đã được import thành công.',
+      totalRecords: dataToImport.length,
       successRecords: successCount,
       errorRecords: errors.length,
       errors,

@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs'; 
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -15,27 +15,49 @@ export class ImportStudentService {
   async importExcel(filePath: string, userId: string, semesterId: string) {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(filePath);
-    const worksheet = workbook.getWorksheet(1);
 
+    const worksheet = workbook.getWorksheet(1);
     if (!worksheet) {
-      throw new Error('Worksheet is undefined');
+      throw new Error('Không tìm thấy worksheet');
     }
 
     const errors: string[] = [];
-    let successCount = 0;
+    const dataToImport = [];
     const DEFAULT_PASSWORD = '123456';
-    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10); // Sử dụng bcryptjs
+    const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
-    for (let i = 2; i <= worksheet.rowCount; i++) {
+    const studentRole = await prisma.role.findUnique({ where: { name: 'student' } });
+    if (!studentRole) {
+      throw new Error('Vai trò "student" không tồn tại. Vui lòng tạo trước.');
+    }
+
+    // **Kiểm tra dữ liệu trước khi import**
+    for (let i = 2; i <= worksheet.actualRowCount; i++) {
       const row = worksheet.getRow(i);
       const email = extractCellValue(row.getCell(1).value);
       const profession = extractCellValue(row.getCell(2).value);
       const specialty = extractCellValue(row.getCell(3).value);
 
-      try {
-        if (!email) throw new Error('Email không được để trống');
-        if (!profession) throw new Error('Ngành (Profession) không được để trống');
+      if (!email || !profession || !specialty) {
+        errors.push(`Dòng ${i}: Thiếu email, ngành hoặc chuyên ngành.`);
+      } else {
+        dataToImport.push({ email, profession, specialty, rowIndex: i });
+      }
+    }
 
+    // **Nếu có lỗi, trả về danh sách lỗi và dừng lại**
+    if (errors.length > 0) {
+      return {
+        status: 'error',
+        message: 'Dữ liệu có lỗi, vui lòng sửa và thử lại.',
+        errors,
+      };
+    }
+
+    // **Tiến hành import dữ liệu nếu không có lỗi**
+    let successCount = 0;
+    for (const { email, profession, specialty, rowIndex } of dataToImport) {
+      try {
         let major = await prisma.major.findUnique({ where: { name: profession } });
         if (!major) {
           major = await prisma.major.create({ data: { name: profession } });
@@ -44,7 +66,7 @@ export class ImportStudentService {
         let specialization = await prisma.specialization.findFirst({
           where: { name: specialty, majorId: major.id },
         });
-        if (!specialization && specialty) {
+        if (!specialization) {
           specialization = await prisma.specialization.create({
             data: { name: specialty, majorId: major.id },
           });
@@ -57,6 +79,14 @@ export class ImportStudentService {
               email,
               username: email.split('@')[0],
               passwordHash: hashedPassword,
+            },
+          });
+
+          await prisma.userRole.create({
+            data: {
+              userId: user.id,
+              roleId: studentRole.id,
+              isActive: true,
             },
           });
         }
@@ -93,26 +123,31 @@ export class ImportStudentService {
 
         successCount++;
       } catch (error) {
-       // console.error(`Error processing row ${i}:`, error);
-        errors.push(`Dòng ${i}: ${(error as Error).message}`);
+        console.error(`Lỗi khi xử lý dòng ${rowIndex}:`, error);
+        errors.push(`Dòng ${rowIndex}: Lỗi khi xử lý dữ liệu.`);
       }
     }
 
     const fileName = filePath.split('/').pop();
     await prisma.importLog.create({
       data: {
-        source: 'Excel Import',
-        fileName: fileName || 'unknown',
+        source: 'Nhập danh sách sinh viên',
+        fileName: fileName || 'không xác định',
         importById: userId,
-        totalRecords: worksheet.rowCount - 1,
+        totalRecords: dataToImport.length,
         successRecords: successCount,
         errorRecords: errors.length,
         errorsDetails: errors.join('\n'),
       },
     });
 
-    if (errors.length) {
-      throw new Error(`Import hoàn thành với lỗi: ${errors.join('\n')}`);
-    }
+    return {
+      status: 'success',
+      message: 'Dữ liệu đã được import thành công.',
+      totalRecords: dataToImport.length,
+      successRecords: successCount,
+      errorRecords: errors.length,
+      errors,
+    };
   }
 }
