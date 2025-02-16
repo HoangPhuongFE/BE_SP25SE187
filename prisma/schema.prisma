@@ -14,8 +14,10 @@ model User {
   passwordHash           String
   fullName               String?
   avatar                 String?
+  student_code           String
   profession             String?
   specialty              String?
+  programming_language   String
   isActive               Boolean                 @default(true)
   lastLogin              DateTime?
   createdAt              DateTime                @default(now())
@@ -33,6 +35,9 @@ model User {
   reviewCouncils         ReviewCouncil[]         @relation("ReviewCouncilCreator")
   documents              Document[]
   notificationRecipients NotificationRecipient[]
+  createdEmailTemplates EmailTemplate[] @relation("UserEmailTemplates") 
+
+
 }
 
 model Role {
@@ -566,4 +571,17 @@ model DetailMajorTopic {
 
   @@id([majorId, topicId])
   @@map("detail_major_topic")
+}
+model EmailTemplate {
+  id            String   @id @default(uuid())
+  name          String   @unique 
+  subject       String   
+  body          String   @db.Text 
+  description   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String
+  createdByUser User     @relation("UserEmailTemplates", fields: [createdBy], references: [id])
+
+  @@map("email_templates")
 }
