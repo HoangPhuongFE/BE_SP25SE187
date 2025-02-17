@@ -424,7 +424,7 @@ model EmailLog {
   subject        String
   content        String   @db.Text
   status         String
-  errorMessage   String?  @map("error_message")
+  errorMessage   String?  @map("error_message")  @db.Text
   errorAt        DateTime @map("error_at")
   user           User     @relation(fields: [userId], references: [id])
 
