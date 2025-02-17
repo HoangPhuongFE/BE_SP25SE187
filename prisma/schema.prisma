@@ -6,7 +6,6 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
-
 model User {
   id                     String                  @id @default(uuid())
   username               String                  @unique
@@ -14,7 +13,7 @@ model User {
   passwordHash           String
   fullName               String?
   avatar                 String?
-  student_code           String
+  student_code           String?
   profession             String?
   specialty              String?
   programming_language   String?
@@ -37,7 +36,7 @@ model User {
   notificationRecipients NotificationRecipient[]
   createdEmailTemplates EmailTemplate[] @relation("UserEmailTemplates") 
 
-
+ @@map("users")
 }
 
 model Role {
