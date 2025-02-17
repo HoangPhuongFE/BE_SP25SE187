@@ -1,11 +1,12 @@
 import { PrismaClient } from '@prisma/client';
 import { TOPIC_MESSAGE } from '../constants/message';
 import { validate as isUUID } from 'uuid';
-
-
-
+import OpenAI from 'openai';
 
 const prisma = new PrismaClient();
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
 export class TopicService {
   private async generateTopicCode(semesterId: string, majorId: string): Promise<string> {
@@ -35,6 +36,144 @@ export class TopicService {
     });
 
     return `${semesterPrefix}${yearSuffix}${major.name}${(topicCount + 1).toString().padStart(3, '0')}`;
+  }
+
+  public async validateWithAI(text: string, type: 'name' | 'code'): Promise<{
+    isValid: boolean;
+    message?: string;
+  }> {
+    try {
+      // Kiểm tra input
+      if (!text || typeof text !== 'string') {
+        throw new Error('Văn bản kiểm tra không hợp lệ');
+      }
+
+      // Tạo prompt dựa trên loại kiểm tra
+      let prompt = '';
+      if (type === 'name') {
+        prompt = `Là một chuyên gia đánh giá đề tài, hãy kiểm tra tên đề tài sau có phù hợp không: "${text}".
+        
+        Tiêu chí đánh giá:
+        1. Tính rõ ràng: Phải mô tả rõ ràng nội dung nghiên cứu
+        2. Tính phù hợp: Không chứa từ ngữ không phù hợp hoặc nhạy cảm
+        3. Độ dài: Không quá ngắn (ít nhất 10 từ) hoặc quá dài (tối đa 50 từ)
+        4. Tính học thuật: Phải thể hiện tính nghiên cứu, học thuật
+        5. Tính khả thi: Phạm vi nghiên cứu phải phù hợp với sinh viên đại học
+        
+        Trả về JSON với format: 
+        {
+          "isValid": boolean,
+          "message": string (lý do nếu không hợp lệ, "Hợp lệ" nếu đạt yêu cầu)
+        }`;
+      } else {
+        prompt = `Là một chuyên gia kiểm tra mã code, hãy kiểm tra mã đề tài sau có đúng định dạng không: "${text}".
+        
+        Tiêu chí đánh giá:
+        1. Định dạng: [Học kỳ 2 ký tự][Năm 2 số][Mã ngành 2-4 ký tự][Số thứ tự 3 số]
+        2. Học kỳ: SP (Spring), SU (Summer), FA (Fall)
+        3. Năm: 2 số cuối của năm hiện tại
+        4. Không chứa ký tự đặc biệt hoặc khoảng trắng
+        5. Độ dài tổng thể phải từ 9-12 ký tự
+        
+        Trả về JSON với format:
+        {
+          "isValid": boolean,
+          "message": string (lý do nếu không hợp lệ, "Hợp lệ" nếu đạt yêu cầu)
+        }`;
+      }
+
+      // Thêm timeout cho API call
+      const timeoutMs = 10000; // 10 giây
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout khi gọi API AI')), timeoutMs);
+      });
+
+      // Gọi OpenAI API với timeout
+      const completionPromise = openai.chat.completions.create({
+        messages: [
+          {
+            role: "system",
+            content: "Bạn là một chuyên gia đánh giá đề tài nghiêm túc. Hãy đánh giá chính xác và trả về kết quả theo format JSON được yêu cầu."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        model: "gpt-3.5-turbo",
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+        max_tokens: 500 // Giới hạn độ dài response
+      });
+
+      const completion = await Promise.race([completionPromise, timeoutPromise]) as any;
+
+      // Validate và parse response
+      if (!completion?.choices?.[0]?.message?.content) {
+        throw new Error('Phản hồi từ AI không hợp lệ');
+      }
+
+      let response;
+      try {
+        response = JSON.parse(completion.choices[0].message.content);
+        if (typeof response.isValid !== 'boolean' || typeof response.message !== 'string') {
+          throw new Error('Format JSON không hợp lệ');
+        }
+      } catch (error) {
+        throw new Error('Không thể parse kết quả JSON từ AI');
+      }
+
+      // Cache kết quả nếu cần
+      const cacheKey = `ai_validation:${type}:${text}`;
+      // TODO: Implement caching mechanism here
+
+      // Lưu log kiểm tra với transaction
+      await prisma.$transaction(async (tx) => {
+        await tx.aIVerificationLog.create({
+          data: {
+            topicId: '', // Sẽ cập nhật sau khi tạo topic
+            verification: type,
+            originalText: text,
+            verifiedText: text,
+            similarityScore: response.isValid ? 1 : 0,
+            suggestions: response.message,
+            verifiedBy: 'AI_SYSTEM',
+            verifiedAt: new Date()
+          }
+        });
+      });
+
+      return {
+        isValid: response.isValid,
+        message: response.message
+      };
+    } catch (error) {
+      console.error('AI Validation Error:', error);
+      
+      // Log error chi tiết
+      await prisma.systemLog.create({
+        data: {
+          action: 'AI_VALIDATION',
+          entityType: 'TOPIC',
+          entityId: 'N/A',
+          error: (error as Error).message,
+          stackTrace: (error as Error).stack,
+          severity: 'ERROR',
+          ipAddress: 'UNKNOWN',
+          userId: 'SYSTEM'
+        }
+      }).catch(console.error); // Không throw error nếu log thất bại
+
+      // Xử lý theo môi trường
+      if (process.env.NODE_ENV === 'production') {
+        return { 
+          isValid: true, 
+          message: 'Không thể kiểm tra với AI, chấp nhận giá trị mặc định' 
+        };
+      }
+      
+      throw new Error(`Lỗi kiểm tra AI: ${(error as Error).message}`);
+    }
   }
 
   async createTopic(data: {

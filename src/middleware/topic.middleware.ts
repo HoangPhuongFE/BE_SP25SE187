@@ -4,8 +4,104 @@ import { AuthenticatedRequest } from './user.middleware';
 import { TOPIC_MESSAGE } from '../constants/message';
 import { PrismaClient } from '@prisma/client';
 import { GroupService } from '~/service/group.service';
+import { TopicService } from '~/service/topic.service';
 
 const prisma = new PrismaClient();
+
+export const validateTopicWithAI = async (
+  req: AuthenticatedRequest,
+  res: Response, 
+  next: NextFunction
+) => {
+  try {
+    // Kiểm tra cấu hình và môi trường
+    if (process.env.SKIP_AI_VALIDATION === 'true' || !process.env.OPENAI_API_KEY) {
+      return next();
+    }
+
+    const topicService = new TopicService();
+    const { name, topicCode } = req.body;
+
+    // Validate input
+    if (!name || typeof name !== 'string') {
+      return res.status(400).json({
+        message: 'Tên đề tài không hợp lệ',
+        field: 'name'
+      });
+    }
+
+    // Thực hiện kiểm tra song song để tối ưu thời gian
+    const validations = await Promise.allSettled([
+      topicService.validateWithAI(name, 'name'),
+      topicCode ? topicService.validateWithAI(topicCode, 'code') : Promise.resolve({ isValid: true })
+    ]);
+
+    // Xử lý kết quả kiểm tra tên
+    if (validations[0].status === 'rejected') {
+      console.error('Name validation error:', validations[0].reason);
+      if (process.env.NODE_ENV === 'production') {
+        return next();
+      }
+      return res.status(500).json({
+        message: TOPIC_MESSAGE.AI_VALIDATION_FAILED,
+        detail: 'Lỗi kiểm tra tên đề tài',
+        field: 'name'
+      });
+    }
+
+    const nameValidation = validations[0].value;
+    if (!nameValidation.isValid) {
+      return res.status(400).json({
+        message: TOPIC_MESSAGE.INVALID_TOPIC_NAME,
+        detail: nameValidation.message,
+        field: 'name'
+      });
+    }
+
+    // Xử lý kết quả kiểm tra mã (nếu có)
+    if (topicCode && validations[1].status === 'fulfilled') {
+      const codeValidation = validations[1].value;
+      if (!codeValidation.isValid) {
+        return res.status(400).json({
+          message: TOPIC_MESSAGE.INVALID_TOPIC_CODE,
+          detail: codeValidation.isValid,
+          field: 'topicCode'
+        });
+      }
+    }
+
+    // Cache kết quả kiểm tra nếu hợp lệ
+    // TODO: Implement caching mechanism
+
+    next();
+  } catch (error) {
+    console.error('AI Validation Middleware Error:', error);
+    
+    // Log error
+    await prisma.systemLog.create({
+      data: {
+        action: 'AI_VALIDATION_MIDDLEWARE',
+        entityType: 'TOPIC',
+        entityId: 'N/A',
+        error: (error as Error).message,
+        stackTrace: (error as Error).stack,
+        severity: 'ERROR',
+        ipAddress: req.ip || 'UNKNOWN',
+        userId: req.user?.userId || 'SYSTEM'
+      }
+    }).catch(console.error);
+    
+    // Trong môi trường production, cho phép tiếp tục
+    if (process.env.NODE_ENV === 'production') {
+      return next();
+    }
+    
+    return res.status(500).json({
+      message: TOPIC_MESSAGE.AI_VALIDATION_FAILED,
+      detail: (error as Error).message
+    });
+  }
+};
 
 export const validateCreateTopic = [
   body('name').notEmpty().withMessage(TOPIC_MESSAGE.NAME_REQUIRED),
@@ -20,6 +116,7 @@ export const validateCreateTopic = [
     }
     return true;
   }),
+  validateTopicWithAI,
 
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
@@ -124,8 +221,6 @@ export const validateTopicRegistration = [
       const hasGroupWithTopic = student?.groupMembers.some(
         member => member.group.decisions.some(decision => decision.topic.topicRegistrations.some(registration => registration.status === 'pending'))
       );
-
-
 
       if (hasGroupWithTopic) {
         return res.status(400).json({ message: TOPIC_MESSAGE.GROUP_ALREADY_HAS_TOPIC });

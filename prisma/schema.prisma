@@ -394,6 +394,11 @@ model SystemLog {
   action     String
   entityType String   @map("entity_type")
   entityId   String   @map("entity_id")
+  description String?  @map("description")
+  error      String?  @map("error")
+  stackTrace String?  @map("stack_trace")
+  severity   String   @map("severity")
+  metadata   Json?    @map("metadata")
   oldValues  Json?    @map("old_values")
   newValues  Json?    @map("new_values")
   createdAt  DateTime @default(now()) @map("created_at")
