@@ -5,6 +5,7 @@ import { AuthenticatedRequest } from "../middleware/user.middleware";
 const groupService = new GroupService();
 
 export class GroupController {
+    [x: string]: any;
   async createGroup(req: AuthenticatedRequest, res: Response) {
     try {
       const { semesterId } = req.body;
@@ -111,6 +112,16 @@ async randomizeGroups(req: AuthenticatedRequest, res: Response) {
       res.status(201).json(result);
   } catch (error) {
       res.status(500).json({ message: (error as Error).message });
+  }
+}
+
+async changeLeader(req: AuthenticatedRequest, res: Response) {
+  try {
+      const { groupId, newLeaderId } = req.body;
+      const result = await groupService.changeLeader(groupId, newLeaderId, req.user!.userId);
+      res.status(200).json(result);
+  } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
   }
 }
 

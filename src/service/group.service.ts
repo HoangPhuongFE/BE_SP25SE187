@@ -1,6 +1,8 @@
 import { PrismaClient } from "@prisma/client";
 import { sendEmail } from "../utils/email";
 import { MESSAGES } from "../constants/message";
+import { ConfigService } from "./config.service";
+import { AuthenticatedRequest } from "~/middleware/user.middleware";
 const prisma = new PrismaClient();
 
 export class GroupService {
@@ -385,5 +387,129 @@ async randomizeGroups(semesterId: string, createdBy: string) {
 
   return { message: "Random nhóm thành công!", data: groups };
 }
+
+async changeLeader(req: AuthenticatedRequest, newLeaderId: any, userId: string) {
+  try {
+      const { groupId, newLeaderId } = req.body;
+      const userId = req.user!.userId; // Lấy userId từ token
+
+      // ✅ Kiểm tra nhóm có tồn tại không
+      const group = await prisma.group.findUnique({
+          where: { id: groupId },
+          include: { members: true }
+      });
+
+      if (!group) throw new Error("Nhóm không tồn tại.");
+
+      //  Lấy thời gian đổi leader từ cấu hình hệ thống (mặc định 7 ngày)
+      let maxDaysAllowed: number = await ConfigService.getLeaderChangeDeadline() ?? 7;
+      if (isNaN(maxDaysAllowed)) {
+          maxDaysAllowed = 7; 
+      }
+
+      const now = new Date();
+      const createdAt = new Date(group.createdAt);
+      const deadline = new Date(createdAt);
+      deadline.setDate(createdAt.getDate() + maxDaysAllowed);
+
+      if (now > deadline) {
+          throw new Error(`Đã quá thời gian ${maxDaysAllowed} ngày, không thể đổi leader.`);
+      }
+
+      //  Kiểm tra quyền (chỉ leader hiện tại hoặc admin mới có quyền đổi)
+      const user = await prisma.user.findUnique({
+          where: { id: userId },
+          include: { roles: true }
+      });
+
+      const isAdmin = user?.roles.some(role => role.roleId === "admin");
+      const currentLeader = group.members.find(m => m.role === "leader");
+      const isLeader = currentLeader?.studentId === userId;
+
+      if (!isLeader && !isAdmin) {
+          throw new Error("Bạn không có quyền đổi leader.");
+      }
+
+      // Kiểm tra leader mới có thuộc nhóm không
+      const newLeader = group.members.find(m => m.studentId === newLeaderId);
+      if (!newLeader) {
+          throw new Error("Sinh viên này không thuộc nhóm.");
+      }
+
+      //  Cập nhật leader mới
+      await prisma.groupMember.updateMany({
+          where: { groupId },
+          data: { role: "member" }
+      });
+
+      await prisma.groupMember.update({
+          where: { id: newLeader.id },
+          data: { role: "leader" }
+      });
+
+      // Ghi log thay đổi leader
+      const clientIp = req.ip || req.headers["x-forwarded-for"] || "Unknown"; 
+
+      await prisma.systemLog.create({
+          data: {
+              userId,
+              action: "CHANGE_LEADER",
+              entityType: "GROUP",
+              entityId: groupId,
+              oldValues: { oldLeaderId: currentLeader?.studentId },
+              newValues: { newLeaderId },
+              createdAt: new Date(),
+              ipAddress: clientIp as string
+          }
+      });
+
+      return { message: "Leader đã được thay đổi thành công." };
+
+  } catch (error) {
+      return { error: (error as Error).message };
+  }
+}
+
+async addMentorToGroup(groupId: string, mentorId: string, userId: string) {
+  // Kiểm tra nhóm có tồn tại không
+  const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      include: { members: true }
+  });
+
+  if (!group) throw new Error("Nhóm không tồn tại.");
+
+  //  Lấy số lượng mentor tối đa từ cấu hình hệ thống
+  const maxMentorsAllowed = await ConfigService.getMaxMentorsPerGroup();
+
+  //  Kiểm tra số mentor hiện tại
+  const currentMentors = group.members.filter(m => m.role === "mentor").length;
+  if (currentMentors >= maxMentorsAllowed) {
+      throw new Error(`Nhóm đã đạt số lượng mentor tối đa (${maxMentorsAllowed}).`);
+  }
+
+  // Kiểm tra mentor có tồn tại không
+  const mentor = await prisma.user.findUnique({ where: { id: mentorId } });
+  if (!mentor) throw new Error("Không tìm thấy mentor.");
+
+  //  Kiểm tra mentor có thuộc nhóm chưa
+  const isAlreadyMentor = group.members.some(m => m.studentId === mentorId);
+  if (isAlreadyMentor) throw new Error("Mentor đã có trong nhóm.");
+
+  // Thêm mentor vào nhóm
+  await prisma.groupMember.create({
+      data: {
+          groupId,
+          studentId: mentorId,
+          role: "mentor",
+          status: "ACTIVE",
+          joinedAt: new Date()
+      }
+  });
+
+  return { message: "Mentor đã được thêm vào nhóm thành công." };
+}
+
+
 
 }
