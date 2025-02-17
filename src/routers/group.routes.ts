@@ -7,7 +7,7 @@ const router = Router();
 const groupController = new GroupController();
 
 // Tạo nhóm: Leader/mentor/admin có thể tạo nhóm
-router.post("/create", authenticateToken, checkRole(["leader", "admin", "mentor"]), groupController.createGroup.bind(groupController));
+router.post("/create", authenticateToken, checkRole(["leader", "admin", "mentor","student"]), groupController.createGroup.bind(groupController));
 
 // Mời thành viên: Yêu cầu người dùng là leader hoặc mentor của nhóm
 router.post("/invite", authenticateToken, checkLeaderOrMentor, groupController.inviteMember.bind(groupController));

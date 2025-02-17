@@ -69,7 +69,7 @@ export class GroupService {
           create: [
             {
               studentId: leader.id,
-              role: "LEADER",
+              role: "leader",
               status: "ACTIVE"
             }
           ]
