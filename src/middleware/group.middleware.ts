@@ -13,7 +13,26 @@ export const checkGroupMembership = async (req: AuthenticatedRequest, res: Respo
     const { groupId } = req.params;
     const userId = req.user!.userId;
 
-    // Tìm sinh viên tương ứng với userId
+    // 1. Kiểm tra role của user
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { roles: { include: { role: true } } }, // Lấy danh sách role của user
+    });
+
+    if (!user) {
+      return res.status(403).json({ message: "Người dùng không tồn tại." });
+    }
+
+    // Lấy danh sách role của user
+    const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
+
+    //  2. Nếu user là admin, graduation_thesis_manager, mentor, lecturer → Cho phép truy cập
+    const allowedRoles = ["admin", "graduation_thesis_manager", "mentor", "lecturer"];
+    if (userRoles.some((role) => allowedRoles.includes(role))) {
+      return next(); // Bỏ qua kiểm tra nhóm, cho phép truy cập
+    }
+
+    //  3. Nếu user là sinh viên → Kiểm tra có thuộc nhóm không
     const student = await prisma.student.findUnique({
       where: { userId },
       select: { id: true }
@@ -23,7 +42,6 @@ export const checkGroupMembership = async (req: AuthenticatedRequest, res: Respo
       return res.status(403).json({ message: "Bạn không có quyền truy cập nhóm (không phải sinh viên)." });
     }
 
-    // Kiểm tra xem sinh viên có thuộc nhóm không
     const membership = await prisma.groupMember.findFirst({
       where: { groupId, studentId: student.id }
     });
@@ -37,7 +55,6 @@ export const checkGroupMembership = async (req: AuthenticatedRequest, res: Respo
     res.status(500).json({ message: (error as Error).message });
   }
 };
-
 /**
  * Middleware kiểm tra xem người dùng có phải là Leader hoặc Mentor của nhóm hay không.
  * Yêu cầu: URL chứa tham số groupId
