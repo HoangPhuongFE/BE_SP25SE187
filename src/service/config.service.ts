@@ -62,4 +62,19 @@ export class ConfigService {
         const value = await this.getConfigValue("MAX_GROUP_MENTORS");
         return Number(value) || 2; // Mặc định 2 mentor
     }
+
+    // Lấy tất cả cấu hình rồi lọc ra các key được yêu cầu
+    static async getFilteredConfigs(keys: string[]): Promise<Record<string, string>> {
+        const allConfigs = await this.getAllConfigs();
+        const filteredConfigs: Record<string, string> = {};
+
+        keys.forEach(key => {
+            if (allConfigs[key] !== undefined) {
+                filteredConfigs[key] = allConfigs[key];
+            }
+        });
+
+        return filteredConfigs;
+    }
+
 }

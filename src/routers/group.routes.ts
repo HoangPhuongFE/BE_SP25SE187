@@ -33,8 +33,6 @@ router.post("/randomize", authenticateToken, checkRole(["admin", "graduation_the
 // Đổi leader: Yêu cầu authenticateToken, có thể thêm checkLeaderOrMentor nếu cần
 router.post("/change-leader", authenticateToken, groupController.changeLeader.bind(groupController));
 
-// Cập nhật cấu hình leader deadline (nếu cần)
-router.post("/admin/update-leader-deadline", authenticateToken, checkRole(["admin"]), groupController.updateLeaderChangeDeadline.bind(groupController));
 
 // Thêm mentor: Chỉ admin có thể thêm mentor vào nhóm
 router.post("/add-mentor", authenticateToken, checkAdmin, groupController.addMentorToGroup.bind(groupController));
