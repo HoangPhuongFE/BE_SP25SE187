@@ -140,12 +140,110 @@ async function createYearsAndSemesters() {
     console.log(`Created semester: ${semester.code} for year ${semester.yearId}`);
   }
 }
+async function createStudents() {
+
+  const semester = await prisma.semester.findFirst({ where: { code: 'SPRING2025' } });
+  if (!semester) throw new Error('SPRING2025 semester not found'); 
+  const studentsData = [
+    // AI students 
+    { studentCode: 'SE161446', email: 'buiquanghuy532002@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end' },
+    { studentCode: 'SE161447', email: 'buiquanghuy532003@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end' },
+    { studentCode: 'SE161448', email: 'buiquanghuy532004@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end' },
+    { studentCode: 'SE161449', email: 'buiquanghuy532005@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Back-end' },
+    { studentCode: 'SE161450', email: 'buiquanghuy532006@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Full-stack' },
+    
+    { studentCode: 'SE161455', email: 'buiquanghuy532007@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Front-end' },
+    { studentCode: 'SE161454', email: 'buiquanghuy532008@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end' },
+    { studentCode: 'SE161453', email: 'buiquanghuy532009@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end' },
+    { studentCode: 'SE161452', email: 'buiquanghuy532010@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end' },
+    { studentCode: 'SE161451', email: 'buiquanghuy532011@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Full-stack' },
+
+    { studentCode: 'SE161456', email: 'buiquanghuy5320012@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Front-end' },
+    { studentCode: 'SE161457', email: 'buiquanghuy5320013@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Front-end' },
+    { studentCode: 'SE161458', email: 'buiquanghuy5320014@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Front-end' },
+    { studentCode: 'SE161459', email: 'buiquanghuy5320150@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Front-end' },
+    { studentCode: 'SE161460', email: 'buiquanghuy5320116@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Full-stack' },
+
+    // SE students 
+    { studentCode: 'SE161480', email: 'hoamgnguyen101@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Front-end' },
+    { studentCode: 'SE161481', email: 'hoamgnguyen105@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Front-end' },
+    { studentCode: 'SE161482', email: 'hoamgnguyen104@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Full-stack' },
+    { studentCode: 'SE161483', email: 'hoamgnguyen107@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Back-end' },
+    { studentCode: 'SE161484', email: 'hoamgnguyen108@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Back-end' },
+
+    { studentCode: 'SE161471', email: 'hoamgnguyen10@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Full-stack' },
+    { studentCode: 'SE161472', email: 'hoamgnguyen11@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Full-stack' },
+    { studentCode: 'SE161473', email: 'hoamgnguyen12@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Full-stack' },
+    { studentCode: 'SE161474', email: 'hoamgnguyen13@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Back-end' },
+    { studentCode: 'SE161475', email: 'hoamgnguyen14@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Back-end' },
+
+    { studentCode: 'SE161476', email: 'hoamgnguyen15@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Front-end' },
+    { studentCode: 'SE161479', email: 'hoamgnguyen18@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Front-end' },
+    { studentCode: 'SE161491', email: 'hoangnguyenhoang8@yahoo.com', profession: 'AI', specialty: '.CN2', programming_language: 'Back-end' },
+    { studentCode: 'SE161492', email: 'hoangnpse161446@fpt.edu.vn', profession: 'SE', specialty: '.Net', programming_language: 'Front-end' },
+    { studentCode: 'SE161493', email: 'huuduy.nguyen169@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Back-end' },
+    { studentCode: 'SE161494', email: 'huybqse161436@fpt.edu.vn', profession: 'SE', specialty: 'Nodejs', programming_language: 'Front-end' }
+  ];
+
+  for (const student of studentsData) {
+    const major = await prisma.major.upsert({
+      where: { name: student.profession },
+      update: {},
+      create: { name: student.profession },
+    });
+
+    const specialization = await prisma.specialization.upsert({
+      where: { id: `${student.specialty}-${major.id}` },
+      update: {},
+      create: { name: student.specialty, majorId: major.id },
+    });
+
+    const hashedPassword = await hashPassword('a123456');
+
+    const user = await prisma.user.upsert({
+      where: { email: student.email },
+      update: {},
+      create: {
+        email: student.email,
+        username: student.email.split('@')[0],
+        passwordHash: hashedPassword,
+        student_code: student.studentCode,
+        profession: student.profession,
+        specialty: student.specialty,
+        programming_language: student.programming_language,
+      },
+    });
+
+    const studentEntry = await prisma.student.upsert({
+      where: { studentCode: student.studentCode },
+      update: {},
+      create: {
+        userId: user.id,
+        studentCode: student.studentCode,
+        majorId: major.id,
+        specializationId: specialization.id,
+        importSource: 'seed',
+      },
+    });
+
+    await prisma.semesterStudent.upsert({
+      where: { semesterId_studentId: { semesterId: semester.id, studentId: studentEntry.id } }, 
+      update: {},
+      create: { semesterId: semester.id, studentId: studentEntry.id }, 
+    });
+}
+
+
+
+
+}
 
 async function main() {
   console.log('Seeding database...');
   await createRoles();
   await createDefaultUsers();
   await createYearsAndSemesters();
+  await createStudents();
   console.log('Seeding completed successfully.');
 }
 

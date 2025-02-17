@@ -23,6 +23,7 @@ export class ImportStudentService {
 
     const errors: string[] = [];
     const dataToImport = [];
+    const seenStudents = new Set(); // Kiểm tra trùng MSSV + Email trong file Excel
     const DEFAULT_PASSWORD = '123456';
     const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
@@ -31,21 +32,33 @@ export class ImportStudentService {
       throw new Error('Vai trò "student" không tồn tại. Vui lòng tạo trước.');
     }
 
-    // **Kiểm tra dữ liệu trước khi import**
     for (let i = 2; i <= worksheet.actualRowCount; i++) {
       const row = worksheet.getRow(i);
-      const email = extractCellValue(row.getCell(1).value);
-      const profession = extractCellValue(row.getCell(2).value);
-      const specialty = extractCellValue(row.getCell(3).value);
+      const studentCode = extractCellValue(row.getCell(1).value); // MSSV
+      const email = extractCellValue(row.getCell(2).value);
+      const profession = extractCellValue(row.getCell(3).value);
+      const specialty = extractCellValue(row.getCell(4).value);
 
-      if (!email || !profession || !specialty) {
-        errors.push(`Dòng ${i}: Thiếu email, ngành hoặc chuyên ngành.`);
-      } else {
-        dataToImport.push({ email, profession, specialty, rowIndex: i });
+      // Kiểm tra nếu dòng trống thì bỏ qua
+      if (!studentCode && !email && !profession && !specialty) {
+        continue;
       }
+
+      if (!studentCode || !email || !profession || !specialty) {
+        errors.push(`Dòng ${i}: Thiếu MSSV, email, ngành hoặc chuyên ngành.`);
+        continue;
+      }
+
+      const studentKey = `${studentCode}-${email}`;
+      if (seenStudents.has(studentKey)) {
+        errors.push(`Dòng ${i}: Trùng MSSV ${studentCode} với email ${email} trong file Excel.`);
+        continue;
+      }
+      seenStudents.add(studentKey);
+
+      dataToImport.push({ studentCode, email, profession, specialty, rowIndex: i });
     }
 
-    // **Nếu có lỗi, trả về danh sách lỗi và dừng lại**
     if (errors.length > 0) {
       return {
         status: 'error',
@@ -54,10 +67,21 @@ export class ImportStudentService {
       };
     }
 
-    // **Tiến hành import dữ liệu nếu không có lỗi**
     let successCount = 0;
-    for (const { email, profession, specialty, rowIndex } of dataToImport) {
-      try {
+    try {
+      for (const { studentCode, email, profession, specialty, rowIndex } of dataToImport) {
+        let existingUser = await prisma.user.findUnique({ where: { email } });
+        let existingStudent = await prisma.student.findUnique({ where: { studentCode } });
+
+        if (existingUser && existingStudent) {
+          if (existingUser.student_code !== studentCode) {
+            throw new Error(`Dòng ${rowIndex}: Email ${email} đã được sử dụng cho MSSV khác.`);
+          }
+          if (existingStudent.userId !== existingUser.id) {
+            throw new Error(`Dòng ${rowIndex}: MSSV ${studentCode} đã được liên kết với email khác.`);
+          }
+        }
+
         let major = await prisma.major.findUnique({ where: { name: profession } });
         if (!major) {
           major = await prisma.major.create({ data: { name: profession } });
@@ -72,74 +96,55 @@ export class ImportStudentService {
           });
         }
 
-        let user = await prisma.user.findUnique({ where: { email } });
-        if (!user) {
-          user = await prisma.user.create({
+        if (!existingUser) {
+          existingUser = await prisma.user.create({
             data: {
               email,
               username: email.split('@')[0],
               passwordHash: hashedPassword,
+              student_code: studentCode,
+              profession,
+              specialty,
             },
           });
-
           await prisma.userRole.create({
-            data: {
-              userId: user.id,
-              roleId: studentRole.id,
-              isActive: true,
-            },
+            data: { userId: existingUser.id, roleId: studentRole.id, isActive: true },
           });
         }
 
-        let student = await prisma.student.findFirst({
-          where: { studentCode: email.split('@')[0] },
-        });
-
-        if (!student) {
-          student = await prisma.student.create({
+        if (!existingStudent) {
+          existingStudent = await prisma.student.create({
             data: {
-              userId: user.id,
+              userId: existingUser.id,
+              studentCode,
               majorId: major.id,
               specializationId: specialization?.id || null,
-              studentCode: email.split('@')[0],
               importSource: 'excelImport',
             },
           });
         }
 
-        await prisma.semesterStudent.upsert({
-          where: {
-            semesterId_studentId: {
-              semesterId,
-              studentId: student.id,
-            },
-          },
-          create: {
-            semesterId,
-            studentId: student.id,
-          },
-          update: {},
+        // Kiểm tra nếu sinh viên đã có trong học kỳ
+        const existingRecord = await prisma.semesterStudent.findUnique({
+          where: { semesterId_studentId: { semesterId, studentId: existingStudent.id } },
         });
+        
+        if (!existingRecord) {
+          await prisma.semesterStudent.create({
+            data: { semesterId, studentId: existingStudent.id },
+          });
+        }
 
         successCount++;
-      } catch (error) {
-        console.error(`Lỗi khi xử lý dòng ${rowIndex}:`, error);
-        errors.push(`Dòng ${rowIndex}: Lỗi khi xử lý dữ liệu.`);
       }
+    } catch (error) {
+      console.error(`Lỗi khi xử lý dữ liệu:`, error);
+      return {
+        status: 'error',
+        message: 'Quá trình nhập dữ liệu bị hủy do lỗi.',
+        errors: [(error as Error).message],
+      };
     }
-
-    const fileName = filePath.split('/').pop();
-    await prisma.importLog.create({
-      data: {
-        source: 'Nhập danh sách sinh viên',
-        fileName: fileName || 'không xác định',
-        importById: userId,
-        totalRecords: dataToImport.length,
-        successRecords: successCount,
-        errorRecords: errors.length,
-        errorsDetails: errors.join('\n'),
-      },
-    });
 
     return {
       status: 'success',
