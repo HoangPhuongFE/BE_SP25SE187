@@ -179,7 +179,7 @@ async function createStudents() {
     { studentCode: 'SE161484', email: 'tranduc1234htd@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
 
     { studentCode: 'SE161471', email: 'huytruong123nht@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Full-stack',status:'not qualified' },
-    { studentCode: 'SE161472', email: 'manhhung1999nmh@gmail.com', profession: 'SSoftware Engineering', specialty: '.Net', programming_language: 'Full-stack' ,status:'qualified'},
+    { studentCode: 'SE161472', email: 'manhhung1999nmh@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Full-stack' ,status:'qualified'},
     { studentCode: 'SE161473', email: 'hvu311333@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Full-stack' ,status:'qualified'},
     { studentCode: 'SE161474', email: 'vuh041247@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Back-end',status:'qualified' },
     { studentCode: 'SE161475', email: 'hoangvuu225577@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Back-end' ,status:'qualified'},

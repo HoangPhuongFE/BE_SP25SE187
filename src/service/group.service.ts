@@ -9,31 +9,81 @@ export class GroupService {
   [x: string]: any;
 
   async createGroup(leaderId: string, semesterId: string) {
-    const leader = await prisma.student.findUnique({ where: { userId: leaderId } });
-    if (!leader) throw new Error(MESSAGES.STUDENT.STUDENT_NOT_FOUND);
-
-    // Tạo nhóm mới
+    // 1Lấy thông tin leader, bao gồm ngành (major.name)
+    const leader = await prisma.student.findUnique({
+      where: { userId: leaderId },
+      include: { major: true } // Để lấy tên ngành (major.name)
+    });
+    if (!leader) throw new Error("Không tìm thấy sinh viên.");
+  
+    //  Lấy 2 số cuối của năm hiện tại
+    const currentYear = new Date().getFullYear();
+    const lastTwoDigits = currentYear.toString().slice(-2); // Ví dụ: 2025 → "25"
+  
+    // 3️ Tạo mã ngành từ tên ngành (cắt chuỗi)
+    const majorName = (leader.major?.name || "").trim(); // Ví dụ: "Software Engineering"
+    // Tách theo khoảng trắng, lấy ký tự đầu của 2 từ đầu
+    let majorCode = "";
+    const words = majorName.split(/\s+/); // Tách theo khoảng trắng
+  
+    if (words.length >= 2) {
+      // Nếu có >= 2 từ, lấy ký tự đầu mỗi từ, ví dụ "Software" + "Engineering" => "SE"
+      majorCode =
+        words[0].charAt(0).toUpperCase() + words[1].charAt(0).toUpperCase();
+    } else {
+      // Nếu chỉ có 1 từ hoặc rỗng, lấy 2 ký tự đầu
+      majorCode = majorName.slice(0, 2).toUpperCase() || "XX";
+    }
+  
+    // Fallback nếu vẫn rỗng
+    if (!majorCode) {
+      majorCode = "XX";
+    }
+  
+    //4️ Tạo tiền tố cho mã nhóm
+    //    "G" + 2 số cuối năm + 2 ký tự từ ngành
+    const groupCodePrefix = `G${lastTwoDigits}${majorCode}`;
+  
+    // 5️ Đếm số nhóm hiện có với tiền tố này để xác định số thứ tự
+    const count = await prisma.group.count({
+      where: {
+        semesterId,
+        groupCode: { startsWith: groupCodePrefix }
+      }
+    });
+    const sequenceNumber = (count + 1).toString().padStart(3, "0"); // Ví dụ: "005"
+  
+    // 6️ Ghép thành mã nhóm hoàn chỉnh
+    const groupCode = groupCodePrefix + sequenceNumber; // "G25SE005"
+  
+    // 7️ Tạo nhóm mới
     const newGroup = await prisma.group.create({
       data: {
-        groupCode: `G-${Date.now()}`,
+        groupCode,
         semesterId,
         status: "ACTIVE",
         createdBy: leaderId,
-        maxMembers: 5,
+        maxMembers: 5, // Giá trị mặc định
         isAutoCreated: false,
         members: {
-          create: [{
-            studentId: leader.id,
-            role: "LEADER",
-            status: "ACTIVE"
-          }],
-        },
+          create: [
+            {
+              studentId: leader.id,
+              role: "LEADER",
+              status: "ACTIVE"
+            }
+          ]
+        }
       },
-      include: { members: true },
+      include: { members: true }
     });
-
-    return { message: MESSAGES.GROUP.GROUP_CREATED, data: newGroup };
+  
+    return {
+      message: "Nhóm đã được tạo thành công.",
+      data: newGroup
+    };
   }
+  
 
 
   async inviteMember(groupId: string, studentId: string, invitedById: string) {
