@@ -98,4 +98,30 @@ export class UserController {
       res.status(500).json({ message: (error as Error).message });
     }
   }
+
+
+  async getUsers(req: AuthenticatedRequest, res: Response) {
+    try {
+      const users = await userService.getUsers();
+      res.json({ users });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  }
+
+  async getUserById(req: Request, res: Response) {
+    try {
+      const userId = req.params.id; // Lấy ID từ request params
+      const user = await userService.getUserById(userId);
+  
+      if (!user) {
+        return res.status(404).json({ message: USER_MESSAGE.USER_NOT_FOUND });
+      }
+  
+      res.json({ user });
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  }
+  
 }

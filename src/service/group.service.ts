@@ -370,73 +370,99 @@ async getStudentsWithoutGroup(semesterId: string) {
 }
 
 
-async randomizeGroups(semesterId: string, createdBy: string) {
+async  randomizeGroups(semesterId: string, createdBy: string) {
   // Lấy danh sách sinh viên đủ điều kiện, chưa có nhóm
   const students = await prisma.student.findMany({
-      where: {
-          semesterStudents: {
-              some: { semesterId, qualificationStatus: "qualified" },
-          },
-          groupMembers: { none: {} }, // Không có nhóm
+    where: { 
+      semesterStudents: {
+        some: { semesterId, qualificationStatus: "qualified" },
       },
-      include: { user: true, major: true, specialization: true },
+      groupMembers: { none: {} }, 
+    },
+    include: { 
+      user: { select: { programming_language: true } }, 
+      major: true, 
+      specialization: true 
+    },
   });
-
+  
   if (students.length === 0) {
-      throw new Error("Không có sinh viên nào đủ điều kiện để tạo nhóm.");
+    throw new Error("Không có sinh viên nào đủ điều kiện để tạo nhóm.");
   }
 
-  //  Phân loại theo chuyên môn (FE, BE, FS)
-  let feStudents = students.filter(s => s.specialization?.name === "Frontend");
-  let beStudents = students.filter(s => s.specialization?.name === "Backend");
-  let fsStudents = students.filter(s => s.specialization?.name === "Fullstack");
+  // Nhóm sinh viên theo ngành học (Profession)
+  const groupedByMajor: { [key: string]: typeof students } = {};
+  students.forEach(student => {
+    const major = student.major?.name || "Unknown";
+    if (!groupedByMajor[major]) {
+      groupedByMajor[major] = [];
+    }
+    groupedByMajor[major].push(student);
+  });
 
   let groups: any[] = [];
   let groupCounter = 1;
 
-  while (students.length > 0) {
+  for (const major in groupedByMajor) {
+    let studentsInMajor = groupedByMajor[major];
+
+    // Nhóm theo chuyên môn (FE, BE, FS)
+    let feStudents = students.filter(s => s.user?.programming_language === "Front-end");
+    let beStudents = students.filter(s => s.user?.programming_language === "Back-end");
+    let fsStudents = students.filter(s => s.user?.programming_language === "Full-stack");
+    
+
+    while (studentsInMajor.length > 0) {
       let groupMembers = [];
 
-      //  Cố gắng lấy 2 FE, 2 BE, nếu có thể thêm 1 FS
-      if (feStudents.length > 0) groupMembers.push(feStudents.pop());
+      // Thêm 1 BE, 1 FE vào nhóm trước
       if (beStudents.length > 0) groupMembers.push(beStudents.pop());
       if (feStudents.length > 0) groupMembers.push(feStudents.pop());
-      if (beStudents.length > 0) groupMembers.push(beStudents.pop());
+
+      // Nếu còn slot, ưu tiên thêm FS
       if (fsStudents.length > 0 && groupMembers.length < 5) groupMembers.push(fsStudents.pop());
 
-      //  Nếu nhóm chưa đủ 4, lấy ngẫu nhiên từ sinh viên còn lại
-      while (groupMembers.length < 4 && students.length > 0) {
-          groupMembers.push(students.pop());
+      // Nếu nhóm chưa đủ 4, lấy ngẫu nhiên từ danh sách còn lại
+      while (groupMembers.length < 4 && studentsInMajor.length > 0) {
+        groupMembers.push(studentsInMajor.pop());
       }
 
-      //  Nếu nhóm chưa đạt tối thiểu 4 thành viên, bỏ qua nhóm này
+      // Nếu nhóm chưa đạt tối thiểu 4 thành viên, bỏ qua
       if (groupMembers.length < 4) break;
 
-  
+      // Tạo mã nhóm dựa trên năm và mã ngành (VD: G-25-SE-01)
+      const majorCode = major === "Software Engineering" ? "SE" : major.slice(0, 2).toUpperCase();
+      const yearSuffix = new Date().getFullYear().toString().slice(-2);
+      const groupCode = `G-${yearSuffix}-${majorCode}-${String(groupCounter).padStart(2, "0")}`;
+      groupCounter++;
+
+      // Tạo nhóm trong database
       const newGroup = await prisma.group.create({
-          data: {
-              groupCode: `G-${groupCounter++}-${Date.now()}`,
-              semesterId,
+        data: {
+          groupCode,
+          semesterId,
+          status: "ACTIVE",
+          createdBy,
+          maxMembers: 5,
+          isAutoCreated: true,
+          members: {
+            create: groupMembers.map((member, index) => ({
+              studentId: member!.id,
+              role: index === 0 ? "leader" : "member",
               status: "ACTIVE",
-              createdBy,
-              maxMembers: 5,
-              isAutoCreated: true,
-              members: {
-                  create: groupMembers.map((member, index) => ({
-                      studentId: member!.id,
-                      role: index === 0 ? "leader" : "member",
-                      status: "ACTIVE",
-                  })),
-              },
+            })),
           },
-          include: { members: true },
+        },
+        include: { members: true },
       });
 
       groups.push(newGroup);
+    }
   }
 
   return { message: "Random nhóm thành công!", data: groups };
 }
+
 
 async changeLeader(req: AuthenticatedRequest, newLeaderId: any, userId: string) {
   try {

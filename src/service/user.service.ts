@@ -161,4 +161,39 @@ export class UserService {
       },
     });
   }
+
+  async getUsers() {
+    return prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        fullName: true,
+        avatar: true,
+        roles: {
+          select: {
+            role: true,
+          },
+        },
+      },
+    });
+  }
+  async getUserById(userId: string) {
+    return prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        fullName: true,
+        avatar: true,
+        roles: {
+          select: {
+            role: true,
+          },
+        },
+      },
+    });
+  }
+  
 }
