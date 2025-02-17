@@ -90,103 +90,114 @@ export class GroupService {
   async inviteMember(groupId: string, studentId: string, invitedById: string) {
     //  Kiểm tra nhóm có tồn tại không
     const group = await prisma.group.findUnique({
-      where: { id: groupId },
-      include: {
-        members: {
-          include: { student: { include: { major: true } } }
-        }
-      }, //  Lấy thông tin ngành của thành viên trong nhóm
+        where: { id: groupId },
+        include: {
+            members: {
+                include: { student: { include: { major: true } } }
+            }
+        }, //  Lấy thông tin ngành của thành viên trong nhóm
     });
 
     if (!group) throw new Error(MESSAGES.GROUP.GROUP_NOT_FOUND);
     if (group.members.length >= 5) throw new Error(MESSAGES.GROUP.GROUP_FULL);
-    if (group.members.some((m) => m.studentId === studentId)) {
-      throw new Error(MESSAGES.GROUP.MEMBER_ALREADY_EXISTS);
+    if (group.members.some(m => m.studentId === studentId)) {
+        throw new Error(MESSAGES.GROUP.MEMBER_ALREADY_EXISTS);
     }
 
-    //  Lấy thông tin sinh viên cần mời (gồm ngành học)
+    // Lấy thông tin sinh viên cần mời (gồm ngành học)
     const student = await prisma.student.findUnique({
-      where: { id: studentId },
-      include: { user: true, major: true },
+        where: { id: studentId },
+        include: { user: true, major: true },
     });
 
     if (!student) throw new Error("Không tìm thấy sinh viên.");
 
-    //  Kiểm tra điều kiện của sinh viên trong học kỳ
+    // Kiểm tra điều kiện của sinh viên trong học kỳ
     const studentSemester = await prisma.semesterStudent.findFirst({
-      where: { studentId: studentId, semesterId: group.semesterId }
+        where: { studentId: studentId, semesterId: group.semesterId }
     });
 
     if (!studentSemester || studentSemester.qualificationStatus !== "qualified") {
-      throw new Error("Sinh viên không đủ điều kiện tham gia nhóm.");
+        throw new Error("Sinh viên không đủ điều kiện tham gia nhóm.");
     }
 
     //  Kiểm tra ngành học nếu nhóm đã có thành viên
     if (group.members.length > 0) {
-      const groupMajor = group.members[0].student.major?.id; // ✅ Sử dụng Optional Chaining
-      if (student.major?.id !== groupMajor) {
-        throw new Error(`Sinh viên thuộc ngành khác (${student.major?.name}), không thể tham gia nhóm.`);
-      }
+        const groupMajor = group.members[0]?.student?.major?.id; // Optional chaining để tránh lỗi
+        if (student.major?.id && groupMajor && student.major.id !== groupMajor) {
+            throw new Error(`Sinh viên thuộc ngành khác (${student.major?.name}), không thể tham gia nhóm.`);
+        }
     }
-    //  Kiểm tra nếu đã có lời mời trước đó
+
+    // Kiểm tra nếu đã có lời mời trước đó
     const existingInvitation = await prisma.groupInvitation.findFirst({
-      where: { groupId, studentId, status: "PENDING" },
+        where: { groupId, studentId }
     });
 
-    if (existingInvitation) throw new Error(MESSAGES.GROUP.INVITATION_EXISTS);
-
-    //  Tạo lời mời mới
-    const invitation = await prisma.groupInvitation.create({
-      data: { groupId, studentId, status: "PENDING" },
-    });
+    if (existingInvitation) {
+        if (existingInvitation.status === "PENDING") {
+            throw new Error(MESSAGES.GROUP.INVITATION_EXISTS);
+        }
+        // Cập nhật lời mời nếu trước đó đã bị từ chối/hết hạn
+        await prisma.groupInvitation.update({
+            where: { id: existingInvitation.id },
+            data: { status: "PENDING", sentAt: new Date() }
+        });
+    } else {
+        // Tạo lời mời mới
+        await prisma.groupInvitation.create({
+            data: { groupId, studentId, status: "PENDING", sentAt: new Date() }
+        });
+    }
 
     //  Gửi email mời sinh viên
     if (student?.user?.email) {
-      const invitationLink = `http://160.187.241.152:6969/api/groups/accept-invitation/${invitation.id}`;
+        const invitationLink = `http://160.187.241.152:6969/api/groups/accept-invitation/${groupId}`;
 
-      const emailContent = `
-        <p>Xin chào ${student.user.fullName || student.user.username},</p>
-        <p>Bạn đã được mời tham gia nhóm ${group.groupCode}. Click vào đường link bên dưới để chấp nhận lời mời:</p>
-        <a href="${invitationLink}">Chấp nhận lời mời</a>
+        const emailContent = `
+            <p>Xin chào ${student.user.fullName || student.user.username},</p>
+            <p>Bạn đã được mời tham gia nhóm ${group.groupCode}. Click vào đường link bên dưới để chấp nhận lời mời:</p>
+            <a href="${invitationLink}">Chấp nhận lời mời</a>
         `;
 
-      try {
-        await sendEmail({
-          to: student.user.email,
-          subject: "Lời mời tham gia nhóm",
-          html: emailContent,
-        });
+        try {
+            await sendEmail({
+                to: student.user.email,
+                subject: "Lời mời tham gia nhóm",
+                html: emailContent,
+            });
 
-        await prisma.emailLog.create({
-          data: {
-            userId: invitedById,
-            recipientEmail: student.user.email,
-            subject: "Lời mời tham gia nhóm",
-            content: emailContent,
-            status: "SENT",
-            errorAt: new Date(),
-          },
-        });
+            await prisma.emailLog.create({
+                data: {
+                    userId: invitedById,
+                    recipientEmail: student.user.email,
+                    subject: "Lời mời tham gia nhóm",
+                    content: emailContent,
+                    status: "SENT",
+                    errorAt: new Date(),
+                },
+            });
 
-      } catch (error) {
-        await prisma.emailLog.create({
-          data: {
-            userId: invitedById,
-            recipientEmail: student.user.email,
-            subject: "Lời mời tham gia nhóm",
-            content: emailContent,
-            status: "FAILED",
-            errorMessage: (error as Error).message,
-            errorAt: new Date(),
-          },
-        });
+        } catch (error) {
+            await prisma.emailLog.create({
+                data: {
+                    userId: invitedById,
+                    recipientEmail: student.user.email,
+                    subject: "Lời mời tham gia nhóm",
+                    content: emailContent,
+                    status: "FAILED",
+                    errorMessage: (error as Error).message,
+                    errorAt: new Date(),
+                },
+            });
 
-        console.error(` Lỗi gửi email cho ${student.user.email}:`, error);
-      }
+            console.error(` Lỗi gửi email cho ${student.user.email}:`, error);
+        }
     }
 
-    return { message: MESSAGES.GROUP.INVITATION_SENT, data: invitation };
-  }
+    return { message: MESSAGES.GROUP.INVITATION_SENT };
+}
+
 
   async respondToInvitation(invitationId: string, userId: string, response: "ACCEPTED" | "REJECTED") {
     // Lấy studentId từ userId
