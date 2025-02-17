@@ -147,54 +147,54 @@ async function createStudents() {
 
   const studentsData = [
     // AI students 
-    { studentCode: 'SE161446', email: 'vanthinh1234vt@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end', status:'not qualified' },
-    { studentCode: 'SE161447', email: 'lethu1234lt@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end',status:'not qualified' },
-    { studentCode: 'SE161448', email: 'quynhtran1234tq@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end',status:'qualified' },
-    { studentCode: 'SE161449', email: 'quangnguyen1234nq@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Back-end' ,status:'qualified'},
-    { studentCode: 'SE161450', email: 'nguyenanhthu7479@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Full-stack',status:'qualified' },
+    { studentCode: 'SE161446', email: 'vanthinh1234vt@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end', status:'not qualified' },
+    { studentCode: 'SE161447', email: 'lethu1234lt@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end',status:'not qualified' },
+    { studentCode: 'SE161448', email: 'quynhtran1234tq@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE161449', email: 'quangnguyen1234nq@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Back-end' ,status:'qualified'},
+    { studentCode: 'SE161450', email: 'nguyenanhthu7479@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Full-stack',status:'qualified' },
     
-    { studentCode: 'SE174878', email: 'Ninhanh63628@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Full-end',status:'qualified' },
-    { studentCode: 'SE187857', email: 'Lananh21682@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end',status:'qualified' },
-    { studentCode: 'SE155545', email: 'Hoaianh7162@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE174878', email: 'Ninhanh63628@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Full-end',status:'qualified' },
+    { studentCode: 'SE187857', email: 'Lananh21682@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE155545', email: 'Hoaianh7162@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Front-end',status:'qualified' },
 
 
 
-    { studentCode: 'SE161455', email: 'phamanhloc8685@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Front-end',status:'qualified' },
-    { studentCode: 'SE161454', email: 'nguyenanhdung8605798@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end' ,status:'qualified'},
-    { studentCode: 'SE161453', email: 'am4589653@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end' ,status:'qualified'},
-    { studentCode: 'SE161452', email: 'anhm19791@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Back-end',status:'qualified' },
-    { studentCode: 'SE161451', email: 'kim884784@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Full-stack',status:'qualified' },
+    { studentCode: 'SE161455', email: 'phamanhloc8685@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE161454', email: 'nguyenanhdung8605798@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end' ,status:'qualified'},
+    { studentCode: 'SE161453', email: 'am4589653@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end' ,status:'qualified'},
+    { studentCode: 'SE161452', email: 'anhm19791@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE161451', email: 'kim884784@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Full-stack',status:'qualified' },
 
-    { studentCode: 'SE161456', email: 'toan2255661@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Front-end' ,status:'qualified'},
-    { studentCode: 'SE161457', email: 'tranduc1234htd@gmail.com', profession: 'AI', specialty: 'CN1', programming_language: 'Front-end' ,status:'qualified'},
-    { studentCode: 'SE161458', email: 'thanhhuyen2009nth@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Front-end' ,status:'qualified'},
-    { studentCode: 'SE161459', email: 'huytruong123nht@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Front-end',status:'qualified' },
-    { studentCode: 'SE161460', email: 'quynhtrang098nqt@gmail.com', profession: 'AI', specialty: 'CN2', programming_language: 'Full-stack' ,status:'qualified'},
+    { studentCode: 'SE161456', email: 'toan2255661@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Front-end' ,status:'qualified'},
+    { studentCode: 'SE161457', email: 'tranduc1234htd@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Front-end' ,status:'qualified'},
+    { studentCode: 'SE161458', email: 'thanhhuyen2009nth@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Front-end' ,status:'qualified'},
+    { studentCode: 'SE161459', email: 'huytruong123nht@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE161460', email: 'quynhtrang098nqt@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Full-stack' ,status:'qualified'},
 
     // SE students 
-    { studentCode: 'SE161480', email: 'macchien978@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Front-end' ,status:'qualified'},
-    { studentCode: 'SE161481', email: 'thihan11k@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
-    { studentCode: 'SE161482', email: 'quanphan1kk@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Full-stack' ,status:'qualified'},
-    { studentCode: 'SE161483', email: 'thanhhuyen2009nth@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
-    { studentCode: 'SE161484', email: 'tranduc1234htd@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE161480', email: 'macchien978@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end' ,status:'qualified'},
+    { studentCode: 'SE161481', email: 'thihan11k@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE161482', email: 'quanphan1kk@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Full-stack' ,status:'qualified'},
+    { studentCode: 'SE161483', email: 'thanhhuyen2009nth@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE161484', email: 'tranduc1234htd@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
 
-    { studentCode: 'SE161471', email: 'huytruong123nht@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Full-stack',status:'not qualified' },
-    { studentCode: 'SE161472', email: 'manhhung1999nmh@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Full-stack' ,status:'qualified'},
-    { studentCode: 'SE161473', email: 'hvu311333@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Full-stack' ,status:'qualified'},
-    { studentCode: 'SE161474', email: 'vuh041247@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Back-end',status:'qualified' },
-    { studentCode: 'SE161475', email: 'hoangvuu225577@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Back-end' ,status:'qualified'},
+    { studentCode: 'SE161471', email: 'huytruong123nht@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Full-stack',status:'not qualified' },
+    { studentCode: 'SE161472', email: 'manhhung1999nmh@gmail.com', profession: 'SSoftware Engineering', specialty: '.Net', programming_language: 'Full-stack' ,status:'qualified'},
+    { studentCode: 'SE161473', email: 'hvu311333@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Full-stack' ,status:'qualified'},
+    { studentCode: 'SE161474', email: 'vuh041247@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE161475', email: 'hoangvuu225577@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Back-end' ,status:'qualified'},
 
-    { studentCode: 'SE161476', email: 'heolylom194@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Front-end' ,status:'not qualified'},
-    { studentCode: 'SE161479', email: 'zonduyen25@gmail.com', profession: 'SE', specialty: '.Net', programming_language: 'Front-end' ,status:'qualified'},
-    { studentCode: 'SE161491', email: 'hoamgnguyen8@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
-    { studentCode: 'SE161492', email: 'hoangnpse161446@fpt.edu.vn', profession: 'SE', specialty: '.Net', programming_language: 'Front-end',status:'qualified' },
-    { studentCode: 'SE161493', email: 'huuduy.nguyen169@gmail.com', profession: 'SE', specialty: 'Nodejs', programming_language: 'Back-end' ,status:'qualified'},
-    { studentCode: 'SE161494', email: 'huybqse161436@fpt.edu.vn', profession: 'SE', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE161476', email: 'heolylom194@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end' ,status:'not qualified'},
+    { studentCode: 'SE161479', email: 'zonduyen25@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Front-end' ,status:'qualified'},
+    { studentCode: 'SE161491', email: 'hoamgnguyen8@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE161492', email: 'hoangnpse161446@fpt.edu.vn', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE161493', email: 'huuduy.nguyen169@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end' ,status:'qualified'},
+    { studentCode: 'SE161494', email: 'huybqse161436@fpt.edu.vn', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
 
 
-    { studentCode: 'SE175757', email: 'Anhthu183966@fpt.edu.vn', profession: 'SE', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
-    { studentCode: 'SE185877', email: 'Ngocchi417@fpt.edu.vn', profession: 'SE', specialty: 'Nodejs', programming_language: 'Full-end',status:'qualified' },
-    { studentCode: 'SE157575', email: 'trandat456777@fpt.edu.vn', profession: 'SE', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE175757', email: 'Anhthu183966@fpt.edu.vn', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE185877', email: 'Ngocchi417@fpt.edu.vn', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Full-end',status:'qualified' },
+    { studentCode: 'SE157575', email: 'trandat456777@fpt.edu.vn', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
 
 
 
