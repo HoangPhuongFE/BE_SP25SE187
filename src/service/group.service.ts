@@ -182,4 +182,33 @@ export class GroupService {
     });
 }
 
+async forceAcceptInvitation(invitationId: string, studentId: string, p0: string) {
+  // Kiểm tra lời mời có tồn tại không
+  const invitation = await prisma.groupInvitation.findUnique({
+      where: { id: invitationId },
+      include: { group: true },
+  });
+
+  if (!invitation) throw new Error("Lời mời không tồn tại.");
+  if (invitation.status !== "PENDING") throw new Error("Lời mời đã được xử lý hoặc hết hạn.");
+
+  // Chấp nhận lời mời mà không cần xác thực `userId`
+  await prisma.groupInvitation.update({
+      where: { id: invitationId },
+      data: { status: "ACCEPTED", respondedAt: new Date() },
+  });
+
+  // Thêm sinh viên vào nhóm
+  await prisma.groupMember.create({
+      data: {
+          groupId: invitation.groupId,
+          studentId: invitation.studentId,
+          role: "MEMBER",
+          status: "ACTIVE",
+      },
+  });
+
+  return { message: "Lời mời đã được chấp nhận." };
+}
+
 }

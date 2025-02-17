@@ -60,7 +60,7 @@ export class GroupController {
         }
 
         // Lấy `studentId` từ lời mời thay vì `req.user`
-        const result = await groupService.respondToInvitation(invitationId, invitation.studentId, "ACCEPTED");
+        const result = await groupService.forceAcceptInvitation(invitationId, invitation.studentId, "ACCEPTED");
 
         return res.send(`
             <h2>Lời mời đã được chấp nhận!</h2>
