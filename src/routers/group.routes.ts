@@ -16,13 +16,13 @@ router.post("/invite", authenticateToken, checkLeaderOrMentor, groupController.i
 router.post("/respond", authenticateToken, checkRole(["student"]), groupController.respondToInvitation.bind(groupController));
 
 // Lấy thông tin nhóm: Yêu cầu người dùng phải thuộc nhóm
-router.get("/info/:groupId", authenticateToken, checkGroupMembership, groupController.getGroupInfo.bind(groupController));
+router.get("/info/:groupId", authenticateToken, checkGroupMembership,checkRole(["admin","graduation_thesis_manager","mentor"]), groupController.getGroupInfo.bind(groupController));
 
 // Link chấp nhận lời mời (không yêu cầu token)
 router.get("/accept-invitation/:invitationId", groupController.acceptInvitation.bind(groupController));
 
 // Lấy danh sách nhóm theo kỳ học (Admin, leader, mentor, sinh viên, ...)
-router.get("/semester/:semesterId", authenticateToken, checkRole(["leader", "admin", "mentor", "student", "graduation_thesis_manager", "academic_officer"]), groupController.getGroupsBySemester.bind(groupController));
+router.get("/semester", authenticateToken, checkRole(["leader", "admin", "mentor", "student", "graduation_thesis_manager", "academic_officer"]), groupController.getGroupsBySemester.bind(groupController));
 
 // Lấy danh sách sinh viên chưa có nhóm (Admin, graduation_thesis_manager, academic_officer, v.v.)
 router.get("/students-without-group/:semesterId", authenticateToken, checkRole(["leader", "admin", "mentor", "student", "graduation_thesis_manager", "academic_officer"]), groupController.getStudentsWithoutGroup.bind(groupController));

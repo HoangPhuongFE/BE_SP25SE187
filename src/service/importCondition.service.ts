@@ -1,6 +1,5 @@
 import ExcelJS from 'exceljs';
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -23,9 +22,9 @@ export class ImportConditionService {
 
     const errors: string[] = [];
     const dataToImport: { studentCode: string; email: string; status: string; rowIndex: number }[] = [];
-    const seenStudents = new Set(); // Kiểm tra trùng MSSV + Email trong file Excel
+    const seenStudents = new Set();
 
-    // Kiểm tra toàn bộ dữ liệu trước khi import
+    // Đọc dữ liệu từ file Excel
     worksheet.eachRow({ includeEmpty: false }, (row, rowIndex) => {
       if (rowIndex < 2) return; // Bỏ qua dòng tiêu đề
 
@@ -33,10 +32,8 @@ export class ImportConditionService {
       const email = extractCellValue(row.getCell(2).value);
       const status = extractCellValue(row.getCell(3).value);
 
-      // Kiểm tra nếu dòng trống thì bỏ qua
-      if (!studentCode && !email && !status) {
-        return;
-      }
+      // Bỏ qua dòng trống
+      if (!studentCode && !email && !status) return;
 
       if (!studentCode || !email || !status) {
         errors.push(`Dòng ${rowIndex}: Thiếu MSSV, email hoặc trạng thái.`);
@@ -53,7 +50,7 @@ export class ImportConditionService {
       dataToImport.push({ studentCode, email, status, rowIndex });
     });
 
-    // Nếu có lỗi, dừng lại và trả về danh sách lỗi ngay lập tức
+    // Nếu có lỗi, dừng import
     if (errors.length > 0) {
       return {
         status: 'error',
@@ -62,7 +59,7 @@ export class ImportConditionService {
       };
     }
 
-    // Tiến hành import nếu không có lỗi
+    // Tiến hành import
     let successCount = 0;
     try {
       for (const { studentCode, email, status, rowIndex } of dataToImport) {
@@ -71,19 +68,20 @@ export class ImportConditionService {
         });
 
         if (!student) {
-          throw new Error(`Dòng ${rowIndex}: Không tìm thấy sinh viên với MSSV ${studentCode}`);
+          errors.push(`Dòng ${rowIndex}: Không tìm thấy sinh viên với MSSV ${studentCode}`);
+          continue;
         }
 
         const isEligible = status.toLowerCase() === 'qualified';
 
-        // Kiểm tra xem sinh viên đã có trong học kỳ này chưa
-        const existingRecord = await prisma.semesterStudent.findUnique({
+        // Kiểm tra xem sinh viên đã có trong học kỳ chưa
+        const existingSemesterStudent = await prisma.semesterStudent.findUnique({
           where: {
             semesterId_studentId: { semesterId, studentId: student.id },
           },
         });
 
-        if (!existingRecord) {
+        if (!existingSemesterStudent) {
           // Nếu chưa có, tạo mới
           await prisma.semesterStudent.create({
             data: {
@@ -95,13 +93,13 @@ export class ImportConditionService {
             },
           });
         } else {
-          // Nếu đã có, chỉ cập nhật nếu cần
+          // Nếu đã có, cập nhật thông tin
           await prisma.semesterStudent.update({
             where: {
               semesterId_studentId: { semesterId, studentId: student.id },
             },
             data: {
-              status: existingRecord.status === 'active' ? 'active' : status.toLowerCase(),
+              status: existingSemesterStudent.status === 'active' ? 'active' : status.toLowerCase(),
               isEligible,
               qualificationStatus: isEligible ? 'qualified' : 'not qualified',
             },
@@ -119,6 +117,7 @@ export class ImportConditionService {
       };
     }
 
+    // Lưu log import vào database
     const fileName = filePath.split('/').pop();
     await prisma.importLog.create({
       data: {
