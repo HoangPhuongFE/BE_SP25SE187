@@ -63,7 +63,7 @@ export const checkLeaderOrMentor = async (req: AuthenticatedRequest, res: Respon
       return res.status(400).json({ message: "Thiếu groupId trong request." });
     }
 
-    //  Kiểm tra nếu user là admin
+    // Lấy thông tin user và role
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { roles: { select: { role: true } } },
@@ -73,12 +73,15 @@ export const checkLeaderOrMentor = async (req: AuthenticatedRequest, res: Respon
       return res.status(401).json({ message: "Người dùng không tồn tại." });
     }
 
-    const isAdmin = user.roles.some((r) => r.role.name === "admin");
-    if (isAdmin) {
-      return next(); 
+    // Lấy danh sách role của user
+    const userRoles = user.roles.map(r => r.role.name);
+
+    // Nếu user có quyền admin, cho phép truy cập ngay
+    if (userRoles.includes("admin")) {
+      return next();
     }
 
-    //  Kiểm tra nếu user là sinh viên (leader hoặc mentor)
+    // Kiểm tra nếu user là sinh viên (leader hoặc mentor)
     const student = await prisma.student.findUnique({
       where: { userId },
       select: { id: true }
@@ -93,7 +96,7 @@ export const checkLeaderOrMentor = async (req: AuthenticatedRequest, res: Respon
       where: {
         groupId,
         studentId: student.id,
-        role: { in: ["leader", "mentor"] } 
+        role: { in: ["leader", "mentor"] }
       }
     });
 
@@ -108,18 +111,27 @@ export const checkLeaderOrMentor = async (req: AuthenticatedRequest, res: Respon
 };
 
 
+
 export const checkAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      include: { roles: true }
+      include: { roles: { include: { role: true } } }  
     });
 
-    const isAdmin = user?.roles.some(role => role.roleId.toLowerCase() === "admin");
-    if (!isAdmin) {
+    if (!user) {
+      return res.status(403).json({ message: "Người dùng không tồn tại." });
+    }
+
+    // Lấy danh sách roles của user
+    const userRoles = user.roles.map(r => r.role.name.toLowerCase());
+
+    // Kiểm tra nếu user có role "admin"
+    if (!userRoles.includes("admin")) {
       return res.status(403).json({ message: "Bạn không có quyền truy cập chức năng này." });
     }
+
     next();
   } catch (error) {
     res.status(500).json({ message: (error as Error).message });

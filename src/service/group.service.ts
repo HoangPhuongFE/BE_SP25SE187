@@ -3,6 +3,7 @@ import { sendEmail } from "../utils/email";
 import { MESSAGES } from "../constants/message";
 import { ConfigService } from "./config.service";
 import { AuthenticatedRequest } from "~/middleware/user.middleware";
+import { Response } from "express";
 const prisma = new PrismaClient();
 
 export class GroupService {
@@ -464,71 +465,83 @@ async  randomizeGroups(semesterId: string, createdBy: string) {
 }
 
 
-async changeLeader(groupId: string, newLeaderId: string, userId: string) {
+async changeLeader(req: AuthenticatedRequest, res: Response) {
   try {
-      if (!groupId || !newLeaderId) {
-        throw new Error("Thiếu groupId hoặc newLeaderId.");
+    const { groupId, newLeaderId } = req.body;
+
+    if (!groupId || !newLeaderId) {
+      return res.status(400).json({ message: "Thiếu groupId hoặc newLeaderId." });
+    }
+
+    // Kiểm tra quyền của user (Admin hoặc Leader nhóm)
+    const user = await prisma.user.findUnique({
+      where: { id: req.user!.userId },
+      include: { roles: { select: { role: true } } },
+    });
+
+    if (!user) {
+      return res.status(403).json({ message: "Người dùng không tồn tại." });
+    }
+
+    const userRoles = user.roles.map(r => r.role.name);
+    const isAdmin = userRoles.includes("admin");
+
+    // Kiểm tra nhóm có tồn tại không
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      include: { members: true },
+    });
+
+    if (!group) {
+      return res.status(404).json({ message: "Nhóm không tồn tại." });
+    }
+
+    // Kiểm tra nếu user là leader hiện tại
+    const currentLeader = group.members.find(m => m.role === "leader");
+    const isLeader = currentLeader?.studentId === req.user!.userId;
+
+    if (!isLeader && !isAdmin) {
+      return res.status(403).json({ message: "Bạn không có quyền đổi leader." });
+    }
+
+    // Kiểm tra leader mới có thuộc nhóm không
+    const newLeader = group.members.find(m => m.studentId === newLeaderId);
+    if (!newLeader) {
+      return res.status(400).json({ message: "Sinh viên này không thuộc nhóm." });
+    }
+
+    // Cập nhật leader mới
+    await prisma.groupMember.updateMany({
+      where: { groupId },
+      data: { role: "member" } // Đổi tất cả về "member" trước
+    });
+
+    await prisma.groupMember.update({
+      where: { id: newLeader.id },
+      data: { role: "leader" }
+    });
+
+    // Ghi log thay đổi leader
+    await prisma.systemLog.create({
+      data: {
+        userId: req.user!.userId,
+        action: "CHANGE_LEADER",
+        entityType: "GROUP",
+        entityId: groupId,
+        oldValues: { oldLeaderId: currentLeader?.studentId },
+        newValues: { newLeaderId },
+        createdAt: new Date(),
+        ipAddress: req.ip || "Unknown",
       }
+    });
 
-      //  Kiểm tra nhóm có tồn tại không
-      const group = await prisma.group.findUnique({
-          where: { id: groupId },
-          include: { members: true }
-      });
-
-      if (!group) throw new Error("Nhóm không tồn tại.");
-
-      //  Kiểm tra quyền của user (Admin hoặc Leader nhóm)
-      const user = await prisma.user.findUnique({
-          where: { id: userId },
-          include: { roles: true }
-      });
-
-      const isAdmin = user?.roles.some(role => role.roleId.toLowerCase() === "admin");
-      const currentLeader = group.members.find(m => m.role === "leader");
-      const isLeader = currentLeader?.studentId === userId;
-
-      if (!isLeader && !isAdmin) {
-          throw new Error("Bạn không có quyền đổi leader.");
-      }
-
-      //  Kiểm tra leader mới có thuộc nhóm không
-      const newLeader = group.members.find(m => m.studentId === newLeaderId);
-      if (!newLeader) {
-          throw new Error("Sinh viên này không thuộc nhóm.");
-      }
-
-      //  Cập nhật leader mới
-      await prisma.groupMember.updateMany({
-          where: { groupId },
-          data: { role: "member" } // Đổi tất cả về "member" trước
-      });
-
-      await prisma.groupMember.update({
-          where: { id: newLeader.id },
-          data: { role: "leader" }
-      });
-
-      //  Ghi log thay đổi leader
-      await prisma.systemLog.create({
-          data: {
-              userId,
-              action: "CHANGE_LEADER",
-              entityType: "GROUP",
-              entityId: groupId,
-              oldValues: { oldLeaderId: currentLeader?.studentId },
-              newValues: { newLeaderId },
-              createdAt: new Date(),
-              ipAddress: "Unknown", 
-          }
-      });
-
-      return { message: "Leader đã được thay đổi thành công." };
+    return res.status(200).json({ message: "Leader đã được thay đổi thành công." });
 
   } catch (error) {
-      return { error: (error as Error).message };
+    return res.status(500).json({ message: (error as Error).message });
   }
 }
+
 
 
 async addMentorToGroup(groupId: string, mentorId: string, userId: string) {
