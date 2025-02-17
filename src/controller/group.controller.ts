@@ -125,6 +125,16 @@ async changeLeader(req: AuthenticatedRequest, res: Response) {
   }
 }
 
+async addMentorToGroup(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { groupId, mentorId } = req.body;
+    const result = await groupService.addMentorToGroup(groupId, mentorId, req.user!.userId);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({ message: (error as Error).message });
+  }
+}
+
 
 }
 
