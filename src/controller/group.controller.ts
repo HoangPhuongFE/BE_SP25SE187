@@ -25,6 +25,7 @@ export class GroupController {
     }
   }
 
+
   async respondToInvitation(req: AuthenticatedRequest, res: Response) {
     try {
       const { invitationId, response } = req.body;
@@ -51,24 +52,66 @@ export class GroupController {
 
   async acceptInvitation(req: Request, res: Response) {
     try {
-        const { invitationId } = req.params;
+      const { invitationId } = req.params;
 
-        // Tìm lời mời theo ID
-        const invitation = await groupService.getInvitationById(invitationId);
-        if (!invitation) {
-            return res.status(404).send(`<h2>Lỗi:</h2> Lời mời không tồn tại hoặc đã hết hạn.`);
-        }
+      // Tìm lời mời theo ID
+      const invitation = await groupService.getInvitationById(invitationId);
+      if (!invitation) {
+        return res.status(404).send(`<h2>hihi</h2> Lời mời không tồn tại hoặc đã hết hạn.`);
+      }
 
-        // Lấy `studentId` từ lời mời thay vì `req.user`
-        const result = await groupService.forceAcceptInvitation(invitationId, invitation.studentId, "ACCEPTED");
+      // Lấy `studentId` từ lời mời thay vì `req.user`
+      const result = await groupService.forceAcceptInvitation(invitationId, invitation.studentId, "ACCEPTED");
 
-        return res.send(`
+      return res.send(`
             <h2>Lời mời đã được chấp nhận!</h2>
             <p>Bạn đã tham gia nhóm thành công. Hãy đăng nhập vào hệ thống để xem chi tiết nhóm.</p>
         `);
     } catch (error) {
-        return res.status(400).send(`<h2>Lỗi:</h2> ${(error as Error).message}`);
+      return res.status(400).send(`<h2>Lỗi:</h2> ${(error as Error).message}`);
     }
+  }
+
+
+  async getGroupsBySemester(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { semesterId } = req.query;
+      if (!semesterId) return res.status(400).json({ message: "semesterId là bắt buộc." });
+
+      // Gọi service để lấy danh sách nhóm
+      const groups = await groupService.getGroupsBySemester(semesterId as string, req.user!.userId);
+
+      return res.json({ groups });
+    } catch (error) {
+      return res.status(500).json({ message: (error as Error).message });
+    }
+  }
+
+  async getStudentsWithoutGroup(req: AuthenticatedRequest, res: Response) {
+    try {
+        const { semesterId } = req.params;
+
+        if (!semesterId) {
+            return res.status(400).json({ message: "Thiếu thông tin học kỳ" });
+        }
+
+        const students = await groupService.getStudentsWithoutGroup(semesterId);
+
+        return res.json({ message: "Danh sách sinh viên chưa có nhóm", data: students });
+    } catch (error) {
+        return res.status(500).json({ message: (error as Error).message });
+    }
+}
+
+
+async randomizeGroups(req: AuthenticatedRequest, res: Response) {
+  try {
+      const { semesterId } = req.body;
+      const result = await groupService.randomizeGroups(semesterId, req.user!.userId);
+      res.status(201).json(result);
+  } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+  }
 }
 
 

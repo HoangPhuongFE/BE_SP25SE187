@@ -316,6 +316,8 @@ model Group {
   updatedAt        DateTime          @updatedAt @map("updated_at")
   mentor1Id        String?           @map("mentor_1_id")
   mentor2Id        String?           @map("mentor_2_id")
+  topicEnglish      String?
+  topicTiengViet    String?
   semester         Semester          @relation(fields: [semesterId], references: [id])
   creator          User              @relation("GroupCreator", fields: [createdBy], references: [id])
   invitations      GroupInvitation[]

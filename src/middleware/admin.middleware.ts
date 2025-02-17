@@ -12,7 +12,7 @@ export const validateCreateUser = [
   body('username').isLength({ min: 3 }),
   body('fullName').optional().isString(),
   body('roles').isArray().notEmpty(),
-  
+
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -39,18 +39,24 @@ export const validateCreateUser = [
     }
 
     // Kiểm tra roles hợp lệ
-    const validRoles = ['student', 
-      'lecturer', 
+    const validRoles = [
+      'student',
+      'lecturer',
       'graduation_thesis_manager',
-       'dean', 'examination_officer',
-        'mentor', 
-        'chairman', 
-        'secretary',
-        'leader',
-        'reviewer'
-      ];
+      'dean',
+      'academic_officer',
+      'examination_officer',
+
+      'mentor',
+      'chairman',
+      'secretary',
+      'leader',
+      'reviewer'
+    ];
+
+
     const isValidRoles = roles.every((role: string) => validRoles.includes(role));
-    
+
     if (!isValidRoles) {
       return res.status(400).json({ message: ADMIN_MESSAGE.INVALID_ROLE });
     }
