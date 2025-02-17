@@ -5,6 +5,7 @@ import { MESSAGES } from "../constants/message";
 const prisma = new PrismaClient();
 
 export class GroupService {
+  [x: string]: any;
  
   async createGroup(leaderId: string, semesterId: string) {
     const leader = await prisma.student.findUnique({ where: { userId: leaderId } });
@@ -174,4 +175,11 @@ export class GroupService {
     });
     return group;
   }
+
+  async getInvitationById(invitationId: string) {
+    return await prisma.groupInvitation.findUnique({
+        where: { id: invitationId },
+    });
+}
+
 }

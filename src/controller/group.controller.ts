@@ -53,8 +53,14 @@ export class GroupController {
     try {
         const { invitationId } = req.params;
 
-        // Tự động ACCEPT lời mời khi click vào link
-        const result = await groupService.respondToInvitation(invitationId, req.user!.userId, "ACCEPTED");
+        // Tìm lời mời theo ID
+        const invitation = await groupService.getInvitationById(invitationId);
+        if (!invitation) {
+            return res.status(404).send(`<h2>Lỗi:</h2> Lời mời không tồn tại hoặc đã hết hạn.`);
+        }
+
+        // Lấy `studentId` từ lời mời thay vì `req.user`
+        const result = await groupService.respondToInvitation(invitationId, invitation.studentId, "ACCEPTED");
 
         return res.send(`
             <h2>Lời mời đã được chấp nhận!</h2>
@@ -64,6 +70,7 @@ export class GroupController {
         return res.status(400).send(`<h2>Lỗi:</h2> ${(error as Error).message}`);
     }
 }
+
 
 }
 
