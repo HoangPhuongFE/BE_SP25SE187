@@ -49,6 +49,21 @@ export class GroupController {
     }
   }
 
+  async acceptInvitation(req: Request, res: Response) {
+    try {
+        const { invitationId } = req.params;
+
+        // Tự động ACCEPT lời mời khi click vào link
+        const result = await groupService.respondToInvitation(invitationId, req.user!.userId, "ACCEPTED");
+
+        return res.send(`
+            <h2>Lời mời đã được chấp nhận!</h2>
+            <p>Bạn đã tham gia nhóm thành công. Hãy đăng nhập vào hệ thống để xem chi tiết nhóm.</p>
+        `);
+    } catch (error) {
+        return res.status(400).send(`<h2>Lỗi:</h2> ${(error as Error).message}`);
+    }
+}
 
 }
 

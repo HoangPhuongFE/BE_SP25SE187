@@ -13,4 +13,7 @@ router.post("/respond", authenticateToken, groupController.respondToInvitation.b
 
 router.get("/:groupId", authenticateToken, groupController.getGroupInfo.bind(groupController));
 
+router.get("/accept-invitation/:invitationId", groupController.acceptInvitation.bind(groupController));
+
+
 export default router;

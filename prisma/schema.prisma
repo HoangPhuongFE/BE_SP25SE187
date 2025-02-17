@@ -331,10 +331,10 @@ model GroupInvitation {
   id          String    @id @default(uuid())
   groupId     String    @map("group_id")
   studentId   String    @map("student_id")
-  status      String    @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  status      String    @default("PENDING") // PENDING, ACCEPTED, REJECTED,EXPIRED
   sentAt      DateTime  @default(now())
   respondedAt DateTime?
-
+  expiresAt  DateTime? 
   group   Group   @relation(fields: [groupId], references: [id])
   student Student @relation(fields: [studentId], references: [id])
 }

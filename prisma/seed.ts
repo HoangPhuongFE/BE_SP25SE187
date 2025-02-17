@@ -227,10 +227,20 @@ async function createStudents() {
         profession: student.profession,
         specialty: student.specialty,
         programming_language: student.programming_language,
+        roles: {
+          create: {
+            roleId: (await (async () => {
+              const role = await prisma.role.findFirst({ where: { name: 'student' } });
+              if (!role) throw new Error('Role "student" not found');
+              return role.id;
+            })()),
+            isActive: true,
+          },
+        },
       },
     });
   
-    // 🔥 Kiểm tra nếu sinh viên đã tồn tại
+    // Kiểm tra nếu sinh viên đã tồn tại
     let studentEntry = await prisma.student.findUnique({
       where: { userId: user.id },
     });
