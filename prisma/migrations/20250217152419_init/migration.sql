@@ -276,6 +276,8 @@ CREATE TABLE `groups` (
     `updated_at` DATETIME(3) NOT NULL,
     `mentor_1_id` VARCHAR(191) NULL,
     `mentor_2_id` VARCHAR(191) NULL,
+    `topicEnglish` VARCHAR(191) NULL,
+    `topicTiengViet` VARCHAR(191) NULL,
 
     UNIQUE INDEX `groups_group_code_key`(`group_code`),
     PRIMARY KEY (`id`)
