@@ -31,7 +31,7 @@ router.get("/students-without-group/:semesterId", authenticateToken, checkRole([
 router.post("/randomize", authenticateToken, checkRole(["admin", "graduation_thesis_manager"]), groupController.randomizeGroups.bind(groupController));
 
 // Đổi leader: Yêu cầu authenticateToken, có thể thêm checkLeaderOrMentor nếu cần
-router.post("/change-leader", authenticateToken, groupController.changeLeader.bind(groupController));
+router.post("/change-leader", authenticateToken,checkLeaderOrMentor, groupController.changeLeader.bind(groupController));
 
 
 // Thêm mentor: Chỉ admin có thể thêm mentor vào nhóm

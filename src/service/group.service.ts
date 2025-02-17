@@ -87,7 +87,7 @@ export class GroupService {
 
 
   async inviteMember(groupId: string, studentId: string, invitedById: string) {
-    // 🔍 Kiểm tra nhóm có tồn tại không
+    //  Kiểm tra nhóm có tồn tại không
     const group = await prisma.group.findUnique({
       where: { id: groupId },
       include: {
