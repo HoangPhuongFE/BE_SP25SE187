@@ -465,7 +465,7 @@ async  randomizeGroups(semesterId: string, createdBy: string) {
 }
 
 
-async changeLeader(req: AuthenticatedRequest, res: Response, userId: string) {
+async changeLeader(req: AuthenticatedRequest, res: Response, userId?: string) {
   try {
     const { groupId, newLeaderId } = req.body;
 
@@ -553,28 +553,31 @@ async addMentorToGroup(groupId: string, mentorId: string, userId: string) {
 
   if (!group) throw new Error("Nhóm không tồn tại.");
 
-  //  Lấy số lượng mentor tối đa từ cấu hình hệ thống
+  // Lấy số lượng mentor tối đa từ cấu hình hệ thống
   const maxMentorsAllowed = await ConfigService.getMaxMentorsPerGroup();
 
-  //  Kiểm tra số mentor hiện tại
+  // Kiểm tra số mentor hiện tại
   const currentMentors = group.members.filter(m => m.role === "mentor").length;
   if (currentMentors >= maxMentorsAllowed) {
       throw new Error(`Nhóm đã đạt số lượng mentor tối đa (${maxMentorsAllowed}).`);
   }
 
-  // Kiểm tra mentor có tồn tại không
+  // Kiểm tra mentor có tồn tại trong bảng user không
   const mentor = await prisma.user.findUnique({ where: { id: mentorId } });
-  if (!mentor) throw new Error("Không tìm thấy mentor.");
 
-  //  Kiểm tra mentor có thuộc nhóm chưa
+  if (!mentor) {
+      throw new Error("Mentor không tồn tại.");
+  }
+
+  // Kiểm tra mentor có thuộc nhóm chưa (dựa trên userId thay vì studentId)
   const isAlreadyMentor = group.members.some(m => m.studentId === mentorId);
   if (isAlreadyMentor) throw new Error("Mentor đã có trong nhóm.");
 
-  // Thêm mentor vào nhóm
+  // Thêm mentor vào nhóm bằng userId
   await prisma.groupMember.create({
       data: {
           groupId,
-          studentId: mentorId,
+          studentId: mentorId,  
           role: "mentor",
           status: "ACTIVE",
           joinedAt: new Date()
@@ -583,6 +586,7 @@ async addMentorToGroup(groupId: string, mentorId: string, userId: string) {
 
   return { message: "Mentor đã được thêm vào nhóm thành công." };
 }
+
 
 async removeMemberFromGroup(groupId: string, memberId: string, userId: string) {
   // Kiểm tra xem user có phải Leader/Mentor/Admin không

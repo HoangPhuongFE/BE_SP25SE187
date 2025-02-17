@@ -57,10 +57,14 @@ export const checkGroupMembership = async (req: AuthenticatedRequest, res: Respo
 export const checkLeaderOrMentor = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const groupId = req.body.groupId || req.params.groupId; 
-    const userId = req.user!.userId;
+    const userId = req.user?.userId;
 
     if (!groupId) {
       return res.status(400).json({ message: "Thiếu groupId trong request." });
+    }
+
+    if (!userId) {
+      return res.status(401).json({ message: "Bạn chưa đăng nhập." });
     }
 
     // Lấy thông tin user và role
@@ -70,11 +74,11 @@ export const checkLeaderOrMentor = async (req: AuthenticatedRequest, res: Respon
     });
 
     if (!user) {
-      return res.status(401).json({ message: "Người dùng không tồn tại." });
+      return res.status(403).json({ message: "Người dùng không tồn tại." });
     }
 
     // Lấy danh sách role của user
-    const userRoles = user.roles.map(r => r.role.name);
+    const userRoles = user.roles.map(r => r.role.name.toLowerCase());
 
     // Nếu user có quyền admin, cho phép truy cập ngay
     if (userRoles.includes("admin")) {
@@ -104,12 +108,11 @@ export const checkLeaderOrMentor = async (req: AuthenticatedRequest, res: Respon
       return res.status(403).json({ message: "Bạn không phải leader hoặc mentor của nhóm này." });
     }
 
-    next();
+    return next(); // ✅ Đảm bảo gọi `next()` đúng cách
   } catch (error) {
-    res.status(500).json({ message: (error as Error).message });
+    return res.status(500).json({ message: (error as Error).message });
   }
 };
-
 
 
 export const checkAdmin = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {

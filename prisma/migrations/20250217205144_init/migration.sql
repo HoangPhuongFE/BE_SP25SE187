@@ -332,7 +332,8 @@ CREATE TABLE `ai_verification_logs` (
 CREATE TABLE `group_members` (
     `id` VARCHAR(191) NOT NULL,
     `group_id` VARCHAR(191) NOT NULL,
-    `student_id` VARCHAR(191) NOT NULL,
+    `student_id` VARCHAR(191) NULL,
+    `user_id` VARCHAR(191) NULL,
     `role` VARCHAR(191) NOT NULL,
     `joined_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `leave_at` DATETIME(3) NULL,
@@ -621,7 +622,10 @@ ALTER TABLE `ai_verification_logs` ADD CONSTRAINT `ai_verification_logs_topic_id
 ALTER TABLE `group_members` ADD CONSTRAINT `group_members_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `group_members` ADD CONSTRAINT `group_members_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `Student`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `group_members` ADD CONSTRAINT `group_members_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `Student`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `group_members` ADD CONSTRAINT `group_members_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `system_logs` ADD CONSTRAINT `system_logs_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
