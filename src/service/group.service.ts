@@ -67,7 +67,7 @@ export class GroupService {
     });
 
     if (student?.user?.email) {
-        const invitationLink = `http://160.187.241.152:6969/accept-invitation/${invitation.id}`;
+        const invitationLink = `http://160.187.241.152:6969/api/groups/accept-invitation/${invitation.id}`;
 
         const emailContent = `
         <p>Xin chào ${student.user.fullName || student.user.username},</p>
