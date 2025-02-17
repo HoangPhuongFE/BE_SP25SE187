@@ -118,6 +118,11 @@ async randomizeGroups(req: AuthenticatedRequest, res: Response) {
 async changeLeader(req: AuthenticatedRequest, res: Response) {
   try {
       const { groupId, newLeaderId } = req.body;
+
+      if (!groupId || !newLeaderId) {
+        return res.status(400).json({ message: "Thiếu groupId hoặc newLeaderId trong request." });
+      }
+
       const result = await groupService.changeLeader(groupId, newLeaderId, req.user!.userId);
       res.status(200).json(result);
   } catch (error) {
@@ -125,10 +130,30 @@ async changeLeader(req: AuthenticatedRequest, res: Response) {
   }
 }
 
+
 async addMentorToGroup(req: AuthenticatedRequest, res: Response) {
   try {
     const { groupId, mentorId } = req.body;
     const result = await groupService.addMentorToGroup(groupId, mentorId, req.user!.userId);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({ message: (error as Error).message });
+  }
+}
+async removeMemberFromGroup(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { groupId, memberId } = req.body;
+    const result = await groupService.removeMemberFromGroup(groupId, memberId, req.user!.userId);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+async deleteGroup(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { groupId } = req.params;
+    const result = await groupService.deleteGroup(groupId, req.user!.userId);
     res.status(200).json(result);
   } catch (error) {
     res.status(400).json({ message: (error as Error).message });
