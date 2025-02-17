@@ -465,7 +465,7 @@ async  randomizeGroups(semesterId: string, createdBy: string) {
 }
 
 
-async changeLeader(req: AuthenticatedRequest, res: Response) {
+async changeLeader(req: AuthenticatedRequest, res: Response, userId: string) {
   try {
     const { groupId, newLeaderId } = req.body;
 
@@ -600,6 +600,23 @@ async removeMemberFromGroup(groupId: string, memberId: string, userId: string) {
     throw new Error("Thành viên không tồn tại trong nhóm.");
   }
 
+  // Kiểm tra nếu member là leader, không cho phép tự xoá chính mình
+  if (member.role === "LEADER" && member.studentId === userId) {
+    throw new Error("Leader không thể tự xoá chính mình khỏi nhóm.");
+  }
+
+  // Nếu member là MENTOR, chỉ admin mới có quyền xoá
+  if (member.role === "MENTOR") {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { roles: { select: { role: true } } },
+    });
+
+    if (!user?.roles.some(r => r.role.name === "admin")) {
+      throw new Error("Chỉ admin mới có quyền xoá mentor khỏi nhóm.");
+    }
+  }
+
   // Xoá thành viên khỏi nhóm
   await prisma.groupMember.delete({
     where: { id: member.id },
@@ -607,6 +624,7 @@ async removeMemberFromGroup(groupId: string, memberId: string, userId: string) {
 
   return { message: "Xoá thành viên khỏi nhóm thành công." };
 }
+
 async deleteGroup(groupId: string, userId: string) {
   // Kiểm tra xem user có quyền không
   const isAuthorized = await this.checkLeaderMentorOrAdmin(groupId, userId);
@@ -614,10 +632,25 @@ async deleteGroup(groupId: string, userId: string) {
     throw new Error("Bạn không có quyền xoá nhóm.");
   }
 
-  // Kiểm tra nhóm tồn tại không
-  const group = await prisma.group.findUnique({ where: { id: groupId } });
+  // Kiểm tra nhóm có tồn tại không
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    include: { members: true }, // Kiểm tra có thành viên không
+  });
+
   if (!group) {
     throw new Error("Nhóm không tồn tại.");
+  }
+
+  // Nếu không phải admin, không cho xoá nhóm có thành viên
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { roles: { select: { role: true } } },
+  });
+
+  const isAdmin = user?.roles.some(r => r.role.name === "admin");
+  if (!isAdmin && group.members.length > 0) {
+    throw new Error("Nhóm vẫn còn thành viên, chỉ admin mới có thể xoá nhóm có thành viên.");
   }
 
   // Xoá tất cả thành viên trong nhóm
@@ -628,6 +661,7 @@ async deleteGroup(groupId: string, userId: string) {
 
   return { message: "Nhóm đã được xoá thành công." };
 }
+
 
 
 }
