@@ -4,6 +4,8 @@ import { MESSAGES } from "../constants/message";
 import { ConfigService } from "./config.service";
 import { AuthenticatedRequest } from "~/middleware/user.middleware";
 import { Response } from "express";
+//import { GroupService } from "../service/group.service";
+
 const prisma = new PrismaClient();
 
 export class GroupService {
@@ -373,107 +375,45 @@ export class GroupService {
 
 
 
-  static async changeLeader(groupId: string, newLeaderId: string, userId: string) {
-    // Kiểm tra quyền
+  async changeLeader(groupId: string, newLeaderId: string, userId: string) {
     await this.checkLeaderOrMentor(userId, groupId);
-
-    // Kiểm tra nhóm
-    const group = await prisma.group.findUnique({
-      where: { id: groupId },
-      include: { members: true },
-    });
-
+    const group = await prisma.group.findUnique({ where: { id: groupId }, include: { members: true } });
     if (!group) throw new Error("Nhóm không tồn tại.");
-
-    // Kiểm tra leader hiện tại
-    const currentLeader = group.members.find(m => m.role === "leader");
-    if (!currentLeader) throw new Error("Nhóm chưa có leader.");
-
-    // Kiểm tra leader mới có trong nhóm không
+    
     const newLeader = group.members.find(m => m.studentId === newLeaderId);
     if (!newLeader) throw new Error("Sinh viên này không thuộc nhóm.");
-
-    // Cập nhật leader mới
-    await prisma.groupMember.updateMany({
-      where: { groupId },
-      data: { role: "member" },
-    });
-
-    await prisma.groupMember.update({
-      where: { id: newLeader.id },
-      data: { role: "leader" },
-    });
+    
+    await prisma.groupMember.updateMany({ where: { groupId }, data: { role: "member" } });
+    await prisma.groupMember.update({ where: { id: newLeader.id }, data: { role: "leader" } });
 
     return { message: "Leader đã được thay đổi thành công." };
   }
 
-  static async addMentorToGroup(groupId: string, mentorId: string, userId: string) {
-    // 1️ Kiểm tra quyền Admin
+  async addMentorToGroup(groupId: string, mentorId: string, userId: string) {
     await this.checkAdmin(userId);
-
-    // 2️ Kiểm tra mentor có tồn tại không (Lấy từ bảng `user`)
-    const mentor = await prisma.user.findUnique({
-      where: { id: mentorId },
-      include: { roles: { include: { role: true } } }
-    });
-
-    if (!mentor) throw new Error("Mentor không tồn tại.");
-
-    // 3️ Kiểm tra Mentor có role "mentor" không
-    const isMentor = mentor.roles.some(r => r.role.name === "mentor");
-    if (!isMentor) throw new Error("Người dùng này không phải Mentor.");
-
-    // 4️ Kiểm tra Mentor đã có trong nhóm chưa (Dùng `userId` thay vì `mentorId`)
-    const isAlreadyMentor = await prisma.groupMember.findFirst({
-      where: { groupId, userId: mentorId, role: "mentor" }
-    });
-
+    const mentor = await prisma.user.findUnique({ where: { id: mentorId }, include: { roles: { include: { role: true } } } });
+    if (!mentor || !mentor.roles.some(r => r.role.name === "mentor")) throw new Error("Mentor không hợp lệ.");
+    
+    const isAlreadyMentor = await prisma.groupMember.findFirst({ where: { groupId, userId: mentorId, role: "mentor" } });
     if (isAlreadyMentor) throw new Error("Mentor đã có trong nhóm.");
-
-    // 5️Thêm Mentor vào nhóm (Dùng `userId` thay vì `studentId`)
-    await prisma.groupMember.create({
-      data: {
-        groupId,
-        userId: mentorId,
-        role: "mentor",
-        status: "ACTIVE",
-        joinedAt: new Date(),
-      },
-    });
-
+    
+    await prisma.groupMember.create({ data: { groupId, userId: mentorId, role: "mentor", status: "ACTIVE", joinedAt: new Date() } });
     return { message: "Mentor đã được thêm vào nhóm thành công." };
   }
 
-  static async removeMemberFromGroup(groupId: string, memberId: string, userId: string) {
-    // 1️ Kiểm tra quyền Leader, Mentor hoặc Admin
+  async removeMemberFromGroup(groupId: string, memberId: string, userId: string) {
     await this.checkLeaderOrMentor(userId, groupId);
-
-    // 2️ Kiểm tra thành viên có tồn tại trong nhóm không (Lưu ý: `userId` dùng thay vì `studentId`)
-    const member = await prisma.groupMember.findFirst({
-      where: { groupId, userId: memberId },
-    });
-
+    const member = await prisma.groupMember.findFirst({ where: { groupId, userId: memberId } });
     if (!member) throw new Error("Thành viên không tồn tại trong nhóm.");
-
-    //  3️ Không cho phép leader tự xoá chính mình khỏi nhóm
-    if (member.role === "leader" && member.userId === userId) {
-      throw new Error("Leader không thể tự xoá chính mình khỏi nhóm.");
-    }
-
-    //  4️ Nếu là mentor, chỉ admin mới có quyền xoá
-    if (member.role === "mentor") {
-      const isAdmin = await this.checkAdmin(userId, false);
-      if (!isAdmin) throw new Error("Chỉ admin mới có quyền xoá mentor.");
-    }
-
-    //  5️Xoá thành viên khỏi nhóm
+    
+    if (member.role === "leader") throw new Error("Leader không thể tự xoá chính mình khỏi nhóm.");
     await prisma.groupMember.delete({ where: { id: member.id } });
 
     return { message: "Xoá thành viên khỏi nhóm thành công." };
   }
 
 
-  static async deleteGroup(groupId: string, userId: string) {
+  async deleteGroup(groupId: string, userId: string) {
     // Kiểm tra quyền
     await this.checkLeaderOrMentor(userId, groupId);
 
@@ -498,8 +438,7 @@ export class GroupService {
     return { message: "Nhóm đã được xoá thành công." };
   }
 
-  //  Kiểm tra quyền
-  static async checkAdmin(userId: string, throwError = true) {
+  async checkAdmin(userId: string, throwError = true) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { roles: { select: { role: true } } },
@@ -512,7 +451,7 @@ export class GroupService {
     return isAdmin;
   }
 
-  static async checkLeaderOrMentor(userId: string, groupId: string) {
+  async checkLeaderOrMentor(userId: string, groupId: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { roles: { select: { role: true } } },
@@ -523,7 +462,7 @@ export class GroupService {
     if (user.roles.some(r => r.role.name === "admin")) return true;
 
     const membership = await prisma.groupMember.findFirst({
-      where: { groupId, studentId: userId, role: { in: ["leader", "mentor"] } },
+      where: { groupId, userId: userId, role: { in: ["leader", "mentor"] } },
     });
 
     if (!membership) throw new Error("Bạn không có quyền thực hiện thao tác này.");

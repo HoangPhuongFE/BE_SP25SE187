@@ -99,8 +99,7 @@ export class GroupController {
 
   async changeLeader(req: Request, res: Response) {
     try {
-      const { groupId, newLeaderId } = req.body;
-      const result = await groupService.changeLeader(groupId, newLeaderId, req.user!.userId);
+      const result = await groupService.changeLeader(req.body.groupId, req.body.newLeaderId, req.user!.userId);
       res.status(200).json(result);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
@@ -109,19 +108,16 @@ export class GroupController {
 
   async addMentorToGroup(req: Request, res: Response) {
     try {
-      const { groupId, mentorId } = req.body;
-      const userId = req.user!.userId;
-      const result = await GroupService.addMentorToGroup(groupId, mentorId, userId);
+      const result = await groupService.addMentorToGroup(req.body.groupId, req.body.mentorId, req.user!.userId);
       res.status(200).json(result);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
   }
-  
+
   async removeMemberFromGroup(req: Request, res: Response) {
     try {
-      const { groupId, memberId } = req.body;
-      const result = await groupService.removeMemberFromGroup(groupId, memberId, req.user!.userId);
+      const result = await groupService.removeMemberFromGroup(req.body.groupId, req.body.memberId, req.user!.userId);
       res.status(200).json(result);
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });

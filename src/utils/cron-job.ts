@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 // Chạy job mỗi 15 phút để cập nhật lời mời hết hạn
 schedule("*/15 * * * *", async () => {
-    console.log("🔄 Đang kiểm tra lời mời hết hạn...");
+    console.log(" Đang kiểm tra lời mời hết hạn...");
 
     await prisma.groupInvitation.updateMany({
         where: {
