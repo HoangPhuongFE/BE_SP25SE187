@@ -190,9 +190,9 @@ async function createStudents() {
     { studentCode: 'SE166947', email: 'huuduy.nguyen169@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end' ,status:'qualified'},
 
 
-    { studentCode: 'SE134697', email: 'Anhthu183966@fpt.edu.vn', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
-    { studentCode: 'SE194794', email: 'Ngocchi417@fpt.edu.vn', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Full-end',status:'qualified' },
-    { studentCode: 'SE194244', email: 'trandat456777@fpt.edu.vn', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE134697', email: 'Anhthu183966@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE194794', email: 'Ngocchi417@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Full-end',status:'qualified' },
+    { studentCode: 'SE194244', email: 'trandat456777@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
 
 
 
