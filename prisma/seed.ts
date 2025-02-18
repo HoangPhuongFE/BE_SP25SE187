@@ -140,12 +140,149 @@ async function createYearsAndSemesters() {
     console.log(`Created semester: ${semester.code} for year ${semester.yearId}`);
   }
 }
+async function createStudents() {
+
+  const semester = await prisma.semester.findFirst({ where: { code: 'SPRING2025' } });
+  if (!semester) throw new Error('SPRING2025 semester not found'); 
+
+  const studentsData = [
+    // AI students 
+    { studentCode: 'SE168888', email: 'vanthinh1234vt@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end', status:'not qualified' },
+    { studentCode: 'SE168822', email: 'lethu1234lt@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end',status:'not qualified' },
+    { studentCode: 'SE162288', email: 'quynhtran1234tq@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE162828', email: 'quangnguyen1234nq@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Back-end' ,status:'qualified'},
+    { studentCode: 'SE168228', email: 'nguyenanhthu7479@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Full-stack',status:'qualified' },
+    
+    { studentCode: 'SE174878', email: 'Ninhanh63628@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Full-end',status:'qualified' },
+    { studentCode: 'SE187857', email: 'Lananh21682@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE155545', email: 'Hoaianh7162@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Front-end',status:'qualified' },
+
+
+
+    { studentCode: 'SE14598', email: 'phamanhloc8685@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE141454', email: 'nguyenanhdung8605798@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end' ,status:'qualified'},
+    { studentCode: 'SE141453', email: 'am4589653@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end' ,status:'qualified'},
+    { studentCode: 'SE141452', email: 'anhm19791@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE141451', email: 'kim884784@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Full-stack',status:'qualified' },
+
+    { studentCode: 'SE165555', email: 'toan2255661@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Front-end' ,status:'qualified'},
+    { studentCode: 'SE165556', email: 'tranduc1234htd@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Front-end' ,status:'qualified'},
+    { studentCode: 'SE165458', email: 'thanhhuyen2009nth@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Front-end' ,status:'qualified'},
+    { studentCode: 'SE165459', email: 'huytruong123nht@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE165960', email: 'quynhtrang098nqt@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN2', programming_language: 'Full-stack' ,status:'qualified'},
+
+    // SE students 
+    { studentCode: 'SE185695', email: 'macchien978@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end' ,status:'qualified'},
+    { studentCode: 'SE189654', email: 'thihan11k@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE189648', email: 'quanphan1kk@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Full-stack' ,status:'qualified'},
+    { studentCode: 'SE184223', email: 'thanhhuyen2009nth@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE189344', email: 'tranduc1234htd@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
+
+    { studentCode: 'SE156497', email: 'huytruong123nht@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Full-stack',status:'not qualified' },
+    { studentCode: 'SE156975', email: 'manhhung1999nmh@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Full-stack' ,status:'qualified'},
+    { studentCode: 'SE154973', email: 'hvu311333@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Full-stack' ,status:'qualified'},
+    { studentCode: 'SE146499', email: 'vuh041247@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE144957', email: 'hoangvuu225577@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Back-end' ,status:'qualified'},
+
+    { studentCode: 'SE166797', email: 'heolylom194@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end' ,status:'not qualified'},
+    { studentCode: 'SE166749', email: 'zonduyen25@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Front-end' ,status:'qualified'},
+    { studentCode: 'SE166666', email: 'hoamgnguyen8@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE166978', email: 'hoangnpse161446@fpt.edu.vn', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE166947', email: 'huuduy.nguyen169@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end' ,status:'qualified'},
+    { studentCode: 'SE169764', email: 'huybqse161436@fpt.edu.vn', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
+
+
+    { studentCode: 'SE134697', email: 'Anhthu183966@fpt.edu.vn', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE194794', email: 'Ngocchi417@fpt.edu.vn', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Full-end',status:'qualified' },
+    { studentCode: 'SE194244', email: 'trandat456777@fpt.edu.vn', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
+
+
+
+
+  ];
+
+  for (const student of studentsData) {
+    const major = await prisma.major.upsert({
+      where: { name: student.profession },
+      update: {},
+      create: { name: student.profession },
+    });
+  
+    const specialization = await prisma.specialization.upsert({
+      where: { id: `${student.specialty}_${major.id}` },
+      update: {},
+      create: { name: student.specialty, majorId: major.id },
+    });
+  
+    const hashedPassword = await hashPassword('a123456');
+  
+    const user = await prisma.user.upsert({
+      where: { email: student.email },
+      update: {},
+      create: {
+        email: student.email,
+        username: student.email.split('@')[0],
+        passwordHash: hashedPassword,
+        student_code: student.studentCode,
+        profession: student.profession,
+        specialty: student.specialty,
+        programming_language: student.programming_language,
+        roles: {
+          create: {
+            roleId: (await (async () => {
+              const role = await prisma.role.findFirst({ where: { name: 'student' } });
+              if (!role) throw new Error('Role "student" not found');
+              return role.id;
+            })()),
+            isActive: true,
+          },
+        },
+      },
+    });
+  
+    // Kiểm tra nếu sinh viên đã tồn tại
+    let studentEntry = await prisma.student.findUnique({
+      where: { userId: user.id },
+    });
+  
+    if (!studentEntry) {
+      studentEntry = await prisma.student.create({
+        data: {
+          userId: user.id,
+          studentCode: student.studentCode,
+          majorId: major.id,
+          specializationId: specialization.id,
+          importSource: 'seed',
+        },
+      });
+    }
+  
+    const isEligible = student.status === 'qualified';
+  
+    await prisma.semesterStudent.upsert({
+      where: { semesterId_studentId: { semesterId: semester.id, studentId: studentEntry.id } },
+      update: {},
+      create: {
+        semesterId: semester.id,
+        studentId: studentEntry.id,
+        isEligible,
+        qualificationStatus: isEligible ? 'qualified' : 'not qualified',
+      },
+    });
+  }
+  
+
+
+
+
+}
 
 async function main() {
   console.log('Seeding database...');
   await createRoles();
   await createDefaultUsers();
   await createYearsAndSemesters();
+  await createStudents();
   console.log('Seeding completed successfully.');
 }
 

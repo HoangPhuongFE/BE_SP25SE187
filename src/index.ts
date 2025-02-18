@@ -1,4 +1,6 @@
 import express from 'express';
+import { startCronJobs } from "./utils/cron-job";
+
 import cors from 'cors';
 import { config } from 'dotenv';
 import userRouter from './routers/user.router';
@@ -14,6 +16,8 @@ import topicRouter from './routers/topic.router';
 import meetingRouter from './routers/meeting.router';
 import emailRouter from './routers/sendBulkEmail.router';
 import emailTemplateRouter from "./routers/emailTemplate.router";
+import configRouter from "./routers/config.routes";
+
 //
 config();
 const app = express();
@@ -44,8 +48,13 @@ app.use('/api/topics', topicRouter);
 app.use('/api/meetings', meetingRouter);
 app.use('/api', emailRouter);
 app.use("/api/email-templates", emailTemplateRouter);
+app.use("/api/config", configRouter);
+
+
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  startCronJobs();
 });

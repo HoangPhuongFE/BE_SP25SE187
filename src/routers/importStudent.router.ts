@@ -10,7 +10,7 @@ const importStudentController = new ImportStudentController();
 router.post(
   '/import-students',
   authenticateToken,
-  checkRole(['admin', 'head_of_department']),
+  checkRole(['admin', 'academic_officer']),
   upload.single('file'),
   importStudentController.importStudentHandler.bind(importStudentController)
 );

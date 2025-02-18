@@ -276,6 +276,8 @@ CREATE TABLE `groups` (
     `updated_at` DATETIME(3) NOT NULL,
     `mentor_1_id` VARCHAR(191) NULL,
     `mentor_2_id` VARCHAR(191) NULL,
+    `topicEnglish` VARCHAR(191) NULL,
+    `topicTiengViet` VARCHAR(191) NULL,
 
     UNIQUE INDEX `groups_group_code_key`(`group_code`),
     PRIMARY KEY (`id`)
@@ -289,6 +291,7 @@ CREATE TABLE `GroupInvitation` (
     `status` VARCHAR(191) NOT NULL DEFAULT 'PENDING',
     `sentAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `respondedAt` DATETIME(3) NULL,
+    `expiresAt` DATETIME(3) NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

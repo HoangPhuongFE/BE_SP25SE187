@@ -316,6 +316,8 @@ model Group {
   updatedAt        DateTime          @updatedAt @map("updated_at")
   mentor1Id        String?           @map("mentor_1_id")
   mentor2Id        String?           @map("mentor_2_id")
+  topicEnglish      String?
+  topicTiengViet    String?
   semester         Semester          @relation(fields: [semesterId], references: [id])
   creator          User              @relation("GroupCreator", fields: [createdBy], references: [id])
   invitations      GroupInvitation[]
@@ -331,10 +333,10 @@ model GroupInvitation {
   id          String    @id @default(uuid())
   groupId     String    @map("group_id")
   studentId   String    @map("student_id")
-  status      String    @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  status      String    @default("PENDING") // PENDING, ACCEPTED, REJECTED,EXPIRED
   sentAt      DateTime  @default(now())
   respondedAt DateTime?
-
+  expiresAt  DateTime? 
   group   Group   @relation(fields: [groupId], references: [id])
   student Student @relation(fields: [studentId], references: [id])
 }
