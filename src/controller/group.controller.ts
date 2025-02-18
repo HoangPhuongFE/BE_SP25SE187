@@ -24,7 +24,6 @@ export class GroupController {
       return res.status(400).json({ message: (error as Error).message });
     }
   }
-
   async respondToInvitation(req: AuthenticatedRequest, res: Response) {
     try {
       const { invitationId, response } = req.body;
