@@ -15,7 +15,7 @@ router.post("/invite", authenticateToken, checkRole(["leader", "mentor"]), group
 router.post("/respond", authenticateToken, checkRole(["student"]), groupController.respondToInvitation.bind(groupController));
 
 //  Lấy thông tin nhóm: Chỉ Admin, Manager hoặc Mentor có thể xem
-router.get("/info/:groupId", authenticateToken, checkRole(["admin", "graduation_thesis_manager", "mentor"]), groupController.getGroupInfo.bind(groupController));
+router.get("/info/:groupId", authenticateToken, checkRole(["admin","graduation_thesis_manager","mentor","examination_officer"]), groupController.getGroupInfo.bind(groupController));
 
 //  Link chấp nhận lời mời (không yêu cầu token)
 router.get("/accept-invitation/:invitationId", groupController.acceptInvitation.bind(groupController));
@@ -27,7 +27,7 @@ router.get("/semester", authenticateToken, checkRole(["leader", "admin", "mentor
 router.get("/students-without-group/:semesterId", authenticateToken, checkRole(["admin", "graduation_thesis_manager", "academic_officer"]), groupController.getStudentsWithoutGroup.bind(groupController));
 
 //  Random nhóm: Chỉ Admin hoặc Manager có quyền
-router.post("/randomize", authenticateToken, checkRole(["admin", "graduation_thesis_manager"]), groupController.randomizeGroups.bind(groupController));
+router.post("/randomize", authenticateToken, checkRole(["admin", "graduation_thesis_manager","academic_officer"]), groupController.randomizeGroups.bind(groupController));
 
 //  Đổi Leader: Chỉ Leader hoặc Admin có quyền
 router.post("/change-leader", authenticateToken, checkRole(["leader", "admin"]), groupController.changeLeader.bind(groupController));
