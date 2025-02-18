@@ -36,56 +36,59 @@ export class EmailService {
     if (!template) throw new Error(`Không tìm thấy template cho loại email: ${emailType}`);
 
     const emails = students.map((record) => {
-      const email = record.user?.email || "";
-      const studentName = record.user?.fullName || "Sinh viên";
-      const studentCode = record.studentCode || "N/A";
-      const major = record.major?.name || "N/A";
-      const specialization = record.specialization?.name || "N/A";
-      const semester = "Học kỳ hiện tại";
+        const email = record.user?.email || "";
+        const studentName = record.user?.fullName || "Sinh viên";
+        const studentCode = record.studentCode || "N/A";
+        const major = record.major?.name || "N/A";
+        const specialization = record.specialization?.name || "N/A";
+        const semester = "Học kỳ hiện tại";
 
-      let body = template.body;
-      body = body.replace(/{{studentName}}/g, studentName)
-                 .replace(/{{studentCode}}/g, studentCode)
-                 .replace(/{{major}}/g, major)
-                 .replace(/{{specialization}}/g, specialization)
-                 .replace(/{{semester}}/g, semester);
+        let body = template.body;
+        body = body.replace(/{{studentName}}/g, studentName)
+                   .replace(/{{studentCode}}/g, studentCode)
+                   .replace(/{{major}}/g, major)
+                   .replace(/{{specialization}}/g, specialization)
+                   .replace(/{{semester}}/g, semester);
 
-      return { to: email, subject: template.subject, html: body };
+        return { to: email, subject: template.subject, html: body };
     });
 
     let successCount = 0;
     const errors: string[] = [];
 
     for (const emailData of emails) {
-      try {
-        await sendEmail(emailData);
-        successCount++;
-        await prisma.emailLog.create({
-          data: {
-            userId,
-            recipientEmail: emailData.to,
-            subject: emailData.subject,
-            content: emailData.html,
-            status: "success",
-            errorAt: new Date(),
-          },
-        });
-      } catch (error) {
-        errors.push(`Gửi email thất bại cho: ${emailData.to}`);
-        await prisma.emailLog.create({
-          data: {
-            userId,
-            recipientEmail: emailData.to,
-            subject: emailData.subject,
-            content: emailData.html,
-            status: "failed",
-            errorMessage: (error as Error).message,
-            errorAt: new Date(),
-          },
-        });
-      }
+        try {
+            await sendEmail(emailData);
+            successCount++;
+            await prisma.emailLog.create({
+                data: {
+                    userId,
+                    recipientEmail: emailData.to,
+                    subject: emailData.subject,
+                    content: emailData.html,
+                    status: "success",
+                    errorAt: new Date(),
+                },
+            });
+        } catch (error) {
+            const errorMsg = (error as Error).message.substring(0, 1000); 
+            errors.push(`Gửi email thất bại cho: ${emailData.to}`);
+
+            await prisma.emailLog.create({
+                data: {
+                    userId,
+                    recipientEmail: emailData.to,
+                    subject: emailData.subject,
+                    content: emailData.html,
+                    status: "failed",
+                    errorMessage: errorMsg,  
+                    errorAt: new Date(),
+                },
+            });
+        }
     }
 
     return { totalEmails: emails.length, successCount, failedCount: errors.length, errors };
-  }
+}
+
 }

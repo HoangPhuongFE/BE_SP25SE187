@@ -35,7 +35,7 @@ model User {
   documents              Document[]
   notificationRecipients NotificationRecipient[]
   createdEmailTemplates EmailTemplate[] @relation("UserEmailTemplates") 
-
+  groupMemberships       GroupMember[] @relation("UserGroupMembers")
  @@map("users")
 }
 
@@ -325,6 +325,7 @@ model Group {
   progressReports  ProgressReport[]
   defenseSchedules DefenseSchedule[]
   decisions        Decision[]
+  isLocked  Boolean  @default(false)
 
   @@map("groups")
 }
@@ -376,7 +377,8 @@ model AIVerificationLog {
 model GroupMember {
   id          String    @id @default(uuid())
   groupId     String    @map("group_id")
-  studentId   String    @map("student_id")
+  studentId   String?   @map("student_id")
+  userId      String?   @map("user_id") 
   role        String
   joinedAt    DateTime  @default(now()) @map("joined_at")
   leaveAt     DateTime? @map("leave_at")
@@ -384,7 +386,8 @@ model GroupMember {
   isActive    Boolean   @default(true) @map("is_active")
   status      String
   group       Group     @relation(fields: [groupId], references: [id])
-  student     Student   @relation(fields: [studentId], references: [id])
+  student     Student?  @relation(fields: [studentId], references: [id])
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade, name: "UserGroupMembers") 
 
   @@map("group_members")
 }
@@ -429,7 +432,7 @@ model EmailLog {
   subject        String
   content        String   @db.Text
   status         String
-  errorMessage   String?  @map("error_message")
+  errorMessage   String?  @map("error_message")  @db.Text
   errorAt        DateTime @map("error_at")
   user           User     @relation(fields: [userId], references: [id])
 

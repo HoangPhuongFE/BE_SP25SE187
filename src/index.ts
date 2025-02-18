@@ -1,5 +1,6 @@
 import express from 'express';
 import { startCronJobs } from "./utils/cron-job";
+import morgan from 'morgan';
 
 import cors from 'cors';
 import { config } from 'dotenv';
@@ -31,7 +32,7 @@ app.use(
     credentials: true,
   })
 );
-
+app.use(morgan('dev'));  
 app.use(express.json());
 
 // Routes
@@ -58,3 +59,5 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   startCronJobs();
 });
+
+

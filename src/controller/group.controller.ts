@@ -5,14 +5,13 @@ import { AuthenticatedRequest } from "../middleware/user.middleware";
 const groupService = new GroupService();
 
 export class GroupController {
-    [x: string]: any;
   async createGroup(req: AuthenticatedRequest, res: Response) {
     try {
       const { semesterId } = req.body;
       const result = await groupService.createGroup(req.user!.userId, semesterId);
-      res.status(201).json(result);
+      return res.status(201).json(result);
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      return res.status(500).json({ message: (error as Error).message });
     }
   }
 
@@ -20,27 +19,28 @@ export class GroupController {
     try {
       const { groupId, studentId } = req.body;
       const result = await groupService.inviteMember(groupId, studentId, req.user!.userId);
-      res.status(200).json(result);
+      return res.status(200).json(result);
     } catch (error) {
-      res.status(400).json({ message: (error as Error).message });
+      return res.status(400).json({ message: (error as Error).message });
     }
   }
-
-
   async respondToInvitation(req: AuthenticatedRequest, res: Response) {
     try {
       const { invitationId, response } = req.body;
-      const result = await groupService.respondToInvitation(invitationId, req.user!.userId, response);
-      res.status(200).json(result);
+      const result = await groupService.respondToInvitation(
+        invitationId,
+        req.user!.userId,
+        response
+      );
+      return res.status(200).json(result);
     } catch (error) {
-      res.status(400).json({ message: (error as Error).message });
+      return res.status(400).json({ message: (error as Error).message });
     }
   }
 
   async getGroupInfo(req: AuthenticatedRequest, res: Response) {
     try {
       const { groupId } = req.params;
-      // Gọi service để lấy thông tin nhóm
       const groupData = await groupService.getGroupInfo(groupId);
       if (!groupData) {
         return res.status(404).json({ message: "Không tìm thấy nhóm" });
@@ -51,37 +51,40 @@ export class GroupController {
     }
   }
 
+  // Link chấp nhận lời mời (không cần token)
   async acceptInvitation(req: Request, res: Response) {
     try {
       const { invitationId } = req.params;
-
-      // Tìm lời mời theo ID
       const invitation = await groupService.getInvitationById(invitationId);
       if (!invitation) {
-        return res.status(404).send(`<h2>hihi</h2> Lời mời không tồn tại hoặc đã hết hạn.`);
+        return res
+          .status(404)
+          .send(`<h2>hihi</h2> Lời mời không tồn tại hoặc đã hết hạn.`);
       }
 
-      // Lấy `studentId` từ lời mời thay vì `req.user`
-      const result = await groupService.forceAcceptInvitation(invitationId, invitation.studentId, "ACCEPTED");
-
-      return res.send(`
-            <h2>Lời mời đã được chấp nhận!</h2>
-            <p>Bạn đã tham gia nhóm thành công. Hãy đăng nhập vào hệ thống để xem chi tiết nhóm.</p>
-        `);
+      const result = await groupService.forceAcceptInvitation(
+        invitationId,
+        invitation.studentId,
+        "ACCEPTED"
+      );
+      return res.send(
+        `<h2>Lời mời đã được chấp nhận!</h2><p>Bạn đã tham gia nhóm thành công.</p>`
+      );
     } catch (error) {
       return res.status(400).send(`<h2>Lỗi:</h2> ${(error as Error).message}`);
     }
   }
 
-
   async getGroupsBySemester(req: AuthenticatedRequest, res: Response) {
     try {
       const { semesterId } = req.query;
-      if (!semesterId) return res.status(400).json({ message: "semesterId là bắt buộc." });
-
-      // Gọi service để lấy danh sách nhóm
-      const groups = await groupService.getGroupsBySemester(semesterId as string, req.user!.userId);
-
+      if (!semesterId) {
+        return res.status(400).json({ message: "semesterId là bắt buộc." });
+      }
+      const groups = await groupService.getGroupsBySemester(
+        semesterId as string,
+        req.user!.userId
+      );
       return res.json({ groups });
     } catch (error) {
       return res.status(500).json({ message: (error as Error).message });
@@ -90,51 +93,165 @@ export class GroupController {
 
   async getStudentsWithoutGroup(req: AuthenticatedRequest, res: Response) {
     try {
-        const { semesterId } = req.params;
-
-        if (!semesterId) {
-            return res.status(400).json({ message: "Thiếu thông tin học kỳ" });
-        }
-
-        const students = await groupService.getStudentsWithoutGroup(semesterId);
-
-        return res.json({ message: "Danh sách sinh viên chưa có nhóm", data: students });
+      const { semesterId } = req.params;
+      if (!semesterId) {
+        return res.status(400).json({ message: "Thiếu thông tin học kỳ" });
+      }
+      const students = await groupService.getStudentsWithoutGroup(semesterId);
+      return res.json({ data: students });
     } catch (error) {
-        return res.status(500).json({ message: (error as Error).message });
+      return res.status(500).json({ message: (error as Error).message });
     }
-}
+  }
 
-
-async randomizeGroups(req: AuthenticatedRequest, res: Response) {
-  try {
+  async randomizeGroups(req: AuthenticatedRequest, res: Response) {
+    try {
       const { semesterId } = req.body;
-      const result = await groupService.randomizeGroups(semesterId, req.user!.userId);
-      res.status(201).json(result);
+      const result = await groupService.randomizeGroups(
+        semesterId,
+        req.user!.userId
+      );
+      return res.status(201).json(result);
+    } catch (error) {
+      return res.status(500).json({ message: (error as Error).message });
+    }
+  }
+
+  // Đổi Leader
+  async changeLeader(req: Request, res: Response) {
+    try {
+      const result = await groupService.changeLeader(
+        req.body.groupId,
+        req.body.newLeaderId,
+        req.user!.userId
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(500).json({ message: (error as Error).message });
+    }
+  }
+
+  // Thêm Mentor
+  async addMentorToGroup(req: Request, res: Response) {
+    try {
+      const result = await groupService.addMentorToGroup(
+        req.body.groupId,
+        req.body.mentorId,
+        req.user!.userId
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(500).json({ message: (error as Error).message });
+    }
+  }
+
+  // Xóa thành viên
+  async removeMemberFromGroup(req: Request, res: Response) {
+    try {
+      const result = await groupService.removeMemberFromGroup(
+        req.body.groupId,
+        req.body.memberId,
+        req.user!.userId
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(500).json({ message: (error as Error).message });
+    }
+  }
+
+  // Xóa nhóm
+  async deleteGroup(req: Request, res: Response) {
+    try {
+      const { groupId } = req.params;
+      const result = await groupService.deleteGroup(groupId, req.user!.userId);
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(500).json({ message: (error as Error).message });
+    }
+  }
+
+
+// Rời nhóm
+async leaveGroup(req: AuthenticatedRequest, res: Response) {
+  try {
+    const result = await groupService.leaveGroup(req.body.groupId, req.user!.userId);
+    return res.status(200).json(result);
   } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+    return res.status(400).json({ message: (error as Error).message });
   }
 }
 
-async changeLeader(req: AuthenticatedRequest, res: Response) {
+// Hủy lời mời
+async cancelInvitation(req: AuthenticatedRequest, res: Response) {
   try {
-      const { groupId, newLeaderId } = req.body;
-      const result = await groupService.changeLeader(groupId, newLeaderId, req.user!.userId);
-      res.status(200).json(result);
-  } catch (error) {
-      res.status(400).json({ message: (error as Error).message });
-  }
-}
-
-async addMentorToGroup(req: AuthenticatedRequest, res: Response) {
-  try {
-    const { groupId, mentorId } = req.body;
-    const result = await groupService.addMentorToGroup(groupId, mentorId, req.user!.userId);
+    const result = await groupService.cancelInvitation(req.body.invitationId, req.user!.userId);
     res.status(200).json(result);
   } catch (error) {
     res.status(400).json({ message: (error as Error).message });
   }
 }
 
-
+// Lấy danh sách nhóm mà user đã tham gia
+async listGroupInvitations(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { groupId } = req.params;
+    const data = await groupService.listGroupInvitations(groupId, req.user!.userId);
+    res.json({ invitations: data });
+  } catch (error) {
+    res.status(400).json({ message: (error as Error).message });
+  }
 }
 
+// Khóa nhóm
+async lockGroup(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { groupId } = req.body; 
+    const result = await groupService.lockGroup(groupId, req.user!.userId);
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+// update nhóm
+async updateGroup(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { groupId, ...updateData } = req.body;
+    const result = await groupService.updateGroup(groupId, req.user!.userId, updateData);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+// update mentor
+async updateMentor(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { groupId, oldMentorId, newMentorId } = req.body;
+    const result = await groupService.updateMentor(
+      groupId,
+      oldMentorId,
+      newMentorId,
+      req.user!.userId
+    );
+    return res.status(200).json(result);
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+
+// Lấy danh sách thành viên trong nhóm
+async getGroupMembers(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { groupId } = req.params;
+    const data = await groupService.getGroupMembers(groupId, req.user!.userId);
+    res.json({ members: data });
+  } catch (error) {
+    res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+
+
+}
