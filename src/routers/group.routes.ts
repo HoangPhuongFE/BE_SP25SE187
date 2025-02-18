@@ -110,4 +110,66 @@ router.delete(
   groupController.deleteGroup.bind(groupController)
 );
 
+
+// 12) Rời nhóm
+router.post(
+  "/leave",
+  authenticateToken,
+  checkRole(["student","mentor","admin"]), 
+  groupController.leaveGroup.bind(groupController)
+);
+
+// 13) Hủy lời mời
+router.post(
+  "/cancel-invitation",
+  authenticateToken,
+  checkRole(["student","mentor","admin"]), 
+  groupController.cancelInvitation.bind(groupController)
+);
+
+// 14) Lấy danh sách nhóm mà user đã tham gia 
+router.get(
+  "/:groupId/invitations",
+  authenticateToken,
+  checkRole(["student","mentor","admin"]),
+  groupController.listGroupInvitations.bind(groupController)
+);
+
+
+// 15) Khóa nhóm
+router.post(
+  "/lock",
+  authenticateToken,
+  checkRole(["student","mentor","admin"]),
+  groupController.lockGroup.bind(groupController)
+);
+
+// 16) update nhóm
+router.patch(
+  "/update",
+  authenticateToken,
+  checkRole(["student","mentor","admin"]), 
+  groupController.updateGroup.bind(groupController)
+);
+
+
+// 17) Lấy danh sách thành viên trong nhóm
+router.get(
+  "/:groupId/members",
+  authenticateToken,
+  checkRole(["student","mentor","admin"]),
+  groupController.getGroupMembers.bind(groupController)
+);
+
+
+
+
+
+
+
+
+
+
+
+
 export default router;

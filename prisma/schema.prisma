@@ -325,6 +325,7 @@ model Group {
   progressReports  ProgressReport[]
   defenseSchedules DefenseSchedule[]
   decisions        Decision[]
+  isLocked  Boolean  @default(false)
 
   @@map("groups")
 }
