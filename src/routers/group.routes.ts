@@ -75,7 +75,7 @@ router.post(
 router.post(
   "/change-leader",
   authenticateToken,
-  checkRole(["leader", "admin"]),
+  checkRole(["leader", "admin","student"]),
   groupController.changeLeader.bind(groupController)
 );
 
@@ -83,8 +83,8 @@ router.post(
 router.post(
   "/add-mentor",
   authenticateToken,
-  checkRole(["admin"]),
-  groupController.addMentorToGroup.bind(groupController)
+  checkRole(["admin", "graduation_thesis_manager", "academic_officer"]),
+    groupController.addMentorToGroup.bind(groupController)
 );
 
 // 10) Xóa thành viên
@@ -101,6 +101,7 @@ router.delete(
   authenticateToken,
   checkRole([
     "leader",
+    "student",
     "mentor",
     "admin",
     "graduation_thesis_manager",
