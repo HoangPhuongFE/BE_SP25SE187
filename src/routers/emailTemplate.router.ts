@@ -19,5 +19,5 @@ router.put("/:id", authenticateToken, checkRole(["admin","academic_officer"]), e
 
 // Xóa template
 router.delete("/:id", authenticateToken, checkRole(["admin","academic_officer"]), emailTemplateController.deleteTemplate.bind(emailTemplateController));
-
+//
 export default router;
