@@ -77,13 +77,15 @@ export class GroupService {
         console.log("DEBUG: Người dùng là admin, có quyền mời thành viên.");
     } else {
         // 🔍 Kiểm tra nếu user là sinh viên
-        const student = await prisma.student.findUnique({
+        const student = await prisma.student.findFirst({
             where: { userId: invitedById }
         });
         if (!student) throw new Error(`Bạn không phải sinh viên, không có quyền mời. userId=${invitedById}`);
 
         console.log(`DEBUG: User là sinh viên với studentId=${student.id}`);
-
+        if (!student) {
+          throw new Error(`Không tìm thấy sinh viên với ID: ${studentId}`);
+      }
         // 🔍 Kiểm tra nếu user là leader trong nhóm
         const isLeader = await prisma.groupMember.findFirst({
             where: { groupId, studentId: student.id, role: "leader", isActive: true },
