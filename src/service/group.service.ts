@@ -90,7 +90,8 @@ export class GroupService {
     const studentSemester = await prisma.semesterStudent.findFirst({
       where: { studentId, semesterId: group.semesterId },
     });
-    if (!studentSemester || studentSemester.qualificationStatus !== "qualified") {
+    if (!studentSemester || studentSemester.qualificationStatus.trim().toLowerCase() !== "qualified") {
+
       throw new Error("Sinh viên không đủ điều kiện tham gia nhóm.");
     }
 

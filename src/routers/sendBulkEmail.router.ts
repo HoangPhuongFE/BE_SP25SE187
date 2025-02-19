@@ -7,7 +7,7 @@ const emailController = new EmailController();
 
 // Gửi email thông báo sinh viên đủ/không đủ điều kiện
 router.post(
-  "/send-qualification-emails",
+  "/send-qualificationmail-es",
   authenticateToken,
   checkRole(["admin", "academic_officer"]),
   emailController.sendQualificationEmails.bind(emailController)
