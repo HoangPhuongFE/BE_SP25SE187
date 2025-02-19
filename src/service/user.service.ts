@@ -38,9 +38,6 @@ export class UserService {
     return user;
   }
 
-
-
-
   async login({ email, password }: { email: string; password: string }) {
     // Tìm người dùng theo email
     const user = await prisma.user.findUnique({
@@ -144,12 +141,27 @@ export class UserService {
     });
   }
 
-  async updateProfile(userId: string, data: { fullName?: string; avatar?: string }): Promise<any> {
+  async updateProfile(userId: string, data: { 
+    fullName?: string; 
+    avatar?: string;
+    gender?: string;
+    phone?: string;
+    personal_Email?: string;
+    profession?: string;
+    specialty?: string;
+    programming_language?: string;
+  }): Promise<any> {
     return prisma.user.update({
       where: { id: userId },
       data: {
         fullName: data.fullName,
         avatar: data.avatar,
+        gender: data.gender,
+        phone: data.phone,
+        personal_Email: data.personal_Email,
+        profession: data.profession,
+        specialty: data.specialty,
+        programming_language: data.programming_language,
         updatedAt: new Date(),
       },
       select: {
@@ -158,9 +170,17 @@ export class UserService {
         username: true,
         fullName: true,
         avatar: true,
+        gender: true,
+        phone: true,
+        personal_Email: true,
+        profession: true,
+        specialty: true,
+        programming_language: true,
+        updatedAt: true,
       },
     });
   }
+  
 
   async getUsers() {
     return prisma.user.findMany({
@@ -170,14 +190,43 @@ export class UserService {
         username: true,
         fullName: true,
         avatar: true,
+        student_code: true,
+        profession: true,
+        specialty: true,
+        programming_language: true,
+        gender: true,
+        phone: true,  
+        semester_user: true,
+        personal_Email: true,  
+        isActive: true,
+        lastLogin: true,
+        createdAt: true,
+        updatedAt: true,
         roles: {
           select: {
+            role: true,
+          },
+        },
+        students: {
+          select: {
+            id: true,
+            majorId: true,
+            specializationId: true,
+            isEligible: true,
+          },
+        },
+        groupMemberships: {
+          select: {
+            groupId: true,
             role: true,
           },
         },
       },
     });
   }
+  
+  
+  
   async getUserById(userId: string) {
     return prisma.user.findUnique({
       where: { id: userId },
@@ -187,8 +236,33 @@ export class UserService {
         username: true,
         fullName: true,
         avatar: true,
+        student_code: true,
+        profession: true,
+        specialty: true,
+        programming_language: true,
+        gender: true,  
+        personal_Email: true, 
+        semester_user: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true,
+        updatedAt: true,
         roles: {
           select: {
+            role: true,
+          },
+        },
+        students: {
+          select: {
+            id: true,
+            majorId: true,
+            specializationId: true,
+            isEligible: true,
+          },
+        },
+        groupMemberships: {
+          select: {
+            groupId: true,
             role: true,
           },
         },

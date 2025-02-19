@@ -1,4 +1,4 @@
-generator client {
+generator client {unique
   provider = "prisma-client-js"
 }
 
@@ -17,7 +17,11 @@ model User {
   profession             String?
   specialty              String?
   programming_language   String?
-  isActive               Boolean                 @default(true)
+  gender                 String?
+  phone                   String?
+  personal_Email            String?
+  semester_user                String?
+  isActive               Boolean                @default(true)
   lastLogin              DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
