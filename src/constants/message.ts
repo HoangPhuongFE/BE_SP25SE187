@@ -143,7 +143,9 @@ export const TOPIC_MESSAGE = {
   TOPICS_FETCHED: "Topics fetched successfully",
   STUDENT_CANNOT_UPDATE: "Student cannot update topic when it is not rejected",
   UNAUTHORIZED_UPDATE: "Unauthorized update",
-
+  AI_VALIDATION_FAILED: "AI validation failed: ",
+  INVALID_TOPIC_NAME: "Invalid topic name: ",
+  INVALID_TOPIC_CODE: "Invalid topic code: ",
 } as const;
 
 
