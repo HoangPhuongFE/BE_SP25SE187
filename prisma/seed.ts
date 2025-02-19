@@ -20,7 +20,7 @@ async function createRoles() {
     { name: 'student', description: 'Sinh viên (Student Groups/Students)' },
     { name: 'admin', description: 'Quản trị viên (Admin)' }
   ];
-
+  
 
   for (const role of roles) {
     const createdRole = await prisma.role.create({ data: role });

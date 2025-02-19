@@ -24,11 +24,12 @@ export class TopicService {
     if (!major) throw new Error('Major not found');
 
 
-    const semesterPrefix = {
+    const semesterPrefixes: { [key: string]: string } = {
       'Spring': 'SP',
       'Summer': 'SU',
       'Fall': 'FA'
-    }[semester.code.split(' ')[0]] || 'FA';
+    };
+    const semesterPrefix = semesterPrefixes[semester.code.split(' ')[0] as string] || 'FA';
 
     const yearSuffix = semester.year.year.toString().slice(-2);
     const topicCount = await prisma.topic.count({
@@ -128,7 +129,16 @@ export class TopicService {
       // TODO: Implement caching mechanism here
 
       // Lưu log kiểm tra với transaction
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: {
+          aIVerificationLog: {
+            create: (arg0: {
+              data: {
+                topicId: string; // Sẽ cập nhật sau khi tạo topic
+                verification: "name" | "code"; originalText: string; verifiedText: string; similarityScore: number; suggestions: any; verifiedBy: string; verifiedAt: Date;
+              };
+            }) => any;
+          };
+        }) => {
         await tx.aIVerificationLog.create({
           data: {
             topicId: '', // Sẽ cập nhật sau khi tạo topic
@@ -253,7 +263,7 @@ export class TopicService {
       include: { roles: { include: { role: true } } }
     });
 
-    const userRoles = user?.roles.map(ur => ur.role.name);
+    const userRoles = user?.roles.map((ur: { role: { name: any; }; }) => ur.role.name);
 
     if (userRoles?.includes('mentor')) {
       // Kiểm tra số lượng topic đã đăng ký của mentor
@@ -347,7 +357,7 @@ export class TopicService {
     }
 
     // Sử dụng transaction
-    return prisma.$transaction(async (tx) => {
+    return prisma.$transaction(async (tx: { topicRegistration: { update: (arg0: { where: { id: string; }; data: { status: string; reviewerId: string | undefined; reviewedAt: Date; }; }) => any; }; topic: { update: (arg0: { where: { id: any; }; data: { status: string; }; }) => any; }; }) => {
       const updatedRegistration = await tx.topicRegistration.update({
         where: { id: registrationId },
         data: {
@@ -412,7 +422,7 @@ export class TopicService {
 
 
     // Kiểm tra role của user
-    const userRoles = user.roles.map(ur => ur.role.name);
+    const userRoles = user.roles.map((ur: { role: { name: any; }; }) => ur.role.name);
     let role: string;
 
     if (userRoles.includes('mentor')) {
@@ -588,12 +598,12 @@ export class TopicService {
       include: { roles: { include: { role: true } } }
     });
 
-    if (!reviewer || !reviewer.roles.some(r => r.role.name === 'thesis_manager')) {
+    if (!reviewer || !reviewer.roles.some((r: { role: { name: string; }; }) => r.role.name === 'thesis_manager')) {
       throw new Error('Chỉ Quản lý khóa luận mới có quyền duyệt đề tài');
     }
 
     // Cập nhật trạng thái đăng ký và topic
-    const updatedRegistration = await prisma.$transaction(async (tx) => {
+    const updatedRegistration = await prisma.$transaction(async (tx: { topicRegistration: { update: (arg0: { where: { id: string; }; data: { status: "approved" | "rejected"; reviewedAt: Date; reviewerId: string; }; include: { topic: boolean; }; }) => any; }; topic: { update: (arg0: { where: { id: any; }; data: { status: string; }; }) => any; }; }) => {
       // Cập nhật trạng thái đăng ký
       const registration = await tx.topicRegistration.update({
         where: { id: registrationId },
@@ -661,7 +671,7 @@ export class TopicService {
       include: { roles: { include: { role: true } } }
     });
 
-    if (!reviewer || !reviewer.roles.some(r => r.role.name === 'thesis_manager')) {
+    if (!reviewer || !reviewer.roles.some((r: { role: { name: string; }; }) => r.role.name === 'thesis_manager')) {
       throw new Error('Chỉ Quản lý khóa luận mới có quyền tạo hội đồng duyệt');
     }
 
@@ -690,7 +700,7 @@ export class TopicService {
     }
 
     // Tạo council và council members trong một transaction
-    const council = await prisma.$transaction(async (tx) => {
+    const council = await prisma.$transaction(async (tx: { council: { create: (arg0: { data: { name: string; topicAssId: any; status: string; members: { create: { userId: string; role: string; status: string; assignedAt: Date; }[]; }; }; include: { members: boolean; }; }) => any; }; topicRegistration: { update: (arg0: { where: { id: string; }; data: { status: string; reviewerId: string; reviewedAt: Date; }; }) => any; }; }) => {
       // Tạo council
       const council = await tx.council.create({
         data: {

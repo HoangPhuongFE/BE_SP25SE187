@@ -84,12 +84,18 @@ export class UserController {
       if (!req.user) {
         return res.status(401).json({ message: USER_MESSAGE.UNAUTHORIZED });
       }
-
+  
       const updatedUser = await userService.updateProfile(req.user.userId, {
         fullName: req.body.fullName,
-        avatar: req.body.avatar
+        avatar: req.body.avatar,
+        gender: req.body.gender,
+        phone: req.body.phone,
+        personal_Email: req.body.personal_Email,
+        profession: req.body.profession,
+        specialty: req.body.specialty,
+        programming_language: req.body.programming_language
       });
-
+  
       res.json({ 
         message: USER_MESSAGE.UPDATE_PROFILE_SUCCESS,
         user: updatedUser 
@@ -98,6 +104,7 @@ export class UserController {
       res.status(500).json({ message: (error as Error).message });
     }
   }
+  
 
 
   async getUsers(req: AuthenticatedRequest, res: Response) {

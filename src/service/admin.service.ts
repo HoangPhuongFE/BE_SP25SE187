@@ -38,7 +38,7 @@ export class AdminService {
         passwordHash: hashedPassword,
         fullName: data.fullName,
         roles: {
-          create: roleIds.map(role => ({
+          create: roleIds.map((role: { id: any; }) => ({
             roleId: role.id,
             isActive: true
           }))
@@ -90,7 +90,7 @@ export class AdminService {
     });
 
     // Thêm roles mới
-    const newRoles = roleIds.map((role) => ({
+    const newRoles = roleIds.map((role: { id: any; }) => ({
       roleId: role.id,
       userId: data.userId,
       isActive: true,

@@ -86,6 +86,7 @@ async getStudentsBySemester(req: Request, res: Response) {
     return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
   }
 }
+// Xoá tất cả sinh viên trong semester 
 async deleteAllStudentsBySemesterHandler(req: Request, res: Response) {
   const { semesterId } = req.params;
 

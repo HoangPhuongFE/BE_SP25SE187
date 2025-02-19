@@ -25,6 +25,7 @@ export class StudentService {
       major: entry.student.major?.name || "",
       specialization: entry.student.specialization?.name || "",
       status: entry.status,
+      student_code: entry.student.studentCode,
       qualificationStatus: entry.qualificationStatus,
       semesterId: entry.semesterId,
     }));
@@ -35,15 +36,26 @@ export class StudentService {
   // Lấy danh sách sinh viên phân trang
   async getPaginatedStudents(page: number, pageSize: number) {
     return paginate(prisma.semesterStudent, { page, pageSize }, {
-      include: {
+      select: {
         student: {
-          include: {
-            user: true,
-            major: true,
-            specialization: true,
-          },
+          select: {
+            id: true,
+            studentCode: true, 
+            user: {
+              select: { email: true }
+            },
+            major: {
+              select: { name: true }
+            },
+            specialization: {
+              select: { name: true }
+            },
+          }
         },
-      },
+        status: true,
+        qualificationStatus: true,
+        semesterId: true
+      }
     });
   }
   
@@ -103,33 +115,26 @@ export class StudentService {
 
   // Lấy danh sách student theo Semester
   async getStudentsBySemester(semesterId: string) {
-    type SemesterStudentWithStudent = Prisma.SemesterStudentGetPayload<{
-      include: {
-        student: {
-          include: {
-            user: true;
-            major: true;
-            specialization: true;
-          };
-        };
-      };
-    }>;
-
-    const students: SemesterStudentWithStudent[] = await prisma.semesterStudent.findMany({
+    const students = await prisma.semesterStudent.findMany({
       where: { semesterId },
-      include: {
+      select: {
         student: {
-          include: {
-            user: true,
-            major: true,
-            specialization: true,
+          select: {
+            id: true,
+            studentCode: true,  // 👈 Thêm studentCode vào kết quả
+            user: { select: { email: true } },
+            major: { select: { name: true } },
+            specialization: { select: { name: true } },
           },
         },
+        status: true,
+        qualificationStatus: true,
       },
     });
-
+  
     return students.map((entry) => ({
       id: entry.student.id,
+      studentCode: entry.student.studentCode,
       email: entry.student.user?.email || "",
       major: entry.student.major?.name || "",
       specialization: entry.student.specialization?.name || "",
@@ -137,7 +142,7 @@ export class StudentService {
       qualificationStatus: entry.qualificationStatus,
     }));
   }
-
+  
   async deleteAllStudentsInSemester(semesterId: string) {
     try {
       // Xóa tất cả các bản ghi trong bảng semesterStudent

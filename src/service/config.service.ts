@@ -22,7 +22,7 @@ export class ConfigService {
     // 🔹 Lấy toàn bộ danh sách cấu hình (kết hợp giá trị mặc định nếu DB chưa có)
     static async getAllConfigs() {
         const configs = await prisma.systemConfig.findMany();
-        const configMap = Object.fromEntries(configs.map(cfg => [cfg.configKey, cfg.configValue]));
+        const configMap = Object.fromEntries(configs.map((cfg: { configKey: any; configValue: any; }) => [cfg.configKey, cfg.configValue]));
 
         return { ...this.DEFAULT_CONFIG, ...configMap };
     }
@@ -34,7 +34,7 @@ export class ConfigService {
             include: { roles: true }
         });
 
-        const isAdmin = user?.roles.some(role => role.roleId === "admin");
+        const isAdmin = user?.roles.some((role: { roleId: string; }) => role.roleId === "admin");
         if (!isAdmin) throw new Error("Bạn không có quyền cập nhật cấu hình.");
 
         await prisma.systemConfig.upsert({

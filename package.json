@@ -61,5 +61,12 @@
   "prisma": {
     "seed": "ts-node ./prisma/seed.ts"
   },
-  "type": "commonjs"
+  "type": "commonjs",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma"
+    ]
+  }
 }
