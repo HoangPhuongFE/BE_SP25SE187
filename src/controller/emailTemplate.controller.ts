@@ -54,25 +54,39 @@ export class EmailTemplateController {
   }
 
   //  4. Tạo template mới
-  async createTemplate(req: Request, res: Response) {
-    try {
-      const { name, subject, body, description } = req.body;
-      const createdBy = req.user?.userId;
 
-      if (!createdBy) {
-        return res.status(401).json({ message: "Không có quyền truy cập." });
+    async createTemplate(req: Request, res: Response) {
+      try {
+        const { name, subject, body, description } = req.body;
+        const createdBy = req.user?.userId; // Lấy userId từ token
+  
+        //  **Kiểm tra input**
+        if (!name || !subject || !body) {
+          return res.status(400).json({ message: "Thiếu thông tin bắt buộc: name, subject hoặc body." });
+        }
+        if (!createdBy) {
+          return res.status(401).json({ message: "Không có quyền truy cập." });
+        }
+  
+        //  **Tạo template**
+        const newTemplate = await prisma.emailTemplate.create({
+          data: {
+            name,
+            subject,
+            body,
+            description: description || "", // Mặc định là chuỗi rỗng nếu không có
+            createdBy
+          }
+        });
+  
+        return res.status(201).json(newTemplate);
+      } catch (error) {
+        console.error("Lỗi khi tạo template:", error);
+        return res.status(500).json({ message: "Không thể tạo template." });
       }
-
-      const newTemplate = await prisma.emailTemplate.create({
-        data: { name, subject, body, description, createdBy },
-      });
-
-      return res.status(201).json(newTemplate);
-    } catch (error) {
-      console.error("Lỗi khi tạo template:", error);
-      return res.status(500).json({ message: "Lỗi khi tạo template." });
     }
-  }
+
+  
 
   //  5. Cập nhật template
   async updateTemplate(req: Request, res: Response) {
