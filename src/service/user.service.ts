@@ -39,13 +39,12 @@ export class UserService {
   }
 
   async login({ email, password }: { email: string; password: string }) {
-    // Tìm người dùng theo email và bao gồm thông tin về roles
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
         roles: {
           include: {
-            role: true // Lấy thêm thông tin chi tiết của role
+            role: true
           }
         }
       }
@@ -64,7 +63,6 @@ export class UserService {
       throw new Error(USER_MESSAGE.UNAUTHORIZED);
     }
 
-    //Chỉ lấy danh sách roles
     const roles = user.roles.map((r) => ({
         id: r.role?.id || null, 
         name: r.role?.name || "Unknown Role",
@@ -76,7 +74,14 @@ export class UserService {
         message: "Login successful",
         accessToken: this.generateAccessToken(user),
         refreshToken: this.generateRefreshToken(user),
-        roles // Chỉ trả về danh sách roles
+        roles,
+        user: { 
+            id: user.id,
+            email: user.email,
+            username: user.username,
+            fullName: user.fullName,
+            avatar: user.avatar,
+        }
     };
 }
 
@@ -84,24 +89,6 @@ export class UserService {
 
 
 
-    // Trả về thêm thông tin user và roles
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        fullName: user.fullName,
-        avatar: user.avatar,
-        roles: user.roles.map(userRole => ({
-          id: userRole.role.id,
-          name: userRole.role.name,
-          isActive: userRole.isActive
-        }))
-      }
-    };
-  }
 
   generateAccessToken(user: any) {
     return jwt.sign(
