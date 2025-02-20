@@ -75,12 +75,17 @@ export class UserService {
         accessToken: this.generateAccessToken(user),
         refreshToken: this.generateRefreshToken(user),
         roles,
-        user: { 
-            id: user.id,
-            email: user.email,
-            username: user.username,
-            fullName: user.fullName,
-            avatar: user.avatar,
+        user: {
+          id: user.id,
+          email: user.email,
+          username: user.username,
+          fullName: user.fullName,
+          avatar: user.avatar,
+          roles: user.roles.map(userRole => ({
+            id: userRole.role.id,
+            name: userRole.role.name,
+            isActive: userRole.isActive
+          }))
         }
     };
 }
