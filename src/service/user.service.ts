@@ -62,7 +62,19 @@ export class UserService {
     const accessToken = this.generateAccessToken(user);
     const refreshToken = this.generateRefreshToken(user);
 
-    return { accessToken, refreshToken };
+    return { accessToken,
+       refreshToken,
+       user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        fullName: user.fullName,
+        roles: user.roles.map((r: any) => ({
+            id: r.role.id,
+            name: r.role.name,
+            isActive: r.isActive
+        }))
+    } };
   }
 
   generateAccessToken(user: any) {

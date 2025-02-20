@@ -20,20 +20,20 @@ router.put('/profile',
 
 router.get('/profile', 
   authenticateToken, 
-  checkRole(['student', 'lecturer','admin', 'academic_officer','graduation_thesis_manager', 'reviewer', 'mentor', 'chairman', 'secretary']), 
+  checkRole(['admin', 'academic_officer','graduation_thesis_manager', 'dean','lecturer', 'reviewer', 'mentor', 'chairman',"student","leader","secretary"]), 
   userController.getProfile
 );
 
 router.get('/users',
   authenticateToken,
-  checkRole(['admin', 'academic_officer','graduation_thesis_manager', 'dean','lecturer', 'reviewer', 'mentor', 'chairman',]), 
+  checkRole(['admin', 'academic_officer','graduation_thesis_manager', 'dean','lecturer', 'reviewer', 'mentor', 'chairman',"student","leader","secretary"]), 
   userController.getUsers
 );
 
 
 router.get('/users/:id',
   authenticateToken,
-  checkRole(['admin', 'academic_officer','graduation_thesis_manager', 'dean','lecturer', 'reviewer', 'mentor', 'chairman',]), 
+  checkRole(['admin', 'academic_officer','graduation_thesis_manager', 'dean','lecturer', 'reviewer', 'mentor', 'chairman',"student","leader","secretary"]), 
    userController.getUserById
 );
 
