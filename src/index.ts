@@ -15,7 +15,7 @@ import exportRouter from './routers/export.router';
 import groupRoutes from './routers/group.routes';
 import topicRouter from './routers/topic.router';
 import meetingRouter from './routers/meeting.router';
-import emailRouter from './routers/sendBulkEmail.router';
+import emailRouter from './routers/email.router';
 import emailTemplateRouter from "./routers/emailTemplate.router";
 import configRouter from "./routers/config.routes";
 
