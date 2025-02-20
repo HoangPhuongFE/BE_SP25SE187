@@ -39,10 +39,15 @@ export class UserService {
   }
 
   async login({ email, password }: { email: string; password: string }) {
-    // Tìm người dùng theo email
+    // Tìm người dùng theo email, lấy cả thông tin từ UserRole và Role
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { roles: true },
+      include: { 
+          roles: {  
+              where: { isActive: true }, 
+              include: { role: true }
+          } 
+      },
     });
 
     if (!user) {
@@ -54,28 +59,30 @@ export class UserService {
       throw new Error(USER_MESSAGE.INVALID_PASSWORD); 
     }
 
-    if (!user.roles.some((role: { isActive: any; }) => role.isActive)) {
+    if (!user.roles.some((r) => r.isActive)) {
       throw new Error(USER_MESSAGE.UNAUTHORIZED); 
     }
 
-    // Sinh accessToken và refreshToken
-    const accessToken = this.generateAccessToken(user);
-    const refreshToken = this.generateRefreshToken(user);
+    //Chỉ lấy danh sách roles
+    const roles = user.roles.map((r) => ({
+        id: r.role?.id || null, 
+        name: r.role?.name || "Unknown Role",
+        description: r.role?.description || "No description",
+        isActive: r.isActive
+    }));
 
-    return { accessToken,
-       refreshToken,
-       user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        fullName: user.fullName,
-        roles: user.roles.map((r: any) => ({
-            id: r.role.id,
-            name: r.role.name,
-            isActive: r.isActive
-        }))
-    } };
-  }
+    return { 
+        message: "Login successful",
+        accessToken: this.generateAccessToken(user),
+        refreshToken: this.generateRefreshToken(user),
+        roles // Chỉ trả về danh sách roles
+    };
+}
+
+
+
+
+
 
   generateAccessToken(user: any) {
     return jwt.sign(
