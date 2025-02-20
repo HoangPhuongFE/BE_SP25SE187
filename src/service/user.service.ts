@@ -39,28 +39,29 @@ export class UserService {
   }
 
   async login({ email, password }: { email: string; password: string }) {
-    // Tìm người dùng theo email, lấy cả thông tin từ UserRole và Role
+    // Tìm người dùng theo email và bao gồm thông tin về roles
     const user = await prisma.user.findUnique({
       where: { email },
-      include: { 
-          roles: {  
-              where: { isActive: true }, 
-              include: { role: true }
-          } 
-      },
+      include: {
+        roles: {
+          include: {
+            role: true // Lấy thêm thông tin chi tiết của role
+          }
+        }
+      }
     });
 
     if (!user) {
-      throw new Error(USER_MESSAGE.USER_NOT_FOUND); 
+      throw new Error(USER_MESSAGE.USER_NOT_FOUND);
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new Error(USER_MESSAGE.INVALID_PASSWORD); 
+      throw new Error(USER_MESSAGE.INVALID_PASSWORD);
     }
 
-    if (!user.roles.some((r) => r.isActive)) {
-      throw new Error(USER_MESSAGE.UNAUTHORIZED); 
+    if (!user.roles.some(role => role.isActive)) {
+      throw new Error(USER_MESSAGE.UNAUTHORIZED);
     }
 
     //Chỉ lấy danh sách roles
@@ -83,6 +84,24 @@ export class UserService {
 
 
 
+    // Trả về thêm thông tin user và roles
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        fullName: user.fullName,
+        avatar: user.avatar,
+        roles: user.roles.map(userRole => ({
+          id: userRole.role.id,
+          name: userRole.role.name,
+          isActive: userRole.isActive
+        }))
+      }
+    };
+  }
 
   generateAccessToken(user: any) {
     return jwt.sign(

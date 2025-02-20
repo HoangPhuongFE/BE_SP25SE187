@@ -25,11 +25,12 @@ export class UserController {
 
   async login(req: Request, res: Response) {
     try {
-      const { accessToken, refreshToken } = await userService.login(req.body);
+      const { accessToken, refreshToken, user } = await userService.login(req.body);
       res.json({ 
         message: AUTH_MESSAGE.LOGIN_SUCCESS,
         accessToken,
-        refreshToken
+        refreshToken,
+        user
       });
     } catch (error) {
       const errorMessage = (error as Error).message;
