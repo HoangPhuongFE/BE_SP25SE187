@@ -15,15 +15,18 @@ export class GroupController {
     }
   }
 
-  async inviteMember(req: AuthenticatedRequest, res: Response) {
-    try {
-      const { groupId, studentId } = req.body;
-      const result = await groupService.inviteMember(groupId, studentId, req.user!.userId);
-      return res.status(200).json(result);
-    } catch (error) {
-      return res.status(400).json({ message: (error as Error).message });
+ 
+    async inviteMember(req: Request, res: Response) {
+      try {
+        const { groupId, email } = req.body;
+        const result = await groupService.inviteMember(groupId, email, req.user!.userId);
+        return res.status(200).json(result);
+      } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+      }
     }
-  }
+  
+  
   async respondToInvitation(req: AuthenticatedRequest, res: Response) {
     try {
       const { invitationId, response } = req.body;
