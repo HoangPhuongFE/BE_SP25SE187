@@ -33,7 +33,7 @@ router.post(
 router.get(
   "/info/:groupId",
   authenticateToken,
-  checkRole(["admin", "graduation_thesis_manager", "mentor", "examination_officer"]),
+  checkRole(["admin", "graduation_thesis_manager", "mentor", "examination_officer", "student"]),
   groupController.getGroupInfo.bind(groupController)
 );
 

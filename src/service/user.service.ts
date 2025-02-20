@@ -64,9 +64,25 @@ export class UserService {
       throw new Error(USER_MESSAGE.UNAUTHORIZED);
     }
 
-    // Sinh accessToken và refreshToken
-    const accessToken = this.generateAccessToken(user);
-    const refreshToken = this.generateRefreshToken(user);
+    //Chỉ lấy danh sách roles
+    const roles = user.roles.map((r) => ({
+        id: r.role?.id || null, 
+        name: r.role?.name || "Unknown Role",
+        description: r.role?.description || "No description",
+        isActive: r.isActive
+    }));
+
+    return { 
+        message: "Login successful",
+        accessToken: this.generateAccessToken(user),
+        refreshToken: this.generateRefreshToken(user),
+        roles // Chỉ trả về danh sách roles
+    };
+}
+
+
+
+
 
     // Trả về thêm thông tin user và roles
     return {
