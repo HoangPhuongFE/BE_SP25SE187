@@ -20,4 +20,20 @@ export class EmailController {
       return res.status(500).json({ message: "Lỗi gửi email.", error: errorMessage });
     }
   }
+
+  async sendBulkEmails(req: Request, res: Response) {
+    const { emailType, emails } = req.body;
+    const userId = req.user?.userId;
+
+    if (!emailType || !emails || emails.length === 0) {
+      return res.status(400).json({ message: "Thiếu thông tin bắt buộc." });
+    }
+
+    try {
+      const result = await this.emailService.sendBulkEmails(emailType, emails, userId);
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(500).json({ message: "Gửi email thất bại.", error: (error as Error).message });
+    }
+  }
 }

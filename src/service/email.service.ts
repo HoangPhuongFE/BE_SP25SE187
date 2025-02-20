@@ -35,4 +35,49 @@ export class EmailService {
 
     return { successCount, failedCount, errors };
   }
+
+
+
+  async sendBulkEmails(emailType: string, emails: string[], userId: string) {
+    if (emails.length === 0) {
+      throw new Error("Danh sách email không được để trống.");
+    }
+
+    const template = await prisma.emailTemplate.findUnique({ where: { name: emailType } });
+    if (!template) throw new Error(`Không tìm thấy template: ${emailType}`);
+
+    let successCount = 0;
+    const errors: string[] = [];
+
+    for (const email of emails) {
+      let body = template.body;
+      body = body.replace(/{{studentName}}/g, "Sinh viên")
+                 .replace(/{{semester}}/g, "Học kỳ hiện tại");
+
+      try {
+        await sendEmail({ to: email, subject: template.subject, html: body });
+        successCount++;
+
+        await prisma.emailLog.create({
+          data: {
+            userId,
+            recipientEmail: email,
+            subject: template.subject,
+            content: body,
+            status: "success",
+            errorAt: new Date()
+          }
+        });
+      } catch (error) {
+        errors.push(`Gửi email thất bại cho: ${email}`);
+      }
+    }
+
+    return { totalEmails: emails.length, successCount, failedCount: errors.length, errors };
+  }
+
 }
+function replace(arg0: RegExp, arg1: string) {
+  throw new Error("Function not implemented.");
+}
+
