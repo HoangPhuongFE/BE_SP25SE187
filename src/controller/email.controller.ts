@@ -3,6 +3,9 @@ import { EmailService } from "../service/email.service";
 
 export class EmailController {
   private emailService = new EmailService();
+  constructor() {
+    this.emailService = new EmailService();
+  }
 
   async sendEmails(req: Request, res: Response) {
     try {

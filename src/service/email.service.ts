@@ -4,6 +4,7 @@ import { sendEmail } from "../utils/email";
 const prisma = new PrismaClient();
 
 export class EmailService {
+  // ✅ Gửi email cho danh sách người nhận có tham số động
   async sendEmails(emailType: string, recipients: { email: string; params: Record<string, string> }[], userId: string) {
     const template = await prisma.emailTemplate.findUnique({ where: { name: emailType } });
     if (!template) throw new Error(`Không tìm thấy template: ${emailType}`);
@@ -14,21 +15,47 @@ export class EmailService {
 
     for (const recipient of recipients) {
       let emailBody = template.body;
+
+      // **Kiểm tra & thay thế params trong template**
       Object.keys(recipient.params).forEach((key) => {
-        emailBody = emailBody.replace(new RegExp(`{{${key}}}`, "g"), recipient.params[key]);
+        emailBody = emailBody.replace(new RegExp(`{{${key}}}`, "g"), recipient.params[key] || "N/A");
       });
 
       try {
-        await sendEmail({ to: recipient.email, subject: template.subject, html: emailBody });
+        await sendEmail({
+          to: recipient.email,
+          subject: template.subject,
+          html: emailBody,
+        });
+
         successCount++;
+
+        // ✅ Lưu log email vào database
         await prisma.emailLog.create({
-          data: { userId, recipientEmail: recipient.email, subject: template.subject, content: emailBody, status: "SENT", errorAt: new Date() },
+          data: {
+            userId,
+            recipientEmail: recipient.email,
+            subject: template.subject,
+            content: emailBody,
+            status: "SENT",
+            errorAt: new Date(),
+          },
         });
       } catch (error) {
         failedCount++;
-        errors.push(`Gửi email thất bại cho: ${recipient.email}`);
+        errors.push(`❌ Lỗi gửi email tới ${recipient.email}`);
+        console.error(`❌ Lỗi gửi email:`, error);
+
         await prisma.emailLog.create({
-          data: { userId, recipientEmail: recipient.email, subject: template.subject, content: emailBody, status: "FAILED", errorMessage: (error as any).message, errorAt: new Date() },
+          data: {
+            userId,
+            recipientEmail: recipient.email,
+            subject: template.subject,
+            content: emailBody,
+            status: "FAILED",
+            errorMessage: (error as any).message,
+            errorAt: new Date(),
+          },
         });
       }
     }
@@ -36,8 +63,7 @@ export class EmailService {
     return { successCount, failedCount, errors };
   }
 
-
-
+  // ✅ Gửi email hàng loạt mà không cần tham số động
   async sendBulkEmails(emailType: string, emails: string[], userId: string) {
     if (emails.length === 0) {
       throw new Error("Danh sách email không được để trống.");
@@ -64,9 +90,9 @@ export class EmailService {
             recipientEmail: email,
             subject: template.subject,
             content: body,
-            status: "success",
-            errorAt: new Date()
-          }
+            status: "SENT",
+            errorAt: new Date(),
+          },
         });
       } catch (error) {
         errors.push(`Gửi email thất bại cho: ${email}`);
@@ -75,9 +101,4 @@ export class EmailService {
 
     return { totalEmails: emails.length, successCount, failedCount: errors.length, errors };
   }
-
 }
-function replace(arg0: RegExp, arg1: string) {
-  throw new Error("Function not implemented.");
-}
-

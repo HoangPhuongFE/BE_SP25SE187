@@ -5,12 +5,18 @@ import { authenticateToken, checkRole } from "../middleware/user.middleware";
 const router = Router();
 const emailController = new EmailController();
 
+router.post(
+  "/send",
+  authenticateToken,
+  checkRole(["admin", "graduation_thesis_manager"]),
+  (req, res) => emailController.sendEmails(req, res)
+);
 
-router.post("/email/send",
-   authenticateToken,
-  checkRole(['admin', "graduation_thesis_manager", "examination_officer", "academic_officer"]),
-   emailController.sendEmails);
-
-   router.post("/send-bulk-emails", emailController.sendBulkEmails);
+router.post(
+  "/send-bulk",
+  authenticateToken,
+  checkRole(["admin", "graduation_thesis_manager"]),
+  (req, res) => emailController.sendBulkEmails(req, res)
+);
 
 export default router;
