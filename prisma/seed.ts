@@ -174,7 +174,7 @@ async function createStudents() {
     { studentCode: 'SE189654', email: 'thihan11k@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
     { studentCode: 'SE189648', email: 'quanphan1kk@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Full-stack' ,status:'qualified'},
     { studentCode: 'SE184223', email: 'quynhhoa2281@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
-    { studentCode: 'SE189344', email: 'tranduc1234htd@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
+    { studentCode: 'SE189344', email: 'nguyencattuong7699@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
 
     { studentCode: 'SE156497', email: 'anhm05544@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Full-stack',status:'not qualified' },
     { studentCode: 'SE156975', email: 'manhhung1999nmh@gmail.com', profession: 'Software Engineering', specialty: '.Net', programming_language: 'Full-stack' ,status:'qualified'},
@@ -190,7 +190,7 @@ async function createStudents() {
     { studentCode: 'SE134697', email: 'Anhthu183966@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Back-end',status:'qualified' },
     { studentCode: 'SE194794', email: 'Ngocchi417@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Full-end',status:'qualified' },
     { studentCode: 'SE194244', email: 'trandat456777@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
-    { studentCode: 'SE164244', email: 'am4589653@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
+    { studentCode: 'SE164244', email: 'phatpham198311@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end',status:'qualified' },
 
 
   ];
