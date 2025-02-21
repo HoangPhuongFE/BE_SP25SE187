@@ -685,69 +685,83 @@ export class GroupService {
   async removeMemberFromGroup(groupId: string, memberId: string, invitedById: string) {
     // 1️⃣ Kiểm tra người thực hiện xóa có tồn tại không
     const user = await prisma.user.findUnique({
-      where: { id: invitedById },
-      include: { roles: { include: { role: true } } },
+        where: { id: invitedById },
+        include: { roles: { include: { role: true } } },
     });
-  
+
     if (!user) throw new Error("Người dùng không tồn tại.");
-  
+
     const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
     const isAdmin = userRoles.includes("admin");
-  
-    // 2️⃣ Kiểm tra leader của nhóm
+
+    // 2️⃣ Tìm studentId của người thực hiện
+    const actingStudent = await prisma.student.findUnique({
+        where: { userId: invitedById },
+        select: { id: true },
+    });
+
+    const actingStudentId = actingStudent?.id;
+
+    // 3️⃣ Kiểm tra leader của nhóm
     const leader = await prisma.groupMember.findFirst({
-      where: { groupId, student: { userId: invitedById }, role: "leader", isActive: true },
+        where: { groupId, studentId: actingStudentId, role: "leader", isActive: true },
     });
-  
+
     const isLeader = Boolean(leader);
-  
-    // 3️⃣ Kiểm tra mentor của nhóm
+
+    // 4️⃣ Kiểm tra mentor của nhóm
     const mentor = await prisma.groupMentor.findFirst({
-      where: { groupId, mentorId: invitedById },
+        where: { groupId, mentorId: invitedById },
     });
-  
+
     const isMentor = Boolean(mentor);
-  
-    // 4️⃣ Chỉ admin, leader hoặc mentor mới có quyền xóa
+
+    // 5️⃣ Chỉ admin, leader hoặc mentor mới có quyền xóa
     if (!isAdmin && !isLeader && !isMentor) {
-      throw new Error("Bạn không có quyền xoá thành viên khỏi nhóm (chỉ leader, mentor hoặc admin).");
+        throw new Error("Bạn không có quyền xoá thành viên khỏi nhóm (chỉ leader, mentor hoặc admin).");
     }
-  
-    // 5️⃣ Kiểm tra xem thành viên cần xóa có tồn tại trong nhóm không
+
+    // 6️⃣ Kiểm tra xem thành viên cần xóa có tồn tại trong nhóm không
     const member = await prisma.groupMember.findFirst({
-      where: { groupId, OR: [{ studentId: memberId }, { userId: memberId }] },
+        where: { groupId, OR: [{ studentId: memberId }, { userId: memberId }] },
     });
-  
+
     const isMentorToDelete = await prisma.groupMentor.findFirst({
-      where: { groupId, mentorId: memberId },
+        where: { groupId, mentorId: memberId },
     });
-  
+
     if (!member && !isMentorToDelete) {
-      throw new Error("Thành viên không tồn tại trong nhóm.");
+        throw new Error("Thành viên không tồn tại trong nhóm.");
     }
-  
-    // 6️⃣ **Không cho phép leader tự xóa chính mình**
+
+    // 7️⃣ **Không cho phép leader tự xóa chính mình**
     if (isLeader && member?.studentId === leader?.studentId) {
-      throw new Error("Leader không thể tự xoá chính mình khỏi nhóm. Hãy đổi leader trước.");
+        throw new Error("Leader không thể tự xoá chính mình khỏi nhóm. Hãy đổi leader trước.");
     }
-  
-    // 7️⃣ **Mentor chỉ có thể bị xóa bởi admin**
+
+    // 8️⃣ **Mentor chỉ có thể bị xóa bởi admin**
     if (isMentorToDelete && !isAdmin) {
-      throw new Error("Chỉ admin mới có quyền xoá mentor.");
+        throw new Error("Chỉ admin mới có quyền xoá mentor.");
     }
-  
-    // 8️⃣ **Xóa thành viên khỏi nhóm**
+
+    // 9️⃣ **Leader chỉ có thể xóa member, không thể xóa mentor**
+    if (isLeader && isMentorToDelete) {
+        throw new Error("Leader không thể xóa mentor khỏi nhóm.");
+    }
+
+    // 10️⃣ **Xóa thành viên khỏi nhóm**
     if (member) {
-      await prisma.groupMember.delete({ where: { id: member.id } });
+        await prisma.groupMember.delete({ where: { id: member.id } });
     }
-  
-    // 9️⃣ **Xóa mentor nếu là mentor**
+
+    // 11️⃣ **Xóa mentor nếu là mentor**
     if (isMentorToDelete) {
-      await prisma.groupMentor.delete({ where: { id: isMentorToDelete.id } });
+        await prisma.groupMentor.delete({ where: { id: isMentorToDelete.id } });
     }
-  
+
     return { message: "Xoá thành viên khỏi nhóm thành công." };
-  }
+}
+
   
 
 

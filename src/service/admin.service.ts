@@ -46,14 +46,19 @@ export class AdminService {
 
   //  Cập nhật roles của user
   async updateUserRoles(data: UpdateRolesDTO) {
+    console.log(`DEBUG: Checking user ID: ${data.userId}`);
+
     const userExists = await prisma.user.findUnique({ where: { id: data.userId } });
+    console.log("DEBUG: User Exists:", userExists);
+
     if (!userExists) throw new Error('User không tồn tại');
 
-    // Lấy danh sách role IDs từ tên roles
     const roleIds = await prisma.role.findMany({
       where: { name: { in: data.roles } },
       select: { id: true },
     });
+
+    console.log("DEBUG: Role IDs:", roleIds);
 
     if (roleIds.length === 0) throw new Error('Không tìm thấy roles hợp lệ');
 
@@ -73,7 +78,8 @@ export class AdminService {
       where: { id: data.userId },
       include: { roles: { include: { role: true } } },
     });
-  }
+}
+
 
   //  Cập nhật thông tin user
   async updateUser(userId: string, data: { email?: string; username?: string; fullName?: string }) {
