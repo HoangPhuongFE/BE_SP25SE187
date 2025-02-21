@@ -91,7 +91,7 @@ router.post(
 router.post(
   "/remove-member",
   authenticateToken,
-  checkRole(["leader", "mentor", "admin"]),
+  checkRole(["leader", "mentor", "admin","student"]),
   groupController.removeMemberFromGroup.bind(groupController)
 );
 
@@ -161,7 +161,12 @@ router.get(
   groupController.getGroupMembers.bind(groupController)
 );
 
-
+router.post(
+  "/chane-mentor",
+  authenticateToken,
+  checkRole(["student","mentor","admin"]),
+  groupController.updateMentor.bind(groupController)
+);
 
 
 
