@@ -121,18 +121,15 @@ export class GroupController {
   }
 
   // Đổi Leader
-  async changeLeader(req: Request, res: Response) {
+ async changeLeader(req: AuthenticatedRequest, res: Response) {
     try {
-      const result = await groupService.changeLeader(
-        req.body.groupId,
-        req.body.newLeaderId,
-        req.user!.userId
-      );
-      return res.status(200).json(result);
+        const { groupId, newLeaderId } = req.body; 
+        const result = await groupService.changeLeader(groupId, newLeaderId, req.user!.userId);
+        return res.status(200).json(result);
     } catch (error) {
-      return res.status(500).json({ message: (error as Error).message });
+        return res.status(500).json({ message: (error as Error).message });
     }
-  }
+}
 
   // Thêm Mentor
   async addMentorToGroup(req: Request, res: Response) {
@@ -249,6 +246,15 @@ export class GroupController {
     }
   }
 
+  async unlockGroup(req: Request, res: Response) {
+    try {
+        const { groupId } = req.body;
+        const result = await groupService.unlockGroup(groupId, req.user!.userId);
+        return res.status(200).json(result);
+    } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+    }
+}
 
 
 }
