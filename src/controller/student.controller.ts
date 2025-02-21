@@ -76,24 +76,14 @@ async deleteStudentHandler(req: Request, res: Response) {
   async getStudentsBySemester(req: Request, res: Response) {
     try {
       const { semesterId } = req.params;
-  
-      // Kiểm tra nếu không có semesterId
-      if (!semesterId) {
-        return res.status(400).json({ message: "Thiếu mã học kỳ (semesterId)." });
-      }
-  
-      // Lấy danh sách sinh viên
       const students = await this.studentService.getStudentsBySemester(semesterId);
   
-      // Nếu không có sinh viên nào, trả về 204 No Content
-      if (students.length === 0) {
-        return res.status(204).json({ message: "Không có sinh viên nào trong học kỳ này." });
-      }
-  
-      return res.status(200).json({ data: students });
+      return res.status(200).json({
+        data: students,
+      });
     } catch (error) {
-      console.error(" Lỗi khi lấy danh sách sinh viên theo học kỳ:", error);
-      return res.status(500).json({ message: "Lỗi máy chủ, vui lòng thử lại sau." });
+      console.error("Error fetching students by semester:", error);
+      return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
     }
   }
   

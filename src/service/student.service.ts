@@ -141,8 +141,8 @@ export class StudentService {
       email: entry.student.user?.email || "",
       major: entry.student.major?.name || "",
       specialization: entry.student.specialization?.name || "",
-      semester: entry.semester.code, 
-      year: entry.semester.year.year, 
+      status: entry.status,
+      qualificationStatus: entry.qualificationStatus,
     }));
   }
   
