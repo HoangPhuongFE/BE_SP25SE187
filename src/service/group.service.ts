@@ -690,58 +690,52 @@ export class GroupService {
     if (!group) throw new Error("Nhóm không tồn tại.");
     if (group.isLocked) throw new Error("Nhóm đã bị khóa. Không thể xoá thành viên.");
 
-    // Kiểm tra user thực hiện xóa có tồn tại không
+    // Lấy studentId từ userId của người thực hiện xóa (leader)
+    const actingStudent = await prisma.student.findUnique({
+        where: { userId: invitedById },
+        select: { id: true },
+    });
+
+    if (!actingStudent) throw new Error("Người dùng không phải sinh viên.");
+
+    // Kiểm tra xem người này có phải Leader không
+    const isLeader = await prisma.groupMember.findFirst({
+        where: {
+            groupId,
+            studentId: actingStudent.id,  // Kiểm tra bằng studentId
+            role: "leader",
+            isActive: true,
+        },
+    });
+
+    // Nếu không phải Leader, kiểm tra xem có phải Admin không
     const user = await prisma.user.findUnique({
         where: { id: invitedById },
         include: { roles: { include: { role: true } } },
     });
 
-    if (!user) throw new Error("Người dùng không tồn tại.");
-    const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
+    const userRoles = user?.roles.map((r) => r.role.name.toLowerCase()) || [];
     const isAdmin = userRoles.includes("admin");
 
-    // Kiểm tra xem user có phải leader hoặc mentor không
-    const actingStudent = await prisma.student.findUnique({ where: { userId: invitedById } });
-    const leader = actingStudent
-        ? await prisma.groupMember.findFirst({
-            where: { groupId, studentId: actingStudent.id, role: "leader", isActive: true },
-        })
-        : null;
-    
-    const isLeader = Boolean(leader);
-    const isMentor = await prisma.groupMentor.findFirst({ where: { groupId, mentorId: invitedById } });
-
-    // Chỉ admin, leader hoặc mentor mới có quyền xóa thành viên
-    if (!isAdmin && !isLeader && !isMentor) {
-        throw new Error("Bạn không có quyền xoá thành viên khỏi nhóm (chỉ leader, mentor hoặc admin).");
+    // Chỉ Admin hoặc Leader mới có thể xóa thành viên
+    if (!isLeader && !isAdmin) {
+        throw new Error("Bạn không có quyền xoá thành viên khỏi nhóm (chỉ leader hoặc admin).");
     }
 
     // Kiểm tra xem thành viên cần xóa có trong nhóm không
     const member = await prisma.groupMember.findFirst({
-        where: { groupId, OR: [{ studentId: memberId }, { userId: memberId }] },
+        where: { groupId, studentId: memberId }, // Dùng studentId thay vì userId
     });
 
-    const isMentorToDelete = await prisma.groupMentor.findFirst({
-        where: { groupId, mentorId: memberId },
-    });
+    if (!member) throw new Error("Thành viên không tồn tại trong nhóm.");
 
-    if (!member && !isMentorToDelete) throw new Error("Thành viên không tồn tại trong nhóm.");
-
-    // Không cho phép leader tự xóa chính mình
-    if (isLeader && member?.studentId === actingStudent?.id) {
+    // Không cho phép Leader tự xóa chính mình
+    if (isLeader && member.studentId === actingStudent.id) {
         throw new Error("Leader không thể tự xoá chính mình khỏi nhóm. Hãy đổi leader trước.");
     }
 
-    // Mentor chỉ có thể bị xóa bởi admin
-    if (isMentorToDelete && !isAdmin) {
-        throw new Error("Chỉ admin mới có quyền xoá mentor.");
-    }
-
     // Xóa thành viên khỏi nhóm
-    if (member) await prisma.groupMember.delete({ where: { id: member.id } });
-
-    // Xóa mentor nếu là mentor
-    if (isMentorToDelete) await prisma.groupMentor.delete({ where: { id: isMentorToDelete.id } });
+    await prisma.groupMember.delete({ where: { id: member.id } });
 
     return { message: "Xoá thành viên khỏi nhóm thành công." };
 }
@@ -751,57 +745,70 @@ export class GroupService {
 
   // 11) deleteGroup
   async deleteGroup(groupId: string, userId: string) {
-    // 1️⃣ Kiểm tra quyền
+    console.log("CHECKING USER PERMISSION:", userId);
+    console.log("DELETING GROUP ID:", groupId);
+
     const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { roles: { include: { role: true } } },
+        where: { id: userId },
+        include: { roles: { include: { role: true } } },
     });
-  
-    if (!user) throw new Error("Người dùng không tồn tại.");
-  
+
+    if (!user) {
+        console.error("User not found:", userId);
+        throw new Error("Người dùng không tồn tại.");
+    }
+
     const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
     const isAdmin = userRoles.includes("admin");
-  
+
     const student = await prisma.student.findUnique({ where: { userId } });
     let isLeader = false;
-  
+
     if (student) {
-      const leader = await prisma.groupMember.findFirst({
-        where: { groupId, studentId: student.id, role: "leader", isActive: true },
-      });
-      if (leader) isLeader = true;
+        const leader = await prisma.groupMember.findFirst({
+            where: { groupId, studentId: student.id, role: "leader", isActive: true },
+        });
+        if (leader) isLeader = true;
     }
-  
+
+    console.log("USER ROLES:", userRoles);
+    console.log("IS ADMIN:", isAdmin);
+    console.log("IS LEADER:", isLeader);
+
     if (!isAdmin && !isLeader) {
-      throw new Error("Bạn không có quyền xoá nhóm (chỉ leader hoặc admin).");
+        throw new Error("Bạn không có quyền xoá nhóm (chỉ leader hoặc admin).");
     }
-  
-    // 2️⃣ Kiểm tra nhóm tồn tại
+
+    // Kiểm tra nhóm có tồn tại không
     const group = await prisma.group.findUnique({
-      where: { id: groupId },
-      include: { members: true, invitations: true },
+        where: { id: groupId },
+        include: { members: true },
     });
-  
-    if (!group) throw new Error("Nhóm không tồn tại.");
-  
-    // 3️⃣ Nếu không phải admin, kiểm tra xem nhóm có thành viên khác không
-    if (!isAdmin && group.members.length > 1) {
-      throw new Error("Nhóm vẫn còn thành viên, chỉ admin mới có thể xoá.");
+
+    console.log("GROUP FOUND:", group);
+
+    if (!group) {
+        console.error("Group not found:", groupId);
+        throw new Error("Nhóm không tồn tại.");
     }
-  
-    // 4️⃣ **Xóa mentor khỏi nhóm**
+
+    // Nếu không phải admin, kiểm tra xem nhóm có thành viên khác không
+    if (!isAdmin && group.members.length > 1) {
+        console.error("Group still has members, only admin can delete.");
+        throw new Error("Nhóm vẫn còn thành viên, chỉ admin mới có thể xoá.");
+    }
+
+    // Xóa dữ liệu liên quan
     await prisma.groupMentor.deleteMany({ where: { groupId } });
-  
-    // 5️⃣ **Xóa các dữ liệu liên quan**
     await prisma.groupInvitation.deleteMany({ where: { groupId } });
     await prisma.groupMember.deleteMany({ where: { groupId } });
-  
-    // 6️⃣ **Xóa nhóm**
+
     await prisma.group.delete({ where: { id: groupId } });
-  
+
+    console.log("GROUP DELETED SUCCESSFULLY");
     return { message: "Nhóm đã được xoá thành công." };
-  }
-  
+}
+
 
 
 

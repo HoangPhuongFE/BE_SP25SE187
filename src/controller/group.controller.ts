@@ -166,13 +166,22 @@ export class GroupController {
   // Xóa nhóm
   async deleteGroup(req: Request, res: Response) {
     try {
-      const { groupId } = req.params;
-      const result = await groupService.deleteGroup(groupId, req.user!.userId);
-      return res.status(200).json(result);
+        console.log("REQ PARAMS:", req.params);  // Debug xem request có `groupId` không
+        const { groupId } = req.params;
+        console.log("DELETING GROUP:", groupId);
+
+        if (!groupId) {
+            return res.status(400).json({ message: "Thiếu groupId." });
+        }
+
+        const result = await groupService.deleteGroup(groupId, req.user!.userId);
+        return res.status(200).json(result);
     } catch (error) {
-      return res.status(500).json({ message: (error as Error).message });
+        console.error("DELETE GROUP ERROR:", error); // Log lỗi nếu xảy ra
+        return res.status(500).json({ message: (error as Error).message });
     }
-  }
+}
+
 
 
   // Rời nhóm
