@@ -10,108 +10,114 @@ interface CreateUserDTO {
   fullName?: string;
   roles: string[];
 }
+
 interface UpdateRolesDTO {
   userId: string;
   roles: string[];
 }
+
 export class AdminService {
-  // Hàm tạo mới user
+  //  Tạo user mới
   async createUser(data: CreateUserDTO) {
     const hashedPassword = await hashPassword(data.password);
 
     // Lấy role IDs từ tên role
     const roleIds = await prisma.role.findMany({
-      where: {
-        name: {
-          in: data.roles
-        }
-      },
-      select: {
-        id: true
-      }
+      where: { name: { in: data.roles } },
+      select: { id: true },
     });
 
-    return await prisma.user.create({
+    return prisma.user.create({
       data: {
         email: data.email,
         username: data.username,
         passwordHash: hashedPassword,
         fullName: data.fullName,
         roles: {
-          create: roleIds.map((role: { id: any; }) => ({
+          create: roleIds.map((role) => ({
             roleId: role.id,
-            isActive: true
-          }))
-        }
+            isActive: true,
+          })),
+        },
       },
-      include: {
-        roles: {
-          include: {
-            role: true
-          }
-        }
-      }
+      include: { roles: { include: { role: true } } },
     });
   }
 
-
-  // Hàm thay đổi roles cho user
+  //  Cập nhật roles của user
   async updateUserRoles(data: UpdateRolesDTO) {
-    // Kiểm tra user có tồn tại hay không
-    const userExists = await prisma.user.findUnique({
-      where: { id: data.userId },
-    });
-
-    if (!userExists) {
-      throw new Error('User not found');
-    }
+    const userExists = await prisma.user.findUnique({ where: { id: data.userId } });
+    if (!userExists) throw new Error('User không tồn tại');
 
     // Lấy danh sách role IDs từ tên roles
     const roleIds = await prisma.role.findMany({
-      where: {
-        name: {
-          in: data.roles,
-        },
-      },
-      select: {
-        id: true,
-      },
+      where: { name: { in: data.roles } },
+      select: { id: true },
     });
 
-    if (roleIds.length === 0) {
-      throw new Error('No valid roles found');
-    }
+    if (roleIds.length === 0) throw new Error('Không tìm thấy roles hợp lệ');
 
     // Xóa tất cả roles cũ của user
-    await prisma.userRole.deleteMany({
-      where: {
-        userId: data.userId,
-      },
-    });
+    await prisma.userRole.deleteMany({ where: { userId: data.userId } });
 
     // Thêm roles mới
-    const newRoles = roleIds.map((role: { id: any; }) => ({
-      roleId: role.id,
-      userId: data.userId,
-      isActive: true,
-    }));
-
     await prisma.userRole.createMany({
-      data: newRoles,
+      data: roleIds.map((role) => ({
+        roleId: role.id,
+        userId: data.userId,
+        isActive: true,
+      })),
     });
 
-    // Trả về user với roles mới
     return prisma.user.findUnique({
       where: { id: data.userId },
-      include: {
-        roles: {
-          include: {
-            role: true,
-          },
-        },
+      include: { roles: { include: { role: true } } },
+    });
+  }
+
+  //  Cập nhật thông tin user
+  async updateUser(userId: string, data: { email?: string; username?: string; fullName?: string }) {
+    const existingUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!existingUser) throw new Error("User không tồn tại");
+
+    return prisma.user.update({
+      where: { id: userId },
+      data: {
+        email: data.email || existingUser.email,
+        username: data.username || existingUser.username,
+        fullName: data.fullName || existingUser.fullName,
+      },
+      include: { roles: { include: { role: true } } },
+    });
+  }
+
+  //  Xóa user
+  async deleteUser(userId: string) {
+    const existingUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!existingUser) throw new Error("User không tồn tại");
+
+    await prisma.userRole.deleteMany({ where: { userId } }); // Xóa roles trước
+    return prisma.user.delete({ where: { id: userId } }); // Xóa user
+  }
+
+  //  Lấy danh sách user
+  async getUsers() {
+    return prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        fullName: true,
+        roles: { select: { role: true } },
       },
     });
   }
 
-
+  //  Lấy user theo ID
+  async getUserById(userId: string) {
+    return prisma.user.findUnique({
+      where: { id: userId },
+      include: { roles: { include: { role: true } } },
+    });
+  }
 }

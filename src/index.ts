@@ -18,6 +18,7 @@ import meetingRouter from './routers/meeting.router';
 import emailRouter from './routers/email.router';
 import emailTemplateRouter from "./routers/emailTemplate.router";
 import configRouter from "./routers/config.routes";
+import importRole from './routers/importRole.router';
 
 //
 config();
@@ -50,7 +51,7 @@ app.use('/api/meetings', meetingRouter);
 app.use('/api', emailRouter);
 app.use("/api/email-templates", emailTemplateRouter);
 app.use("/api/config", configRouter);
-
+app.use("/api/import", importRole);
 
 
 

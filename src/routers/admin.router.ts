@@ -22,5 +22,35 @@ router.put(
   adminController.updateUserRoles
 );
 
+router.put(
+  '/users/:userId',
+  authenticateToken,
+  checkRole(['admin']),
+  adminController.updateUser
+);
+
+
+router.delete(
+  '/users/:userId',
+  authenticateToken,
+  checkRole(['admin']),
+  adminController.deleteUser
+);
+
+router.get(
+  '/users',
+  authenticateToken,
+  checkRole(['admin']),
+  adminController.getUsers
+);
+
+router.get(
+  '/users/:userId',
+  authenticateToken,
+  checkRole(['admin']),
+  adminController.getUserById
+);
+
+
 
 export default router; 

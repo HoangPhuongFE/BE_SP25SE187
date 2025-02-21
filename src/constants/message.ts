@@ -43,6 +43,8 @@ export const AUTH_MESSAGE = {
 // Thông báo cho quản trị viên
 export const ADMIN_MESSAGE = {
   CREATE_USER_SUCCESS: "User created successfully",
+  DELETE_USER_SUCCESS: "User deleted successfully",
+  UPDATE_USER_SUCCESS: "User updated successfully",
   UPDATE_ROLES_SUCCESS: "User roles updated successfully",
   INVALID_ROLE: "One or more roles are invalid",
   EMAIL_EXISTS: "Email already exists",
