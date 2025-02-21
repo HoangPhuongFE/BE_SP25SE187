@@ -144,13 +144,7 @@ router.post(
   groupController.lockGroup.bind(groupController)
 );
 
-// 16) update nhóm
-router.patch(
-  "/update",
-  authenticateToken,
-  checkRole(["student","mentor","admin"]), 
-  groupController.updateGroup.bind(groupController)
-);
+
 
 
 // 17) Lấy danh sách thành viên trong nhóm
@@ -161,8 +155,8 @@ router.get(
   groupController.getGroupMembers.bind(groupController)
 );
 
-router.post(
-  "/chane-mentor",
+router.put(
+  "/change-mentor",
   authenticateToken,
   checkRole(["student","mentor","admin"]),
   groupController.updateMentor.bind(groupController)

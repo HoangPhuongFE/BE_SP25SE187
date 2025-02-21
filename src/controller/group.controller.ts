@@ -220,16 +220,6 @@ export class GroupController {
     }
   }
 
-  // update nhóm
-  async updateGroup(req: AuthenticatedRequest, res: Response) {
-    try {
-      const { groupId, ...updateData } = req.body;
-      const result = await groupService.updateGroup(groupId, req.user!.userId, updateData);
-      res.json(result);
-    } catch (error) {
-      res.status(400).json({ message: (error as Error).message });
-    }
-  }
 
   // update mentor
   async updateMentor(req: Request, res: Response) {
