@@ -14,6 +14,19 @@ export class GroupService {
     if (!leader) throw new Error("Không tìm thấy sinh viên.");
 
 
+  // Kiểm tra sinh viên có trong học kỳ hay không
+  const studentSemester = await prisma.semesterStudent.findFirst({
+    where: { studentId: leader.id, semesterId },
+  });
+
+  if (!studentSemester) {
+    throw new Error("Sinh viên chưa đăng ký học kỳ này hoặc danh sách điều kiện chưa được nhập.");
+  }
+
+  if (studentSemester.qualificationStatus.trim().toLowerCase() !== "qualified") {
+    throw new Error(`Sinh viên chưa đủ điều kiện tham gia nhóm. Trạng thái hiện tại: ${studentSemester.qualificationStatus}`);
+  }
+
     const currentYear = new Date().getFullYear();
     const lastTwoDigits = currentYear.toString().slice(-2);
     const majorName = (leader.major?.name || "").trim();
@@ -186,7 +199,7 @@ export class GroupService {
           },
         });
 
-        console.log(`DEBUG: Email mời đã được gửi tới ${invitedStudent.user.email}`);
+ //       console.log(`DEBUG: Email mời đã được gửi tới ${invitedStudent.user.email}`);
       } catch (error) {
         await prisma.emailLog.create({
           data: {

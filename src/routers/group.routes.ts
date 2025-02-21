@@ -159,4 +159,8 @@ router.put(
 );
 
 
+router.get(
+"/accept-invitation/:invitationId",
+  groupController.acceptInvitation.bind(groupController)
+);
 export default router;
