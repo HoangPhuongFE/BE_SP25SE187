@@ -278,13 +278,23 @@ CREATE TABLE `groups` (
     `is_multi_major` BOOLEAN NOT NULL DEFAULT false,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
-    `mentor_1_id` VARCHAR(191) NULL,
-    `mentor_2_id` VARCHAR(191) NULL,
     `topicEnglish` VARCHAR(191) NULL,
     `topicTiengViet` VARCHAR(191) NULL,
     `isLocked` BOOLEAN NOT NULL DEFAULT false,
 
     UNIQUE INDEX `groups_group_code_key`(`group_code`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `GroupMentor` (
+    `id` VARCHAR(191) NOT NULL,
+    `group_id` VARCHAR(191) NOT NULL,
+    `mentor_id` VARCHAR(191) NOT NULL,
+    `added_by` VARCHAR(191) NOT NULL,
+    `added_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE INDEX `GroupMentor_group_id_mentor_id_key`(`group_id`, `mentor_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -615,6 +625,15 @@ ALTER TABLE `groups` ADD CONSTRAINT `groups_semester_id_fkey` FOREIGN KEY (`seme
 
 -- AddForeignKey
 ALTER TABLE `groups` ADD CONSTRAINT `groups_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `GroupMentor` ADD CONSTRAINT `GroupMentor_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `GroupMentor` ADD CONSTRAINT `GroupMentor_mentor_id_fkey` FOREIGN KEY (`mentor_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `GroupMentor` ADD CONSTRAINT `GroupMentor_added_by_fkey` FOREIGN KEY (`added_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `GroupInvitation` ADD CONSTRAINT `GroupInvitation_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -25,12 +25,12 @@ export const validateCreateMeeting = [
     const group = await prisma.group.findFirst({
       where: {
         id: groupId,
-        OR: [
-          { mentor1Id: mentorId },
-          { mentor2Id: mentorId }
-        ]
+        mentors: {
+          some: { mentorId: mentorId }  
+        }
       }
     });
+    
 
     if (!group) {
       return res.status(403).json({ message: MEETING_MESSAGE.UNAUTHORIZED_MENTOR });

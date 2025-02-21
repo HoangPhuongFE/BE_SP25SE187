@@ -15,18 +15,18 @@ export class GroupController {
     }
   }
 
- 
-    async inviteMember(req: Request, res: Response) {
-      try {
-        const { groupId, email } = req.body;
-        const result = await groupService.inviteMember(groupId, email, req.user!.userId);
-        return res.status(200).json(result);
-      } catch (error) {
-        return res.status(400).json({ message: (error as Error).message });
-      }
+
+  async inviteMember(req: Request, res: Response) {
+    try {
+      const { groupId, email } = req.body;
+      const result = await groupService.inviteMember(groupId, email, req.user!.userId);
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(400).json({ message: (error as Error).message });
     }
-  
-  
+  }
+
+
   async respondToInvitation(req: AuthenticatedRequest, res: Response) {
     try {
       const { invitationId, response } = req.body;
@@ -137,28 +137,32 @@ export class GroupController {
   // Thêm Mentor
   async addMentorToGroup(req: Request, res: Response) {
     try {
-      const result = await groupService.addMentorToGroup(
-        req.body.groupId,
-        req.body.mentorId,
-        req.user!.userId
-      );
+      const { groupId, mentorId } = req.body;
+      const result = await groupService.addMentorToGroup(groupId, mentorId, req.user!.userId);
       return res.status(200).json(result);
     } catch (error) {
-      return res.status(500).json({ message: (error as Error).message });
+      return res.status(400).json({ message: (error as Error).message });
     }
   }
 
   // Xóa thành viên
   async removeMemberFromGroup(req: Request, res: Response) {
     try {
-      const result = await groupService.removeMemberFromGroup(
-        req.body.groupId,
-        req.body.memberId,
-        req.user!.userId
-      );
+      const { groupId, mentorId } = req.body;
+      const result = await groupService.removeMemberFromGroup(groupId, mentorId, req.user!.userId);
       return res.status(200).json(result);
     } catch (error) {
-      return res.status(500).json({ message: (error as Error).message });
+      return res.status(400).json({ message: (error as Error).message });
+    }
+  }
+
+  async getGroupMentors(req: Request, res: Response) {
+    try {
+      const { groupId } = req.params;
+      const result = await groupService.getGroupMentors(groupId);
+      return res.json(result);
+    } catch (error) {
+      return res.status(400).json({ message: (error as Error).message });
     }
   }
 
@@ -174,86 +178,86 @@ export class GroupController {
   }
 
 
-// Rời nhóm
-async leaveGroup(req: AuthenticatedRequest, res: Response) {
-  try {
-    const result = await groupService.leaveGroup(req.body.groupId, req.user!.userId);
-    return res.status(200).json(result);
-  } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
+  // Rời nhóm
+  async leaveGroup(req: AuthenticatedRequest, res: Response) {
+    try {
+      const result = await groupService.leaveGroup(req.body.groupId, req.user!.userId);
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(400).json({ message: (error as Error).message });
+    }
   }
-}
 
-// Hủy lời mời
-async cancelInvitation(req: AuthenticatedRequest, res: Response) {
-  try {
-    const result = await groupService.cancelInvitation(req.body.invitationId, req.user!.userId);
-    res.status(200).json(result);
-  } catch (error) {
-    res.status(400).json({ message: (error as Error).message });
+  // Hủy lời mời
+  async cancelInvitation(req: AuthenticatedRequest, res: Response) {
+    try {
+      const result = await groupService.cancelInvitation(req.body.invitationId, req.user!.userId);
+      res.status(200).json(result);
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
+    }
   }
-}
 
-// Lấy danh sách nhóm mà user đã tham gia
-async listGroupInvitations(req: AuthenticatedRequest, res: Response) {
-  try {
-    const { groupId } = req.params;
-    const data = await groupService.listGroupInvitations(groupId, req.user!.userId);
-    res.json({ invitations: data });
-  } catch (error) {
-    res.status(400).json({ message: (error as Error).message });
+  // Lấy danh sách nhóm mà user đã tham gia
+  async listGroupInvitations(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { groupId } = req.params;
+      const data = await groupService.listGroupInvitations(groupId, req.user!.userId);
+      res.json({ invitations: data });
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
+    }
   }
-}
 
-// Khóa nhóm
-async lockGroup(req: AuthenticatedRequest, res: Response) {
-  try {
-    const { groupId } = req.body; 
-    const result = await groupService.lockGroup(groupId, req.user!.userId);
-    return res.status(200).json(result);
-  } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
+  // Khóa nhóm
+  async lockGroup(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { groupId } = req.body;
+      const result = await groupService.lockGroup(groupId, req.user!.userId);
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(400).json({ message: (error as Error).message });
+    }
   }
-}
 
-// update nhóm
-async updateGroup(req: AuthenticatedRequest, res: Response) {
-  try {
-    const { groupId, ...updateData } = req.body;
-    const result = await groupService.updateGroup(groupId, req.user!.userId, updateData);
-    res.json(result);
-  } catch (error) {
-    res.status(400).json({ message: (error as Error).message });
+  // update nhóm
+  async updateGroup(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { groupId, ...updateData } = req.body;
+      const result = await groupService.updateGroup(groupId, req.user!.userId, updateData);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
+    }
   }
-}
 
-// update mentor
-async updateMentor(req: AuthenticatedRequest, res: Response) {
-  try {
-    const { groupId, oldMentorId, newMentorId } = req.body;
-    const result = await groupService.updateMentor(
-      groupId,
-      oldMentorId,
-      newMentorId,
-      req.user!.userId
-    );
-    return res.status(200).json(result);
-  } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
+  // update mentor
+  async updateMentor(req: Request, res: Response) {
+    try {
+      const { groupId, oldMentorId, newMentorId } = req.body;
+      const result = await groupService.updateMentor(
+        groupId,
+        oldMentorId,
+        newMentorId,
+        req.user!.userId
+      );
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(400).json({ message: (error as Error).message });
+    }
   }
-}
 
 
-// Lấy danh sách thành viên trong nhóm
-async getGroupMembers(req: AuthenticatedRequest, res: Response) {
-  try {
-    const { groupId } = req.params;
-    const data = await groupService.getGroupMembers(groupId, req.user!.userId);
-    res.json({ members: data });
-  } catch (error) {
-    res.status(400).json({ message: (error as Error).message });
+  // Lấy danh sách thành viên trong nhóm
+  async getGroupMembers(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { groupId } = req.params;
+      const data = await groupService.getGroupMembers(groupId, req.user!.userId);
+      res.json({ members: data });
+    } catch (error) {
+      res.status(400).json({ message: (error as Error).message });
+    }
   }
-}
 
 
 

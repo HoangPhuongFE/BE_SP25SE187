@@ -31,9 +31,14 @@ export class MeetingService {
     }
 
     // Kiểm tra người tạo có phải là mentor của group không
-    if (group.mentor1Id !== data.mentorId && group.mentor2Id !== data.mentorId) {
+    const isMentor = await prisma.groupMentor.findFirst({
+      where: { groupId: data.groupId, mentorId: data.mentorId }
+    });
+    
+    if (!isMentor) {
       throw new Error(MEETING_MESSAGE.UNAUTHORIZED_MENTOR);
     }
+    
 
     // Tạo meeting mới
     return await prisma.meetingSchedule.create({
@@ -43,7 +48,7 @@ export class MeetingService {
         meetingTime: new Date(data.meetingTime),
         location: data.location,
         agenda: data.agenda,
-        status: 'SCHEDULED' // Trạng thái mặc định khi tạo mới
+        status: 'SCHEDULED' 
       }
     });
   }
@@ -128,11 +133,12 @@ export class MeetingService {
     // Lấy danh sách meeting của group
     return await prisma.meetingSchedule.findMany({
       where: { 
-        groupId: parseInt(groupId)
+        groupId: Number(groupId)  
       },
       orderBy: {
         meetingTime: 'desc'
       }
     });
+    
   }
 } 

@@ -1,4 +1,4 @@
-generator client {unique
+generator client {
   provider = "prisma-client-js"
 }
 
@@ -6,6 +6,7 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
 model User {
   id                     String                  @id @default(uuid())
   username               String                  @unique
@@ -18,10 +19,10 @@ model User {
   specialty              String?
   programming_language   String?
   gender                 String?
-  phone                   String?
-  personal_Email            String?
-  semester_user                String?
-  isActive               Boolean                @default(true)
+  phone                  String?
+  personal_Email         String?
+  semester_user          String?
+  isActive               Boolean                 @default(true)
   lastLogin              DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
@@ -38,9 +39,12 @@ model User {
   reviewCouncils         ReviewCouncil[]         @relation("ReviewCouncilCreator")
   documents              Document[]
   notificationRecipients NotificationRecipient[]
-  createdEmailTemplates EmailTemplate[] @relation("UserEmailTemplates") 
-  groupMemberships       GroupMember[] @relation("UserGroupMembers")
- @@map("users")
+  createdEmailTemplates  EmailTemplate[]         @relation("UserEmailTemplates")
+  groupMemberships       GroupMember[]           @relation("UserGroupMembers")
+  mentorGroups           GroupMentor[]           @relation(name: "MentorGroupRelation")
+  addedMentors           GroupMentor[]           @relation(name: "AddedByUserRelation")
+
+  @@map("users")
 }
 
 model Role {
@@ -286,6 +290,7 @@ model Topic {
 
   @@map("topics")
 }
+
 // 
 model TopicAssignment {
   id              String    @id @default(uuid())
@@ -318,10 +323,8 @@ model Group {
   isMultiMajor     Boolean           @default(false) @map("is_multi_major")
   createdAt        DateTime          @default(now()) @map("created_at")
   updatedAt        DateTime          @updatedAt @map("updated_at")
-  mentor1Id        String?           @map("mentor_1_id")
-  mentor2Id        String?           @map("mentor_2_id")
-  topicEnglish      String?
-  topicTiengViet    String?
+  topicEnglish     String?
+  topicTiengViet   String?
   semester         Semester          @relation(fields: [semesterId], references: [id])
   creator          User              @relation("GroupCreator", fields: [createdBy], references: [id])
   invitations      GroupInvitation[]
@@ -329,9 +332,24 @@ model Group {
   progressReports  ProgressReport[]
   defenseSchedules DefenseSchedule[]
   decisions        Decision[]
-  isLocked  Boolean  @default(false)
+  isLocked         Boolean           @default(false)
+  mentors          GroupMentor[]
 
   @@map("groups")
+}
+
+model GroupMentor {
+  id       String   @id @default(uuid())
+  groupId  String   @map("group_id")
+  mentorId String   @map("mentor_id")
+  addedBy  String   @map("added_by")
+  addedAt  DateTime @default(now()) @map("added_at")
+
+  group       Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  mentor      User  @relation(name: "MentorGroupRelation", fields: [mentorId], references: [id])
+  addedByUser User? @relation(name: "AddedByUserRelation", fields: [addedBy], references: [id])
+
+  @@unique([groupId, mentorId])
 }
 
 model GroupInvitation {
@@ -341,9 +359,9 @@ model GroupInvitation {
   status      String    @default("PENDING") // PENDING, ACCEPTED, REJECTED,EXPIRED
   sentAt      DateTime  @default(now())
   respondedAt DateTime?
-  expiresAt  DateTime? 
-  group   Group   @relation(fields: [groupId], references: [id])
-  student Student @relation(fields: [studentId], references: [id])
+  expiresAt   DateTime?
+  group       Group     @relation(fields: [groupId], references: [id])
+  student     Student   @relation(fields: [studentId], references: [id])
 }
 
 model ProgressReport {
@@ -382,7 +400,7 @@ model GroupMember {
   id          String    @id @default(uuid())
   groupId     String    @map("group_id")
   studentId   String?   @map("student_id")
-  userId      String?   @map("user_id") 
+  userId      String?   @map("user_id")
   role        String
   joinedAt    DateTime  @default(now()) @map("joined_at")
   leaveAt     DateTime? @map("leave_at")
@@ -391,27 +409,27 @@ model GroupMember {
   status      String
   group       Group     @relation(fields: [groupId], references: [id])
   student     Student?  @relation(fields: [studentId], references: [id])
-  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade, name: "UserGroupMembers") 
+  user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade, name: "UserGroupMembers")
 
   @@map("group_members")
 }
 
 model SystemLog {
-  id         String   @id @default(uuid())
-  userId     String   @map("user_id")
-  action     String
-  entityType String   @map("entity_type")
-  entityId   String   @map("entity_id")
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
   description String?  @map("description")
-  error      String?  @map("error")
-  stackTrace String?  @map("stack_trace")
-  severity   String   @map("severity")
-  metadata   Json?    @map("metadata")
-  oldValues  Json?    @map("old_values")
-  newValues  Json?    @map("new_values")
-  createdAt  DateTime @default(now()) @map("created_at")
-  ipAddress  String   @map("ip_address")
-  user       User     @relation(fields: [userId], references: [id])
+  error       String?  @map("error")
+  stackTrace  String?  @map("stack_trace")
+  severity    String   @map("severity")
+  metadata    Json?    @map("metadata")
+  oldValues   Json?    @map("old_values")
+  newValues   Json?    @map("new_values")
+  createdAt   DateTime @default(now()) @map("created_at")
+  ipAddress   String   @map("ip_address")
+  user        User     @relation(fields: [userId], references: [id])
 
   @@map("system_logs")
 }
@@ -436,7 +454,7 @@ model EmailLog {
   subject        String
   content        String   @db.Text
   status         String
-  errorMessage   String?  @map("error_message")  @db.Text
+  errorMessage   String?  @map("error_message") @db.Text
   errorAt        DateTime @map("error_at")
   user           User     @relation(fields: [userId], references: [id])
 
@@ -585,11 +603,12 @@ model DetailMajorTopic {
   @@id([majorId, topicId])
   @@map("detail_major_topic")
 }
+
 model EmailTemplate {
   id            String   @id @default(uuid())
-  name          String   @unique 
-  subject       String   
-  body          String   @db.Text 
+  name          String   @unique
+  subject       String
+  body          String   @db.Text
   description   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
