@@ -274,17 +274,28 @@ export class GroupService {
 
   // 4) getGroupInfo
   async getGroupInfo(groupId: string) {
-    return prisma.group.findUnique({
-      where: { id: groupId },
-      include: {
-        members: {
-          include: {
-            student: { include: { user: true } },
-          },
+    const group = await prisma.group.findUnique({
+        where: { id: groupId },
+        include: {
+            _count: { select: { members: true } }, 
+            members: {
+                include: {
+                    student: {
+                        include: { user: true }, 
+                    },
+                },
+            },
         },
-      },
     });
-  }
+
+    if (!group) throw new Error("Nhóm không tồn tại.");
+
+    return {
+        ...group,
+        totalMembers: group._count.members, 
+    };
+}
+
 
   // getInvitationById
   async getInvitationById(invitationId: string) {
@@ -328,6 +339,7 @@ export class GroupService {
       include: { roles: { include: { role: true } } },
     });
     if (!user) throw new Error("Người dùng không tồn tại.");
+    
 
     const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
 

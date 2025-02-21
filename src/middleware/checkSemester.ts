@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 export async function checkSemester(req: Request, res: Response, next: NextFunction) {
     try {
         const { groupId } = req.body || req.params;
-        if (!groupId) return res.status(400).json({ message: "Thiếu groupId." });
+        if (!groupId) return res.status(400).json({ message: "Có GroupId nhưng ko thích cho xóa :))))" });
 
         const group = await prisma.group.findUnique({
             where: { id: groupId },

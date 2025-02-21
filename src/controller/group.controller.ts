@@ -166,22 +166,28 @@ export class GroupController {
   // Xóa nhóm
   async deleteGroup(req: Request, res: Response) {
     try {
-        console.log("REQ PARAMS:", req.params);  // Debug xem request có `groupId` không
-        const { groupId } = req.params;
-        console.log("DELETING GROUP:", groupId);
-
-        if (!groupId) {
-            return res.status(400).json({ message: "Thiếu groupId." });
-        }
-
-        const result = await groupService.deleteGroup(groupId, req.user!.userId);
-        return res.status(200).json(result);
+      // Kiểm tra groupId từ req.params
+      const groupId = req.params.groupId;
+      if (!groupId) {
+        console.error("GroupId missing in request");
+        return res.status(400).json({ message: "Thiếu groupId." });
+      }
+  
+      // Kiểm tra thông tin người dùng (được set qua middleware)
+      if (!req.user || !req.user.userId) {
+        console.error("User not found in request");
+        return res.status(401).json({ message: "Không tìm thấy thông tin người dùng." });
+      }
+  
+      // Gọi service để xóa nhóm
+      const result = await groupService.deleteGroup(groupId, req.user.userId);
+      return res.status(200).json(result);
     } catch (error) {
-        console.error("DELETE GROUP ERROR:", error); // Log lỗi nếu xảy ra
-        return res.status(500).json({ message: (error as Error).message });
+      console.error("Delete group error:", error);
+      return res.status(500).json({ message: error instanceof Error ? error.message : "Lỗi server khi xóa nhóm." });
     }
-}
-
+  }
+  
 
 
   // Rời nhóm
