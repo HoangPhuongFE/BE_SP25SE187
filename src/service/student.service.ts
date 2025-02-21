@@ -117,31 +117,35 @@ export class StudentService {
   async getStudentsBySemester(semesterId: string) {
     const students = await prisma.semesterStudent.findMany({
       where: { semesterId },
-      select: {
-        student: {
+      include: {
+        semester: {    
           select: {
-            id: true,
-            studentCode: true,  // 👈 Thêm studentCode vào kết quả
-            user: { select: { email: true } },
-            major: { select: { name: true } },
-            specialization: { select: { name: true } },
+            code: true,  
+            year: { select: { year: true } },  
           },
         },
-        status: true,
-        qualificationStatus: true,
+        student: {
+          include: {
+            user: true,
+            major: true,
+            specialization: true,
+          },
+        },
       },
     });
   
     return students.map((entry) => ({
       id: entry.student.id,
-      studentCode: entry.student.studentCode,
+      studentCode: entry.student.studentCode, 
+      studentName: entry.student.user?.fullName || "Không có tên",
       email: entry.student.user?.email || "",
       major: entry.student.major?.name || "",
       specialization: entry.student.specialization?.name || "",
-      status: entry.status,
-      qualificationStatus: entry.qualificationStatus,
+      semester: entry.semester.code, 
+      year: entry.semester.year.year, 
     }));
   }
+  
   
   async deleteAllStudentsInSemester(semesterId: string) {
     try {
