@@ -247,4 +247,27 @@ export class TopicController {
       });
     }
   }
+
+  async getTopicDetail(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const topic = await this.topicService.getTopicDetail(id);
+
+      res.status(HTTP_STATUS.OK).json({
+        message: TOPIC_MESSAGE.TOPIC_FETCHED,
+        data: topic
+      });
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === TOPIC_MESSAGE.TOPIC_NOT_FOUND) {
+          return res.status(HTTP_STATUS.NOT_FOUND).json({
+            message: error.message
+          });
+        }
+      }
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
 } 

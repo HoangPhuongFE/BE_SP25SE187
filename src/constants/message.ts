@@ -148,6 +148,7 @@ export const TOPIC_MESSAGE = {
   AI_VALIDATION_FAILED: "AI validation failed: ",
   INVALID_TOPIC_NAME: "Invalid topic name: ",
   INVALID_TOPIC_CODE: "Invalid topic code: ",
+  TOPIC_FETCHED: "Topic fetched",
 } as const;
 
 

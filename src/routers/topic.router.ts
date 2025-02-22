@@ -86,4 +86,11 @@ router.put(
   topicController.approveTopicRegistration.bind(topicController)
 );
 
+// Route lấy chi tiết topic
+router.get(
+  "/:id",
+  authenticateToken,
+  topicController.getTopicDetail.bind(topicController)
+);
+
 export default router; 

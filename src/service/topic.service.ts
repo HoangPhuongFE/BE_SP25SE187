@@ -798,4 +798,94 @@ export class TopicService {
 
     return council;
   }
+
+  async getTopicDetail(id: string) {
+    try {
+      if (!isUUID(id)) {
+        throw new Error('ID topic không hợp lệ');
+      }
+
+      const topic = await prisma.topic.findUnique({
+        where: { id },
+        include: {
+          detailMajorTopics: {
+            include: {
+              major: true
+            }
+          },
+          semester: {
+            include: {
+              year: true
+            }
+          },
+          creator: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              avatar: true
+            }
+          },
+          topicRegistrations: {
+            include: {
+              topic: true
+            }
+          }
+        }
+      });
+
+      if (!topic) {
+        throw new Error(TOPIC_MESSAGE.TOPIC_NOT_FOUND);
+      }
+
+      // Lấy documents từ bảng Document
+      const documents = await prisma.document.findMany({
+        where: {
+          relatedTable: 'topics',
+          documentType: 'TOPIC'
+        },
+        select: {
+          id: true,
+          fileName: true,
+          filePath: true,
+          documentType: true,
+          uploadedAt: true,
+          uploadedBy: true,
+          uploader: {
+            select: {
+              fullName: true,
+              email: true
+            }
+          }
+        }
+      });
+
+      const topicWithUrls = {
+        ...topic,
+        documents: documents.map(doc => ({
+          ...doc,
+          fileUrl: `${process.env.BASE_URL}/uploads/topics/${doc.filePath}`
+        }))
+      };
+
+      // Ghi log
+      await this.logSystemAction(
+        'VIEW_TOPIC_DETAIL',
+        id,
+        `Viewed topic detail: ${topic.name}`,
+        'SYSTEM'
+      );
+
+      return topicWithUrls;
+    } catch (error) {
+      await this.logSystemAction(
+        'VIEW_TOPIC_DETAIL_ERROR',
+        id,
+        'Failed to view topic detail',
+        'SYSTEM',
+        error as Error
+      );
+      throw error;
+    }
+  }
 } 
