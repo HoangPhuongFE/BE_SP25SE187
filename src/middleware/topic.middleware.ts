@@ -193,40 +193,6 @@ export const validateTopicRegistration = [
       }
     }
 
-    // Kiểm tra nếu là leader
-    if (userRoles.includes('leader')) {
-      const student = await prisma.student.findUnique({
-        where: { userId },
-        include: {
-          groupMembers: {
-            include: {
-              group: {
-                include: {
-                  decisions: {
-                    include: {
-                      topic: {
-                        include: {
-                          topicRegistrations: true
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      });
-
-      const hasGroupWithTopic = student?.groupMembers.some(
-        member => member.group.decisions.some(decision => decision.topic.topicRegistrations.some(registration => registration.status === 'pending'))
-      );
-
-      if (hasGroupWithTopic) {
-        return res.status(400).json({ message: TOPIC_MESSAGE.GROUP_ALREADY_HAS_TOPIC });
-      }
-    }
-
     next();
   }
 ];
@@ -234,7 +200,7 @@ export const validateTopicRegistration = [
 export const validateTopicApproval = [
   param('registrationId').notEmpty().withMessage('ID đăng ký là bắt buộc'),
   body('status')
-    .isIn(['approved', 'rejected'])
+    .isIn(['approved', 'rejected', 'pending', 'considering'])
     .withMessage('Trạng thái không hợp lệ'),
 
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {

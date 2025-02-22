@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Express } from 'express';
 import { AuthenticatedRequest } from "../middleware/user.middleware";
 import { TopicService } from "../service/topic.service";
 import HTTP_STATUS from "../constants/httpStatus";
@@ -21,6 +22,11 @@ export class TopicController {
         businessPartner 
       } = req.body;
       
+      const documents = Array.isArray(req.files) ? req.files.map((file: Express.Multer.File) => ({
+        fileName: file.originalname,
+        filePath: file.path
+      })) : [];
+
       const createdBy = req.user!.userId;
 
       const topic = await this.topicService.createTopic({
@@ -32,7 +38,8 @@ export class TopicController {
         semesterId,
         createdBy,
         isBusiness,
-        businessPartner
+        businessPartner,
+        documents
       });
 
       res.status(HTTP_STATUS.CREATED).json({
@@ -85,19 +92,22 @@ export class TopicController {
   async approveTopicRegistration(req: AuthenticatedRequest, res: Response) {
     try {
       const { registrationId } = req.params;
-      const { status } = req.body;
+      const { status, rejectionReason } = req.body;
       const reviewerId = req.user!.userId;
 
-      if (!['approved', 'rejected'].includes(status)) {
-        return res.status(400).json({
-          message: TOPIC_MESSAGE.INVALID_STATUS
-        });
-      }
+      const documents = Array.isArray(req.files) ? req.files.map((file: Express.Multer.File) => ({
+        fileName: file.originalname,
+        filePath: file.path
+      })) : [];
 
       const registration = await this.topicService.approveTopicRegistration(
         registrationId,
-        status,
-        reviewerId
+        {
+          status,
+          rejectionReason,
+          documents,
+          reviewerId
+        }
       );
 
       res.status(HTTP_STATUS.OK).json({
@@ -111,13 +121,8 @@ export class TopicController {
             message: error.message
           });
         }
-        if (error.message === TOPIC_MESSAGE.INVALID_REVIEWER) {
-          return res.status(HTTP_STATUS.FORBIDDEN).json({
-            message: error.message
-          });
-        }
       }
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      res.status(HTTP_STATUS.BAD_REQUEST).json({
         message: (error as Error).message
       });
     }
@@ -126,19 +131,31 @@ export class TopicController {
   async registerTopic(req: AuthenticatedRequest, res: Response) {
     try {
       const { name, description, semesterId, majorId } = req.body;
-      const userId = req.user!.userId;
+      const userId = req.user?.userId;
 
-      const registration = await this.topicService.registerTopic({
+      if (!userId) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          message: 'Unauthorized'
+        });
+      }
+
+      const documents = Array.isArray(req.files) ? req.files.map((file: Express.Multer.File) => ({
+        fileName: file.originalname,
+        filePath: file.path
+      })) : [];
+
+      const result = await this.topicService.registerTopic({
         name,
         description,
         userId,
         semesterId,
-        majorId
+        majorId,
+        documents
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         message: TOPIC_MESSAGE.TOPIC_REGISTRATION_CREATED,
-        data: registration
+        data: result
       });
     } catch (error) {
       res.status(HTTP_STATUS.BAD_REQUEST).json({
