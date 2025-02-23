@@ -19,6 +19,7 @@ import emailRouter from './routers/email.router';
 import emailTemplateRouter from "./routers/emailTemplate.router";
 import configRouter from "./routers/config.routes";
 import importRole from './routers/importRole.router';
+import majorRouter from './routers/major.router';
 
 //
 config();
@@ -52,7 +53,7 @@ app.use('/api', emailRouter);
 app.use("/api/email-templates", emailTemplateRouter);
 app.use("/api/config", configRouter);
 app.use("/api/import", importRole);
-
+app.use("/api/majors", majorRouter);
 
 
 const PORT = process.env.PORT || 3000;
