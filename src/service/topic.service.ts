@@ -113,7 +113,7 @@ export class TopicService {
       );
 
       // Parse response từ Gemini
-      const content = response.data.candidates[0].content.parts[0].text;
+      const content = (response.data as any).candidates[0].content.parts[0].text;
       let result;
       try {
         // Tìm và parse phần JSON trong response
