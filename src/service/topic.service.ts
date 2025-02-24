@@ -17,6 +17,8 @@ interface RegisterTopicData {
   userId: string;
   semesterId: string;
   majorId: string;
+  isBusiness?: boolean;
+  businessPartner?: string;
   documents?: TopicDocument[];
 }
 
@@ -463,7 +465,8 @@ export class TopicService {
             name: data.name,
             description: data.description,
             status: 'PENDING',
-            isBusiness: false,
+            isBusiness: data.isBusiness || false,
+            businessPartner: data.businessPartner,
             semesterId: data.semesterId,
             createdBy: data.userId,
             detailMajorTopics: {

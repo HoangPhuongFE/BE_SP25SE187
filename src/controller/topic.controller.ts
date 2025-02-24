@@ -133,7 +133,14 @@ export class TopicController {
 
   async registerTopic(req: AuthenticatedRequest, res: Response) {
     try {
-      const { name, description, semesterId, majorId } = req.body;
+      const { 
+        name, 
+        description, 
+        semesterId, 
+        majorId,
+        isBusiness,
+        businessPartner 
+      } = req.body;
       const userId = req.user?.userId;
 
       if (!userId) {
@@ -153,6 +160,8 @@ export class TopicController {
         userId,
         semesterId,
         majorId,
+        isBusiness,
+        businessPartner,
         documents
       });
 
