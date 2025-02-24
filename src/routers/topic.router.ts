@@ -93,4 +93,11 @@ router.get(
   topicController.getTopicDetail.bind(topicController)
 );
 
+router.get(
+  "/export/excel",
+  authenticateToken,
+  checkRole(["academic_officer"]),
+  topicController.exportTopics.bind(topicController)
+);
+
 export default router; 

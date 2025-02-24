@@ -888,4 +888,57 @@ export class TopicService {
       throw error;
     }
   }
+
+  async getTopicsForExport({
+    semesterId,
+    majorId,
+    status,
+    isBusiness
+  }: {
+    semesterId?: string;
+    majorId?: string;
+    status?: string;
+    isBusiness?: boolean;
+  }) {
+    const where = {
+      ...(semesterId && { semesterId }),
+      ...(majorId && {
+        detailMajorTopics: {
+          some: {
+            majorId
+          }
+        }
+      }),
+      ...(status && { status }),
+      ...(isBusiness !== undefined && { isBusiness })
+    };
+
+    const topics = await prisma.topic.findMany({
+      where,
+      include: {
+        detailMajorTopics: {
+          include: {
+            major: true
+          }
+        },
+        semester: {
+          include: {
+            year: true
+          }
+        },
+        creator: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return topics;
+  }
 } 
