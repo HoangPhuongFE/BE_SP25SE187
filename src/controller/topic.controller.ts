@@ -5,6 +5,8 @@ import { TopicService } from "../service/topic.service";
 import HTTP_STATUS from "../constants/httpStatus";
 import { TOPIC_MESSAGE } from "../constants/message";
 import ExcelJS from 'exceljs';
+import { validateExcelImport } from '../utils/excelValidator';
+import fs from 'fs';
 
 export class TopicController {
   private topicService = new TopicService();
@@ -346,6 +348,69 @@ export class TopicController {
       res.end();
 
     } catch (error) {
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
+
+  async importTopicEvaluations(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.file) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: 'Vui lòng tải lên file Excel'
+        });
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(req.file.path);
+      const worksheet = workbook.getWorksheet(1);
+
+      if (!worksheet) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: 'File Excel không có dữ liệu'
+        });
+      }
+
+      // Validate cấu trúc file Excel
+      const requiredColumns = [
+        'Mã đề tài',
+        'Trạng thái',
+        'Lý do từ chối',
+        'Người đánh giá'
+      ];
+
+      const validationError = validateExcelImport(worksheet, requiredColumns);
+      if (validationError) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: validationError
+        });
+      }
+
+      const results = await this.topicService.importTopicEvaluations(
+        worksheet,
+        req.user!.userId
+      );
+
+      // Xóa file tạm sau khi xử lý
+      fs.unlinkSync(req.file.path);
+
+      res.status(HTTP_STATUS.OK).json({
+        message: 'Import đánh giá đề tài thành công',
+        data: {
+          total: results.total,
+          success: results.success,
+          failed: results.failed,
+          errors: results.errors
+        }
+      });
+
+    } catch (error) {
+      // Xóa file tạm nếu có lỗi
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         message: (error as Error).message
       });

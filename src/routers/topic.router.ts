@@ -100,4 +100,12 @@ router.get(
   topicController.exportTopics.bind(topicController)
 );
 
+router.post(
+  "/import/evaluations",
+  authenticateToken,
+  checkRole(["academic_officer"]),
+  upload.single('file'),
+  topicController.importTopicEvaluations.bind(topicController)
+);
+
 export default router; 
