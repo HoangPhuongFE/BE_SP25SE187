@@ -17,9 +17,9 @@ import topicRouter from './routers/topic.router';
 import meetingRouter from './routers/meeting.router';
 import emailRouter from './routers/email.router';
 import emailTemplateRouter from "./routers/emailTemplate.router";
-import configRouter from "./routers/config.routes";
 import importRole from './routers/importRole.router';
 import majorRouter from './routers/major.router';
+import systemConfigRoutes from "./routers/system.config.routes";
 
 //
 config();
@@ -51,9 +51,13 @@ app.use('/api/topics', topicRouter);
 app.use('/api/meetings', meetingRouter);
 app.use('/api', emailRouter);
 app.use("/api/email-templates", emailTemplateRouter);
-app.use("/api/config", configRouter);
 app.use("/api/import", importRole);
 app.use("/api/majors", majorRouter);
+app.use("/api/config", systemConfigRoutes);
+
+
+
+
 
 
 const PORT = process.env.PORT || 3000;
