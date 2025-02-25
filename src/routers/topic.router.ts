@@ -93,4 +93,19 @@ router.get(
   topicController.getTopicDetail.bind(topicController)
 );
 
+router.get(
+  "/export/excel",
+  authenticateToken,
+  checkRole(["academic_officer"]),
+  topicController.exportTopics.bind(topicController)
+);
+
+router.post(
+  "/import/evaluations",
+  authenticateToken,
+  checkRole(["academic_officer"]),
+  upload.single('file'),
+  topicController.importTopicEvaluations.bind(topicController)
+);
+
 export default router; 

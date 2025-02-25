@@ -15,7 +15,7 @@ export const validateTopicWithAI = async (
 ) => {
   try {
     // Kiểm tra cấu hình và môi trường
-    if (process.env.SKIP_AI_VALIDATION === 'true' || !process.env.OPENAI_API_KEY) {
+    if (process.env.SKIP_AI_VALIDATION === 'true' || !process.env.GEMINI_API_KEY) {
       return next();
     }
 
@@ -169,6 +169,8 @@ export const validateTopicRegistration = [
   body('description').notEmpty().withMessage(TOPIC_MESSAGE.DESCRIPTION_REQUIRED),
   body('semesterId').notEmpty().withMessage('Semester ID là bắt buộc'),
   body('majorId').notEmpty().withMessage('Major ID là bắt buộc'),
+  
+  validateTopicWithAI,
   
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
