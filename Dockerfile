@@ -5,21 +5,20 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy necessary files for installing dependencies
-COPY package.json pnpm-lock.yaml ./
+COPY package.json package-lock.json ./
 
-# Install pnpm and dependencies
-RUN npm install -g pnpm \
-    && pnpm install --frozen-lockfile
+# Install dependencies using npm
+RUN npm install 
 
 # Copy the rest of the project files
 COPY . .
 
 # Generate Prisma client and build the project
 RUN npx prisma generate \
-    && pnpm run build
+    && npm run build
 
 # Expose the application port
 EXPOSE 3000
 
 # Command to start the application
-CMD ["npx","node", "dist/src/index.js"]
+CMD ["node", "dist/src/index.js"]
