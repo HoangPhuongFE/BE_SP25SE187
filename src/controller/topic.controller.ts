@@ -4,6 +4,9 @@ import { AuthenticatedRequest } from "../middleware/user.middleware";
 import { TopicService } from "../service/topic.service";
 import HTTP_STATUS from "../constants/httpStatus";
 import { TOPIC_MESSAGE } from "../constants/message";
+import ExcelJS from 'exceljs';
+import { validateExcelImport } from '../utils/excelValidator';
+import fs from 'fs';
 
 export class TopicController {
   private topicService = new TopicService();
@@ -130,7 +133,14 @@ export class TopicController {
 
   async registerTopic(req: AuthenticatedRequest, res: Response) {
     try {
-      const { name, description, semesterId, majorId } = req.body;
+      const { 
+        name, 
+        description, 
+        semesterId, 
+        majorId,
+        isBusiness,
+        businessPartner 
+      } = req.body;
       const userId = req.user?.userId;
 
       if (!userId) {
@@ -150,6 +160,8 @@ export class TopicController {
         userId,
         semesterId,
         majorId,
+        isBusiness,
+        businessPartner,
         documents
       });
 
@@ -265,6 +277,149 @@ export class TopicController {
           });
         }
       }
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
+
+  async exportTopics(req: AuthenticatedRequest, res: Response) {
+    try {
+      const semesterId = req.query.semesterId as string;
+      const majorId = req.query.majorId as string;
+      const status = req.query.status as string;
+      const isBusiness = req.query.isBusiness === 'true';
+
+      const topics = await this.topicService.getTopicsForExport({
+        semesterId,
+        majorId,
+        status,
+        isBusiness
+      });
+
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Topics');
+
+      // Định nghĩa các cột
+      worksheet.columns = [
+        { header: 'Mã đề tài', key: 'topicCode', width: 15 },
+        { header: 'Tên đề tài', key: 'name', width: 40 },
+        { header: 'Mô tả', key: 'description', width: 50 },
+        { header: 'Ngành', key: 'majors', width: 20 },
+        { header: 'Học kỳ', key: 'semester', width: 15 },
+        { header: 'Năm học', key: 'year', width: 15 },
+        { header: 'Người tạo', key: 'creator', width: 20 },
+        { header: 'Trạng thái', key: 'status', width: 15 },
+        { header: 'Đề tài doanh nghiệp', key: 'isBusiness', width: 20 },
+        { header: 'Doanh nghiệp', key: 'businessPartner', width: 25 },
+        { header: 'Ngày tạo', key: 'createdAt', width: 20 }
+      ];
+
+      // Style cho header
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // Thêm dữ liệu
+      topics.forEach(topic => {
+        worksheet.addRow({
+          topicCode: topic.topicCode,
+          name: topic.name,
+          description: topic.description,
+          majors: topic.detailMajorTopics.map(dmt => dmt.major.name).join(', '),
+          semester: topic.semester.code,
+          year: topic.semester.year.year,
+          creator: topic.creator.fullName,
+          status: topic.status,
+          isBusiness: topic.isBusiness ? 'Có' : 'Không',
+          businessPartner: topic.businessPartner || '',
+          createdAt: topic.createdAt.toLocaleDateString('vi-VN')
+        });
+      });
+
+      // Tự động điều chỉnh chiều rộng cột
+      worksheet.columns.forEach(column => {
+        column.alignment = { vertical: 'middle', wrapText: true };
+      });
+
+      // Tạo tên file với timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const fileName = `topics_export_${timestamp}.xlsx`;
+
+      // Set response headers
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      );
+      res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+
+      // Ghi workbook vào response
+      await workbook.xlsx.write(res);
+      res.end();
+
+    } catch (error) {
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
+
+  async importTopicEvaluations(req: AuthenticatedRequest, res: Response) {
+    try {
+      if (!req.file) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: 'Vui lòng tải lên file Excel'
+        });
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(req.file.path);
+      const worksheet = workbook.getWorksheet(1);
+
+      if (!worksheet) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: 'File Excel không có dữ liệu'
+        });
+      }
+
+      // Validate cấu trúc file Excel
+      const requiredColumns = [
+        'Mã đề tài',
+        'Trạng thái',
+        'Lý do từ chối',
+        'Người đánh giá'
+      ];
+
+      const validationError = validateExcelImport(worksheet, requiredColumns);
+      if (validationError) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: validationError
+        });
+      }
+
+      const results = await this.topicService.importTopicEvaluations(
+        worksheet,
+        req.user!.userId
+      );
+
+      // Xóa file tạm sau khi xử lý
+      fs.unlinkSync(req.file.path);
+
+      res.status(HTTP_STATUS.OK).json({
+        message: 'Import đánh giá đề tài thành công',
+        data: {
+          total: results.total,
+          success: results.success,
+          failed: results.failed,
+          errors: results.errors
+        }
+      });
+
+    } catch (error) {
+      // Xóa file tạm nếu có lỗi
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         message: (error as Error).message
       });

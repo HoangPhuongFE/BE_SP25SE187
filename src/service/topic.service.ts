@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { TOPIC_MESSAGE } from '../constants/message';
 import { validate as isUUID } from 'uuid';
 import axios from 'axios';
+import ExcelJS from 'exceljs';
 
 const prisma = new PrismaClient();
 
@@ -16,7 +17,20 @@ interface RegisterTopicData {
   userId: string;
   semesterId: string;
   majorId: string;
+  isBusiness?: boolean;
+  businessPartner?: string;
   documents?: TopicDocument[];
+}
+
+interface ImportResult {
+  total: number;
+  success: number;
+  failed: number;
+  errors: Array<{
+    row: number;
+    topicCode: string;
+    error: string;
+  }>;
 }
 
 export class TopicService {
@@ -451,7 +465,8 @@ export class TopicService {
             name: data.name,
             description: data.description,
             status: 'PENDING',
-            isBusiness: false,
+            isBusiness: data.isBusiness || false,
+            businessPartner: data.businessPartner,
             semesterId: data.semesterId,
             createdBy: data.userId,
             detailMajorTopics: {
@@ -641,7 +656,7 @@ export class TopicService {
       const registration = await tx.topicRegistration.update({
         where: { id: registrationId },
         data: {
-          status: data.status,
+          status,
           reviewedAt: new Date(),
           reviewerId: data.reviewerId,
           rejectionReason: data.status !== 'approved' ? data.rejectionReason : null,
@@ -887,5 +902,158 @@ export class TopicService {
       );
       throw error;
     }
+  }
+
+  async getTopicsForExport({
+    semesterId,
+    majorId,
+    status,
+    isBusiness
+  }: {
+    semesterId?: string;
+    majorId?: string;
+    status?: string;
+    isBusiness?: boolean;
+  }) {
+    const where = {
+      ...(semesterId && { semesterId }),
+      ...(majorId && {
+        detailMajorTopics: {
+          some: {
+            majorId
+          }
+        }
+      }),
+      ...(status && { status }),
+      ...(isBusiness !== undefined && { isBusiness })
+    };
+
+    const topics = await prisma.topic.findMany({
+      where,
+      include: {
+        detailMajorTopics: {
+          include: {
+            major: true
+          }
+        },
+        semester: {
+          include: {
+            year: true
+          }
+        },
+        creator: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      }
+    });
+
+    return topics;
+  }
+
+  async importTopicEvaluations(
+    worksheet: ExcelJS.Worksheet,
+    reviewerId: string
+  ): Promise<ImportResult> {
+    const result: ImportResult = {
+      total: 0,
+      success: 0,
+      failed: 0,
+      errors: []
+    };
+
+    // Bỏ qua hàng header
+    const rows = worksheet.getRows(2, worksheet.rowCount - 1) || [];
+    result.total = rows.length;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNumber = i + 2;
+
+      try {
+        const topicCode = row.getCell('Mã đề tài').text.trim();
+        const status = row.getCell('Trạng thái').text.trim().toLowerCase();
+        const rejectionReason = row.getCell('Lý do từ chối').text.trim();
+
+        // Validate dữ liệu
+        if (!topicCode) {
+          throw new Error('Mã đề tài không được để trống');
+        }
+
+        if (!['approved', 'rejected', 'consider'].includes(status)) {
+          throw new Error('Trạng thái không hợp lệ');
+        }
+
+        if ((status === 'rejected' || status === 'consider') && !rejectionReason) {
+          throw new Error('Cần cung cấp lý do khi từ chối hoặc yêu cầu xem xét lại');
+        }
+
+        // Tìm topic registration dựa trên topic code
+        const topic = await prisma.topic.findUnique({
+          where: { topicCode },
+          include: {
+            topicRegistrations: true
+          }
+        });
+
+        if (!topic) {
+          throw new Error('Không tìm thấy đề tài');
+        }
+
+        const registration = topic.topicRegistrations[0];
+        if (!registration) {
+          throw new Error('Không tìm thấy đăng ký đề tài');
+        }
+
+        // Cập nhật trạng thái đăng ký và topic
+        await prisma.$transaction(async (tx) => {
+          // Cập nhật registration
+          await tx.topicRegistration.update({
+            where: { id: registration.id },
+            data: {
+              status,
+              reviewedAt: new Date(),
+              reviewerId,
+              rejectionReason: status !== 'approved' ? rejectionReason : null,
+            }
+          });
+
+          // Cập nhật topic status
+          const topicStatus = status === 'approved' ? 'APPROVED' 
+            : status === 'rejected' ? 'REJECTED' 
+            : 'CONSIDER';
+
+          await tx.topic.update({
+            where: { id: topic.id },
+            data: { status: topicStatus }
+          });
+        });
+
+        // Ghi log
+        await this.logSystemAction(
+          `TOPIC_${status.toUpperCase()}_IMPORT`,
+          topic.id,
+          `Topic ${status} through import: ${topic.name}`,
+          reviewerId
+        );
+
+        result.success++;
+      } catch (error) {
+        result.failed++;
+        result.errors.push({
+          row: rowNumber,
+          topicCode: row.getCell('Mã đề tài').text.trim(),
+          error: (error as Error).message
+        });
+      }
+    }
+
+    return result;
   }
 } 
