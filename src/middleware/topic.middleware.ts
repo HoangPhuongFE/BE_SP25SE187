@@ -139,11 +139,18 @@ export const validateCreateTopic = [
 ];
 
 export const validateUpdateTopic = [
-  param('id').notEmpty().withMessage('Topic ID is required'),
   body('name').optional().notEmpty().withMessage(TOPIC_MESSAGE.NAME_REQUIRED),
   body('description').optional().notEmpty().withMessage(TOPIC_MESSAGE.DESCRIPTION_REQUIRED),
   body('maxStudents').optional().isInt({ min: 1 }).withMessage(TOPIC_MESSAGE.MAX_STUDENTS_INVALID),
   body('majors').optional().isArray().notEmpty().withMessage(TOPIC_MESSAGE.INVALID_MAJOR),
+  body('status').optional().isIn(['ACTIVE', 'INACTIVE', 'PENDING']).withMessage('Trạng thái không hợp lệ'),
+  body('isBusiness').optional().isBoolean().withMessage('isBusiness phải là boolean'),
+  body('businessPartner').optional().custom((value, { req }) => {
+    if (req.body.isBusiness && !value) {
+      throw new Error(TOPIC_MESSAGE.INVALID_BUSINESS_INFO);
+    }
+    return true;
+  }),
 
   async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
@@ -151,9 +158,9 @@ export const validateUpdateTopic = [
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { id } = req.params;
+    const { topicId } = req.params;
     const topic = await prisma.topic.findUnique({
-      where: { id }
+      where: { id: topicId }
     });
 
     if (!topic) {

@@ -263,35 +263,34 @@ model ReviewDefenseCouncil {
 }
 
 model Topic {
-  id                  String               @id @default(uuid())
-  semesterId          String               @map("semester_id")
-  topicCode           String               @unique @map("topic_code")
-  name                String
-  description         String?              @db.Text
-  isBusiness          Boolean              @default(false) @map("is_business")
-  businessPartner     String?              @map("business_partner")
-  source              String?
-  status              String
-  isMultiMajor        Boolean              @default(false) @map("is_multi_major")
-  createdBy           String               @map("created_by")
-  createdAt           DateTime             @default(now()) @map("created_at")
-  updatedAt           DateTime             @updatedAt @map("updated_at")
-  majorId1            Int?                 @map("major_id1")
-  majorId2            Int?                 @map("major_id2")
-  semester            Semester             @relation(fields: [semesterId], references: [id])
-  creator             User                 @relation("TopicCreator", fields: [createdBy], references: [id])
-  topicRegistrations  TopicRegistration[]
+  id              String   @id @default(uuid())
+  semesterId      String   @map("semester_id")
+  topicCode       String   @unique @map("topic_code")
+  name            String
+  description     String   @db.Text
+  isBusiness      Boolean  @default(false) @map("is_business")
+  businessPartner String?  @map("business_partner")
+  source          String?
+  status          String
+  createdBy       String   @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  semester           Semester            @relation(fields: [semesterId], references: [id])
+  creator            User                @relation("TopicCreator", fields: [createdBy], references: [id])
+  detailMajorTopics  DetailMajorTopic[]
+  topicRegistrations TopicRegistration[]
+  documents          Document[]          @relation("TopicDocuments")
+
+  majors              Major[]              @relation("MajorTopics")
+  topicAssignments    TopicAssignment[]
   aiVerificationLogs  AIVerificationLog[]
   semesterTopicMajors SemesterTopicMajor[]
-  topicAssignments    TopicAssignment[]
   decisions           Decision[]
-  detailMajorTopics   DetailMajorTopic[]
-  majors              Major[]              @relation("MajorTopics")
 
   @@map("topics")
 }
 
-// 
 model TopicAssignment {
   id              String    @id @default(uuid())
   topicId         String    @map("topic_id")
@@ -534,7 +533,9 @@ model Document {
   documentType String   @map("document_type")
   uploadedAt   DateTime @default(now()) @map("uploaded_at")
   uploadedBy   String   @map("uploaded_by")
+  topicId      String?  @map("topic_id")
   uploader     User     @relation(fields: [uploadedBy], references: [id])
+  topic        Topic?   @relation("TopicDocuments", fields: [topicId], references: [id])
 
   @@map("documents")
 }

@@ -231,17 +231,14 @@ CREATE TABLE `topics` (
     `semester_id` VARCHAR(191) NOT NULL,
     `topic_code` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
-    `description` TEXT NULL,
+    `description` TEXT NOT NULL,
     `is_business` BOOLEAN NOT NULL DEFAULT false,
     `business_partner` VARCHAR(191) NULL,
     `source` VARCHAR(191) NULL,
     `status` VARCHAR(191) NOT NULL,
-    `is_multi_major` BOOLEAN NOT NULL DEFAULT false,
     `created_by` VARCHAR(191) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
-    `major_id1` INTEGER NULL,
-    `major_id2` INTEGER NULL,
 
     UNIQUE INDEX `topics_topic_code_key`(`topic_code`),
     PRIMARY KEY (`id`)
@@ -475,6 +472,7 @@ CREATE TABLE `documents` (
     `document_type` VARCHAR(191) NOT NULL,
     `uploaded_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `uploaded_by` VARCHAR(191) NOT NULL,
+    `topic_id` VARCHAR(191) NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -691,6 +689,9 @@ ALTER TABLE `review_assignments` ADD CONSTRAINT `review_assignments_council_id_f
 
 -- AddForeignKey
 ALTER TABLE `documents` ADD CONSTRAINT `documents_uploaded_by_fkey` FOREIGN KEY (`uploaded_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `documents` ADD CONSTRAINT `documents_topic_id_fkey` FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `council_members` ADD CONSTRAINT `council_members_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;

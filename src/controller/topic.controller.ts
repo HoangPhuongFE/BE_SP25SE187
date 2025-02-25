@@ -59,16 +59,28 @@ export class TopicController {
   // Cập nhật topic
   async updateTopic(req: AuthenticatedRequest, res: Response) {
     try {
-      const { id } = req.params;
+      const { topicId } = req.params;
       const updateData = req.body;
 
-      const topic = await this.topicService.updateTopic(id, updateData, req.user!.userId);
+      const topic = await this.topicService.updateTopic(topicId, updateData, req.user!.userId);
 
       res.status(HTTP_STATUS.OK).json({
         message: TOPIC_MESSAGE.TOPIC_UPDATED,
         data: topic
       });
     } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === TOPIC_MESSAGE.TOPIC_NOT_FOUND) {
+          return res.status(HTTP_STATUS.NOT_FOUND).json({
+            message: error.message
+          });
+        }
+        if (error.message === 'ID topic không hợp lệ') {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            message: error.message
+          });
+        }
+      }
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         message: (error as Error).message
       });
@@ -78,13 +90,32 @@ export class TopicController {
   // Xóa topic
   async deleteTopic(req: AuthenticatedRequest, res: Response) {
     try {
-      const { id } = req.params;
-      await this.topicService.deleteTopic(id);
+      const { topicId } = req.params;
+      const userId = req.user!.userId;
+
+      await this.topicService.deleteTopic(topicId, userId);
 
       res.status(HTTP_STATUS.OK).json({
         message: TOPIC_MESSAGE.TOPIC_DELETED
       });
     } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === TOPIC_MESSAGE.TOPIC_NOT_FOUND) {
+          return res.status(HTTP_STATUS.NOT_FOUND).json({
+            message: error.message
+          });
+        }
+        if (error.message === TOPIC_MESSAGE.INVALID_ID) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            message: error.message
+          });
+        }
+        if (error.message === TOPIC_MESSAGE.TOPIC_IN_USE) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            message: error.message
+          });
+        }
+      }
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         message: (error as Error).message
       });

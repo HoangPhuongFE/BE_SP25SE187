@@ -32,7 +32,7 @@ router.post(
 router.put(
   "/:topicId",
   authenticateToken,
-  checkRole(["academic_officer"]),
+  checkRole(["academic_officer", "mentor"]),
   validateUpdateTopic,
   topicController.updateTopic.bind(topicController)
 );

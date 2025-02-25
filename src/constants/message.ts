@@ -30,6 +30,7 @@ export const USER_MESSAGE = {
   FORBIDDEN: "Forbidden access",
   INVALID_REFRESH_TOKEN: "Invalid refresh token",
   UPDATE_PROFILE_SUCCESS: "Profile updated successfully",
+  USER_ALREADY_EXISTS: "User already exists",
 } as const;
 
 // Thông báo liên quan đến xác thực
@@ -149,6 +150,8 @@ export const TOPIC_MESSAGE = {
   INVALID_TOPIC_NAME: "Invalid topic name: ",
   INVALID_TOPIC_CODE: "Invalid topic code: ",
   TOPIC_FETCHED: "Topic fetched",
+  INVALID_ID: "Invalid topic ID",
+  TOPIC_IN_USE: "Cannot delete topic in use",
 } as const;
 
 
