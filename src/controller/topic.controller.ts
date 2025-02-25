@@ -7,7 +7,7 @@ import { TOPIC_MESSAGE } from "../constants/message";
 
 export class TopicController {
   private topicService = new TopicService();
-
+//
   // Tạo topic mới
   async createTopic(req: AuthenticatedRequest, res: Response) {
     try {
