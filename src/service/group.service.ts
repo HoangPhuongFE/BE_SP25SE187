@@ -75,7 +75,7 @@ export class GroupService {
   // 2) Mời thành viên (sinh viên)
  
   async inviteMember(groupId: string, studentEmail: string, invitedById: string) {
-    // 1️⃣ Tìm sinh viên theo email
+    // 1️ Tìm sinh viên theo email
     const invitedStudent = await prisma.student.findFirst({
       where: { user: { email: studentEmail } }, 
       include: { user: true, major: true },
@@ -83,7 +83,7 @@ export class GroupService {
   
     if (!invitedStudent) throw new Error(`Không tìm thấy sinh viên với email: ${studentEmail}`);
   
-    // 2️⃣ Lấy thông tin người mời
+    // 2️ Lấy thông tin người mời
     const inviter = await prisma.user.findUnique({
       where: { id: invitedById },
       include: { roles: { include: { role: true } } },
@@ -91,7 +91,7 @@ export class GroupService {
   
     if (!inviter) throw new Error(`Người mời không tồn tại với ID=${invitedById}`);
   
-    // 3️⃣ Kiểm tra quyền của người mời
+    // 3️ Kiểm tra quyền của người mời
     const userRoles = inviter.roles.map((r) => r.role.name.toLowerCase());
     if (!userRoles.includes("admin")) {
       const inviterStudent = await prisma.student.findFirst({ where: { userId: invitedById } });
@@ -108,7 +108,7 @@ export class GroupService {
       }
     }
   
-    // 4️⃣ Kiểm tra nhóm có tồn tại không
+    // 4️ Kiểm tra nhóm có tồn tại không
     const group = await prisma.group.findUnique({
       where: { id: groupId },
       include: { members: { include: { student: { include: { major: true } } } } },
@@ -117,20 +117,20 @@ export class GroupService {
     if (!group) throw new Error("Nhóm không tồn tại.");
     if (group.isLocked) throw new Error("Nhóm đã bị khóa. Không thể gửi lời mời.");
   
-    // 5️⃣ Lấy số lượng thành viên tối đa từ cấu hình
+    // 5️ Lấy số lượng thành viên tối đa từ cấu hình
     const maxMembers = await systemConfigService.getMaxGroupMembers();
   
-    // 6️⃣ Kiểm tra nhóm đã đầy chưa
+    // 6️ Kiểm tra nhóm đã đầy chưa
     if (group.members.length >= maxMembers) {
       throw new Error(`Nhóm đã đủ thành viên (tối đa ${maxMembers} người).`);
     }
   
-    // 7️⃣ Kiểm tra sinh viên đã trong nhóm chưa
+    // 7️ Kiểm tra sinh viên đã trong nhóm chưa
     if (group.members.some((m) => m.studentId === invitedStudent.id)) {
       throw new Error("Sinh viên đã có trong nhóm.");
     }
   
-    // 8️⃣ Kiểm tra điều kiện tham gia nhóm
+    // 8️ Kiểm tra điều kiện tham gia nhóm
     const studentSemester = await prisma.semesterStudent.findFirst({
       where: { studentId: invitedStudent.id, semesterId: group.semesterId },
     });
@@ -139,7 +139,7 @@ export class GroupService {
       throw new Error("Sinh viên không đủ điều kiện tham gia nhóm.");
     }
   
-    // 9️⃣ Kiểm tra ngành học có khớp nhóm không
+    // 9️ Kiểm tra ngành học có khớp nhóm không
     if (group.members.length > 0) {
       const groupMajor = group.members[0]?.student?.major?.id;
       if (invitedStudent.major?.id && groupMajor && invitedStudent.major.id !== groupMajor) {
@@ -147,7 +147,7 @@ export class GroupService {
       }
     }
   
-    // 🔟 Kiểm tra lời mời trước đó
+    // 10 Kiểm tra lời mời trước đó
     const existingInvitation = await prisma.groupInvitation.findFirst({
       where: { groupId, studentId: invitedStudent.id, status: "PENDING" },
     });
@@ -156,12 +156,12 @@ export class GroupService {
       throw new Error("Sinh viên đã có lời mời đang chờ.");
     }
   
-    // 1️⃣1️⃣ Tạo lời mời
+    // 1️1️ Tạo lời mời
     const invitation = await prisma.groupInvitation.create({
       data: { groupId, studentId: invitedStudent.id, status: "PENDING" },
     });
   
-    // 1️⃣2️⃣ Gửi email
+    // 1️2️ Gửi email
     if (invitedStudent.user?.email) {
       const invitationLink = `http://yourdomain.com/api/groups/accept-invitation/${invitation.id}`;
       const emailContent = `
@@ -673,56 +673,56 @@ export class GroupService {
 
   // 10) removeMemberFromGroup
   async removeMemberFromGroup(groupId: string, memberId: string, invitedById: string) {
-    // Kiểm tra nhóm có bị khóa không
+    //  Kiểm tra nhóm có bị khóa không
     const group = await prisma.group.findUnique({ where: { id: groupId } });
     if (!group) throw new Error("Nhóm không tồn tại.");
     if (group.isLocked) throw new Error("Nhóm đã bị khóa. Không thể xoá thành viên.");
 
-    // Lấy studentId từ userId của người thực hiện xóa (leader)
-    const actingStudent = await prisma.student.findUnique({
-        where: { userId: invitedById },
-        select: { id: true },
-    });
-
-    if (!actingStudent) throw new Error("Người dùng không phải sinh viên.");
-
-    // Kiểm tra xem người này có phải Leader không
-    const isLeader = await prisma.groupMember.findFirst({
-        where: {
-            groupId,
-            studentId: actingStudent.id,  // Kiểm tra bằng studentId
-            role: "leader",
-            isActive: true,
-        },
-    });
-
-    // Nếu không phải Leader, kiểm tra xem có phải Admin không
+    //  Lấy thông tin user thực hiện xóa
     const user = await prisma.user.findUnique({
         where: { id: invitedById },
         include: { roles: { include: { role: true } } },
     });
 
-    const userRoles = user?.roles.map((r) => r.role.name.toLowerCase()) || [];
+    if (!user) throw new Error("Người dùng không tồn tại.");
+
+    //  Kiểm tra quyền của người dùng
+    const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
     const isAdmin = userRoles.includes("admin");
 
-    // Chỉ Admin hoặc Leader mới có thể xóa thành viên
-    if (!isLeader && !isAdmin) {
+    //  Nếu là Admin => Bỏ qua kiểm tra actingStudent
+    let isLeader = false;
+    if (!isAdmin) {
+        const actingStudent = await prisma.student.findUnique({
+            where: { userId: invitedById },
+            select: { id: true },
+        });
+
+        if (!actingStudent) throw new Error("Người dùng không phải sinh viên.");
+
+        isLeader = !!(await prisma.groupMember.findFirst({
+            where: { groupId, studentId: actingStudent.id, role: "leader", isActive: true },
+        }));
+    }
+
+    //  Chỉ Admin hoặc Leader mới có thể xóa thành viên
+    if (!isAdmin && !isLeader) {
         throw new Error("Bạn không có quyền xoá thành viên khỏi nhóm (chỉ leader hoặc admin).");
     }
 
-    // Kiểm tra xem thành viên cần xóa có trong nhóm không
+    //  Kiểm tra xem thành viên cần xóa có trong nhóm không
     const member = await prisma.groupMember.findFirst({
-        where: { groupId, studentId: memberId }, // Dùng studentId thay vì userId
+        where: { groupId, studentId: memberId }, 
     });
 
     if (!member) throw new Error("Thành viên không tồn tại trong nhóm.");
 
-    // Không cho phép Leader tự xóa chính mình
-    if (isLeader && member.studentId === actingStudent.id) {
+    //  Không cho phép Leader tự xóa chính mình
+    if (isLeader && member.studentId === invitedById) {
         throw new Error("Leader không thể tự xoá chính mình khỏi nhóm. Hãy đổi leader trước.");
     }
 
-    // Xóa thành viên khỏi nhóm
+    //  Xóa thành viên khỏi nhóm
     await prisma.groupMember.delete({ where: { id: member.id } });
 
     return { message: "Xoá thành viên khỏi nhóm thành công." };
