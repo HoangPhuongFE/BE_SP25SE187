@@ -1,4 +1,4 @@
-Cài đặt  npm i -g pnpm nếu ko đc cài mpn i 
+Cài đặt  npm i nếu ko đc cài mpn i 
 Khởi chạy code B1: npm run build -> B2:npm run dev
 
 Functional requirements
