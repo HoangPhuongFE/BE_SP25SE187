@@ -45,6 +45,7 @@ model User {
   mentorGroups           GroupMentor[]           @relation(name: "MentorGroupRelation")
   addedMentors           GroupMentor[]           @relation(name: "AddedByUserRelation")
   uploadedDocuments      TopicDocument[]          @relation("UserUploadedDocuments")
+  createdSubmissionPeriods TopicSubmissionPeriod[] @relation("UserCreatedSubmissionPeriods")
 
   @@map("users")
 }
@@ -114,6 +115,9 @@ model Semester {
   semesterTopicMajors   SemesterTopicMajor[]
   yearId                String
   year                  Year                   @relation("YearSemesters", fields: [yearId], references: [id], onDelete: Cascade)
+  submissionPeriods     TopicSubmissionPeriod[]
+
+  @@map("semesters")
 }
 
 model Year {
@@ -205,17 +209,20 @@ model MeetingSchedule {
 }
 
 model TopicRegistration {
-  id              String    @id @default(uuid())
-  topicId         String    @map("topic_id")
-  userId          String    @map("user_id")
-  reviewerId      String?   @map("reviewer_id")
-  role            String
-  status          String
-  decisionFile    String?   @map("decision_file")
-  rejectionReason String?   @map("rejection_reason") @db.Text
-  registeredAt    DateTime  @default(now()) @map("registered_at")
-  reviewedAt      DateTime? @map("reviewed_at")
-  topic           Topic     @relation(fields: [topicId], references: [id])
+  id                 String    @id @default(uuid())
+  topicId            String    @map("topic_id")
+  submissionPeriodId String    @map("submission_period_id")
+  userId             String    @map("user_id")
+  reviewerId         String?   @map("reviewer_id")
+  role               String
+  status             String
+  decisionFile       String?   @map("decision_file")
+  rejectionReason    String?   @map("rejection_reason") @db.Text
+  registeredAt       DateTime  @default(now()) @map("registered_at")
+  reviewedAt         DateTime? @map("reviewed_at")
+  
+  topic             Topic               @relation(fields: [topicId], references: [id])
+  submissionPeriod  TopicSubmissionPeriod @relation(fields: [submissionPeriodId], references: [id])
 
   @@map("topic_registrations")
 }
@@ -642,4 +649,23 @@ model TopicDocument {
   uploader   User     @relation("UserUploadedDocuments", fields: [uploadedBy], references: [id])
 
   @@map("topic_documents")
+}
+
+model TopicSubmissionPeriod {
+  id          String   @id @default(uuid())
+  semesterId  String   @map("semester_id")
+  round       Int      // Lần nộp (1, 2, 3, ...)
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  status      String   @default("ACTIVE") // ACTIVE, INACTIVE, COMPLETED
+  description String?  @db.Text
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  semester           Semester            @relation(fields: [semesterId], references: [id])
+  creator            User               @relation("UserCreatedSubmissionPeriods", fields: [createdBy], references: [id])
+  topicRegistrations TopicRegistration[]
+
+  @@map("topic_submission_periods")
 }

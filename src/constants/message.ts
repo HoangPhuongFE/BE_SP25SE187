@@ -187,6 +187,26 @@ export const MEETING_MESSAGE = {
   UPDATE_TIME_EXPIRED: "Cannot update meeting before 1 day of the meeting",
 } as const;
 
+export const TOPIC_SUBMISSION_PERIOD_MESSAGE = {
+  CREATED: "Khoảng thời gian nộp đề tài đã được tạo thành công",
+  UPDATED: "Khoảng thời gian nộp đề tài đã được cập nhật thành công",
+  DELETED: "Khoảng thời gian nộp đề tài đã được xóa thành công",
+  NOT_FOUND: "Không tìm thấy khoảng thời gian nộp đề tài",
+  INVALID_DATE_RANGE: "Khoảng thời gian không hợp lệ",
+  OVERLAPPED_PERIOD: "Khoảng thời gian bị trùng lặp với khoảng thời gian khác",
+  INVALID_SEMESTER: "Học kỳ không hợp lệ",
+  INVALID_ROUND: "Số thứ tự đợt nộp không hợp lệ",
+  STATUS: {
+    ACTIVE: "ACTIVE",
+    INACTIVE: "INACTIVE",
+    COMPLETED: "COMPLETED"
+  },
+  CANNOT_UPDATE_COMPLETED: "Không thể cập nhật khoảng thời gian đã kết thúc",
+  CANNOT_DELETE_ACTIVE: "Không thể xóa khoảng thời gian đang hoạt động",
+  CANNOT_CREATE_IN_PAST: "Không thể tạo khoảng thời gian trong quá khứ",
+  FETCHED: "Lấy danh sách khoảng thời gian nộp đề tài thành công",
+} as const;
+
 // Cập nhật vào danh sách MESSAGES chung
 export const MESSAGES = {
   STUDENT: STUDENT_MESSAGE,
@@ -203,4 +223,5 @@ export const MESSAGES = {
   EMAIL: EMAIL_MESSAGE,
   TOPIC: TOPIC_MESSAGE,
   MEETING: MEETING_MESSAGE,
+  TOPIC_SUBMISSION_PERIOD: TOPIC_SUBMISSION_PERIOD_MESSAGE,
 } as const;
