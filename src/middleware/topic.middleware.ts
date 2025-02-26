@@ -176,6 +176,35 @@ export const validateTopicRegistration = [
   body('description').notEmpty().withMessage(TOPIC_MESSAGE.DESCRIPTION_REQUIRED),
   body('semesterId').notEmpty().withMessage('Semester ID là bắt buộc'),
   body('majorId').notEmpty().withMessage('Major ID là bắt buộc'),
+  body('subSupervisor')
+    .optional()
+    .custom(async (value, { req }) => {
+      if (value) {
+        // Kiểm tra xem subSupervisor có tồn tại và có phải là mentor không
+        const subMentor = await prisma.user.findFirst({
+          where: {
+            id: value,
+            roles: {
+              some: {
+                role: {
+                  name: 'mentor'
+                }
+              }
+            }
+          }
+        });
+
+        if (!subMentor) {
+          throw new Error('Mentor phụ không tồn tại hoặc không có quyền mentor');
+        }
+
+        // Kiểm tra xem subSupervisor có phải là mentor chính không
+        if (value === req.user?.userId) {
+          throw new Error('Mentor phụ không thể là mentor chính');
+        }
+      }
+      return true;
+    }),
   
   validateTopicWithAI,
   

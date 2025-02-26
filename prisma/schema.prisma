@@ -32,6 +32,7 @@ model User {
   importLogs             ImportLog[]
   systemConfigs          SystemConfig[]
   createdTopics          Topic[]                 @relation("TopicCreator")
+  supervisedTopics       Topic[]                 @relation("TopicSubSupervisor")
   createdGroups          Group[]                 @relation("GroupCreator")
   systemLogs             SystemLog[]
   emailLogs              EmailLog[]
@@ -43,6 +44,7 @@ model User {
   groupMemberships       GroupMember[]           @relation("UserGroupMembers")
   mentorGroups           GroupMentor[]           @relation(name: "MentorGroupRelation")
   addedMentors           GroupMentor[]           @relation(name: "AddedByUserRelation")
+  uploadedDocuments      TopicDocument[]          @relation("UserUploadedDocuments")
 
   @@map("users")
 }
@@ -273,11 +275,13 @@ model Topic {
   source          String?
   status          String
   createdBy       String   @map("created_by")
+  subSupervisor   String?  @map("sub_supervisor")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   semester           Semester            @relation(fields: [semesterId], references: [id])
   creator            User                @relation("TopicCreator", fields: [createdBy], references: [id])
+  subMentor          User?               @relation("TopicSubSupervisor", fields: [subSupervisor], references: [id])
   detailMajorTopics  DetailMajorTopic[]
   topicRegistrations TopicRegistration[]
   documents          Document[]          @relation("TopicDocuments")
@@ -286,6 +290,7 @@ model Topic {
   aiVerificationLogs AIVerificationLog[]
   semesterTopicMajors SemesterTopicMajor[]
   decisions          Decision[]
+  topicDocuments     TopicDocument[]    @relation("TopicDocuments")
 
   @@map("topics")
 }
@@ -623,4 +628,18 @@ model EmailTemplate {
   createdByUser User     @relation("UserEmailTemplates", fields: [createdBy], references: [id])
 
   @@map("email_templates")
+}
+
+model TopicDocument {
+  id          String   @id @default(uuid())
+  topicId     String   @map("topic_id")
+  documentUrl String   @map("document_url")
+  fileName    String   @map("file_name")
+  uploadedBy  String   @map("uploaded_by")
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+  
+  topic      Topic    @relation("TopicDocuments", fields: [topicId], references: [id])
+  uploader   User     @relation("UserUploadedDocuments", fields: [uploadedBy], references: [id])
+
+  @@map("topic_documents")
 }

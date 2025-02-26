@@ -7,6 +7,9 @@ import { TOPIC_MESSAGE } from "../constants/message";
 import ExcelJS from 'exceljs';
 import { validateExcelImport } from '../utils/excelValidator';
 import fs from 'fs';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export class TopicController {
   private topicService = new TopicService();
@@ -60,9 +63,54 @@ export class TopicController {
   async updateTopic(req: AuthenticatedRequest, res: Response) {
     try {
       const { topicId } = req.params;
-      const updateData = req.body;
+      const { 
+        name, 
+        description, 
+        majorId,
+        isBusiness,
+        businessPartner,
+        documents,
+        subSupervisor
+      } = req.body;
 
-      const topic = await this.topicService.updateTopic(topicId, updateData, req.user!.userId);
+      // Kiểm tra xem người dùng có quyền cập nhật không
+      const userId = req.user!.userId;
+
+      // Validate documents nếu có
+      if (documents) {
+        if (!Array.isArray(documents)) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            message: 'Documents phải là một mảng các URL'
+          });
+        }
+
+        for (const doc of documents) {
+          if (!doc.documentUrl || !doc.fileName) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: 'Mỗi document phải có documentUrl và fileName'
+            });
+          }
+
+          try {
+            new URL(doc.documentUrl);
+          } catch (error) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: 'DocumentUrl không hợp lệ'
+            });
+          }
+        }
+      }
+
+      const topic = await this.topicService.updateTopic(topicId, {
+        name,
+        description,
+        majorId,
+        isBusiness,
+        businessPartner,
+        documents,
+        subSupervisor,
+        updatedBy: userId
+      }, userId);
 
       res.status(HTTP_STATUS.OK).json({
         message: TOPIC_MESSAGE.TOPIC_UPDATED,
@@ -70,19 +118,31 @@ export class TopicController {
       });
     } catch (error) {
       if (error instanceof Error) {
-        if (error.message === TOPIC_MESSAGE.TOPIC_NOT_FOUND) {
-          return res.status(HTTP_STATUS.NOT_FOUND).json({
-            message: error.message
-          });
-        }
-        if (error.message === 'ID topic không hợp lệ') {
-          return res.status(HTTP_STATUS.BAD_REQUEST).json({
-            message: error.message
-          });
+        switch(error.message) {
+          case TOPIC_MESSAGE.TOPIC_NOT_FOUND:
+            return res.status(HTTP_STATUS.NOT_FOUND).json({
+              message: error.message
+            });
+          case TOPIC_MESSAGE.MENTOR_MAX_TOPICS_REACHED:
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: error.message
+            });
+          case TOPIC_MESSAGE.UNAUTHORIZED:
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+              message: error.message
+            });
+          case 'ID topic không hợp lệ':
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: error.message
+            });
+          default:
+            return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+              message: error.message
+            });
         }
       }
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-        message: (error as Error).message
+        message: 'Lỗi không xác định'
       });
     }
   }
@@ -139,7 +199,10 @@ export class TopicController {
         {
           status,
           rejectionReason,
-          documents,
+          documents: documents.map(doc => ({
+            fileName: doc.fileName,
+            documentUrl: doc.filePath
+          })),
           reviewerId
         }
       );
@@ -170,7 +233,9 @@ export class TopicController {
         semesterId, 
         majorId,
         isBusiness,
-        businessPartner 
+        businessPartner,
+        documents,
+        subSupervisor
       } = req.body;
       const userId = req.user?.userId;
 
@@ -180,10 +245,30 @@ export class TopicController {
         });
       }
 
-      const documents = Array.isArray(req.files) ? req.files.map((file: Express.Multer.File) => ({
-        fileName: file.originalname,
-        filePath: file.path
-      })) : [];
+      // Validate documents nếu có
+      if (documents) {
+        if (!Array.isArray(documents)) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            message: 'Documents phải là một mảng các URL'
+          });
+        }
+
+        for (const doc of documents) {
+          if (!doc.documentUrl || !doc.fileName) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: 'Mỗi document phải có documentUrl và fileName'
+            });
+          }
+
+          try {
+            new URL(doc.documentUrl);
+          } catch (error) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: 'DocumentUrl không hợp lệ'
+            });
+          }
+        }
+      }
 
       const result = await this.topicService.registerTopic({
         name,
@@ -193,7 +278,8 @@ export class TopicController {
         majorId,
         isBusiness,
         businessPartner,
-        documents
+        documents,
+        subSupervisor
       });
 
       res.status(HTTP_STATUS.CREATED).json({
@@ -201,8 +287,24 @@ export class TopicController {
         data: result
       });
     } catch (error) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        message: (error as Error).message
+      if (error instanceof Error) {
+        switch(error.message) {
+          case TOPIC_MESSAGE.MENTOR_MAX_TOPICS_REACHED:
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: error.message
+            });
+          case TOPIC_MESSAGE.UNAUTHORIZED:
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+              message: error.message
+            });
+          default:
+            return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+              message: error.message
+            });
+        }
+      }
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: 'Lỗi không xác định'
       });
     }
   }
