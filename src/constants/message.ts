@@ -152,6 +152,26 @@ export const TOPIC_MESSAGE = {
   TOPIC_FETCHED: "Topic fetched",
   INVALID_ID: "Invalid topic ID",
   TOPIC_IN_USE: "Cannot delete topic in use",
+  UNAUTHORIZED: "Unauthorized access",
+  MISSING_STATUS: "Status is required",
+  UPDATE_STATUS_SUCCESS: "Topic status updated successfully",
+  UPDATE_STATUS_FAILED: "Failed to update topic status",
+  TOPIC_STATUS_UPDATED: "Topic status updated successfully",
+  TOPIC_STATUS_UPDATE_FAILED: "Failed to update topic status",
+  GET_TOPICS_SUCCESS: "Topics fetched successfully",
+  GET_TOPICS_FAILED: "Failed to fetch topics",
+  TOPIC_STATUS: {
+    DRAFT: 'DRAFT',           // Đề tài đang trong trạng thái nháp
+    PENDING: 'PENDING',       // Đề tài đang chờ duyệt
+    APPROVED: 'APPROVED',     // Đề tài đã được phê duyệt
+    REJECTED: 'REJECTED',     // Đề tài bị từ chối
+    CONSIDER: 'CONSIDER',     // Đề tài cần xem xét lại
+    IN_PROGRESS: 'IN_PROGRESS', // Đề tài đang được thực hiện
+    COMPLETED: 'COMPLETED',   // Đề tài đã hoàn thành
+    CANCELLED: 'CANCELLED'    // Đề tài đã bị hủy
+  },
+  CANNOT_UPDATE_STATUS: "Cannot update topic status",
+  STATUS_TRANSITION_INVALID: "Status transition is invalid",
 } as const;
 
 

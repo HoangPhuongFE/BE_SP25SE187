@@ -456,4 +456,63 @@ export class TopicController {
       });
     }
   }
+
+  // Cập nhật trạng thái đề tài
+  async updateTopicStatus(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { topicId } = req.params;
+      const { status } = req.body;
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          message: TOPIC_MESSAGE.UNAUTHORIZED
+        });
+      }
+
+      if (!status) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: TOPIC_MESSAGE.MISSING_STATUS
+        });
+      }
+
+      const updatedTopic = await this.topicService.updateTopicStatus(topicId, status, userId);
+
+      return res.status(HTTP_STATUS.OK).json({
+        message: TOPIC_MESSAGE.UPDATE_STATUS_SUCCESS,
+        data: updatedTopic
+      });
+
+    } catch (error) {
+      console.error("Error updating topic status:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
+
+  // Lấy danh sách đề tài theo trạng thái
+  async getTopicsByStatus(req: Request, res: Response) {
+    try {
+      const { status } = req.query;
+      const { page = 1, pageSize = 10 } = req.query;
+
+      const topics = await this.topicService.getTopicsByStatus(
+        status as string,
+        Number(page),
+        Number(pageSize)
+      );
+
+      return res.status(HTTP_STATUS.OK).json({
+        message: TOPIC_MESSAGE.GET_TOPICS_SUCCESS,
+        data: topics
+      });
+
+    } catch (error) {
+      console.error("Error getting topics by status:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
 } 

@@ -582,6 +582,51 @@ export class TopicService {
     });
   }
 
+  async getTopicsByStatus(status: string, page: number, pageSize: number) {
+    const topics = await prisma.topic.findMany({
+      where: { status },
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    });
+
+    return topics;
+  }
+
+  private isValidStatusTransition(currentStatus: string, newStatus: string): boolean {
+    const validTransitions: { [key: string]: string[] } = {
+      'DRAFT': ['PENDING'],
+      'PENDING': ['APPROVED', 'REJECTED', 'CONSIDER'],
+      'APPROVED': ['IN_PROGRESS'],
+      'REJECTED': ['DRAFT'],
+      'CONSIDER': ['PENDING'],
+      'IN_PROGRESS': ['COMPLETED', 'CANCELLED']
+    };
+
+    return validTransitions[currentStatus]?.includes(newStatus) || false;
+  }
+
+  async updateTopicStatus(topicId: string, newStatus: string, userId: string) {
+    const topic = await prisma.topic.findUnique({
+      where: { id: topicId }
+    });
+    
+    if (!topic) {
+      throw new Error(TOPIC_MESSAGE.TOPIC_NOT_FOUND);
+    }
+
+    if (!this.isValidStatusTransition(topic.status, newStatus)) {
+      throw new Error(TOPIC_MESSAGE.STATUS_TRANSITION_INVALID);
+    }
+
+    return prisma.topic.update({
+      where: { id: topicId },
+      data: { 
+        status: newStatus,
+        updatedAt: new Date()
+      }
+    });
+  }
+
   async registerTopic(data: RegisterTopicData) {
     try {
       // Tạo mã đề tài tự động
