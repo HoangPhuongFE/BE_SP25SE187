@@ -1231,4 +1231,74 @@ export class TopicService {
 
     return result;
   }
+
+  async assignTopicToGroup(data: {
+    topicId: string;
+    groupId: string;
+    mentorId: string;
+  }) {
+    const { topicId, groupId, mentorId } = data;
+
+    // Kiểm tra topic có tồn tại không và đã được gán chưa
+    const existingAssignment = await prisma.topicAssignment.findFirst({
+      where: {
+        OR: [
+          { topicId: topicId },
+          { groupId: groupId }
+        ]
+      }
+    });
+
+    if (existingAssignment) {
+      if (existingAssignment.topicId === topicId) {
+        throw new Error('Đề tài này đã được gán cho một nhóm khác');
+      } else {
+        throw new Error('Nhóm này đã được gán đề tài khác');
+      }
+    }
+
+    // Kiểm tra topic có tồn tại không
+    const topic = await prisma.topic.findUnique({
+      where: { id: topicId }
+    });
+
+    if (!topic) {
+      throw new Error(TOPIC_MESSAGE.TOPIC_NOT_FOUND);
+    }
+
+    // Kiểm tra group có tồn tại không
+    const group = await prisma.group.findUnique({
+      where: { id: groupId }
+    });
+
+    if (!group) {
+      throw new Error('Không tìm thấy nhóm');
+    }
+
+    // Kiểm tra mentor có phải là người tạo topic không
+    if (topic.createdBy !== mentorId) {
+      throw new Error('Chỉ mentor tạo đề tài mới có thể gán đề tài cho nhóm');
+    }
+
+    // Tạo topic assignment
+    const topicAssignment = await prisma.topicAssignment.create({
+      data: {
+        topicId,
+        groupId,
+        assignedBy: mentorId,
+        approvalStatus: 'PENDING',
+        defendStatus: 'NOT_STARTED'
+      }
+    });
+
+    // Log hành động
+    await this.logSystemAction(
+      'ASSIGN_TOPIC',
+      topicId,
+      `Mentor ${mentorId} đã gán đề tài cho nhóm ${groupId}`,
+      mentorId
+    );
+
+    return topicAssignment;
+  }
 } 

@@ -108,4 +108,11 @@ router.post(
   topicController.importTopicEvaluations.bind(topicController)
 );
 
+router.post(
+  "/assign-to-group",
+  authenticateToken,
+  checkRole(["mentor"]),
+  topicController.assignTopicToGroup.bind(topicController)
+);
+
 export default router; 

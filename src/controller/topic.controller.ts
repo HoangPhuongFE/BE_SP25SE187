@@ -515,4 +515,26 @@ export class TopicController {
       });
     }
   }
+
+  async assignTopicToGroup(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { topicId, groupId } = req.body;
+      const mentorId = req.user!.userId;
+
+      const result = await this.topicService.assignTopicToGroup({
+        topicId,
+        groupId,
+        mentorId
+      });
+
+      res.status(200).json({
+        message: 'Gán đề tài cho nhóm thành công',
+        data: result
+      });
+    } catch (error) {
+      res.status(400).json({
+        message: (error as Error).message
+      });
+    }
+  }
 } 
