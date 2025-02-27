@@ -769,7 +769,8 @@ export class TopicService {
           topicId: topic.id,
           userId: data.userId,
           role: 'mentor',
-          status: 'PENDING'
+          status: 'PENDING',
+          submissionPeriodId: 'your_submission_period_id'
         }
       });
 
