@@ -1,45 +1,84 @@
 import { Request, Response } from "express";
 import { GroupService } from "../service/group.service";
 import { AuthenticatedRequest } from "../middleware/user.middleware";
+import HTTP_STATUS from '../constants/httpStatus';
+import {  GROUP_MESSAGE } from "../constants/message";
 
 const groupService = new GroupService();
 
 export class GroupController {
   async createGroup(req: AuthenticatedRequest, res: Response) {
     try {
-      const { semesterId } = req.body;
-      const result = await groupService.createGroup(req.user!.userId, semesterId);
-      return res.status(201).json(result);
+        const { semesterId } = req.body;
+        const result = await groupService.createGroup(req.user!.userId, semesterId);
+
+        return res.status(result.status).json(result);
     } catch (error) {
-      return res.status(500).json({ message: (error as Error).message });
+        console.error(error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: GROUP_MESSAGE.GROUP_CREATION_FAILED
+        });
     }
-  }
+}
 
 
-  async inviteMember(req: Request, res: Response) {
-    try {
+
+
+async inviteMember(req: Request, res: Response) {
+  try {
       const { groupId, email } = req.body;
+
+      // Kiểm tra đầu vào
+      if (!groupId || !email) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              success: false,
+              message: GROUP_MESSAGE.INVALID_REQUEST
+          });
+      }
+
+      // Gọi service để xử lý mời thành viên
       const result = await groupService.inviteMember(groupId, email, req.user!.userId);
-      return res.status(200).json(result);
-    } catch (error) {
-      return res.status(400).json({ message: (error as Error).message });
-    }
+
+      // Trả về phản hồi với mã trạng thái từ service
+      return res.status(result.status).json(result);
+  } catch (error) {
+      console.error("Lỗi khi gửi lời mời:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+          success: false,
+          message: GROUP_MESSAGE.INVITATION_FAILED
+      });
   }
+}
 
 
-  async respondToInvitation(req: AuthenticatedRequest, res: Response) {
+
+ async respondToInvitation(req: AuthenticatedRequest, res: Response) {
     try {
-      const { invitationId, response } = req.body;
-      const result = await groupService.respondToInvitation(
-        invitationId,
-        req.user!.userId,
-        response
-      );
-      return res.status(200).json(result);
+        const { invitationId, response } = req.body;
+
+        // Kiểm tra đầu vào hợp lệ
+        if (!invitationId || !response || !["ACCEPTED", "REJECTED"].includes(response)) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: GROUP_MESSAGE.INVALID_REQUEST
+            });
+        }
+
+        // Gọi service để xử lý lời mời
+        const result = await groupService.respondToInvitation(invitationId, req.user!.userId, response);
+
+        // Trả về phản hồi từ service
+        return res.status(result.status).json(result);
     } catch (error) {
-      return res.status(400).json({ message: (error as Error).message });
+        console.error("Lỗi xử lý lời mời:", error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: GROUP_MESSAGE.INVITATION_RESPONSE_FAILED
+        });
     }
-  }
+}
+
 
   async getGroupInfo(req: AuthenticatedRequest, res: Response) {
     try {

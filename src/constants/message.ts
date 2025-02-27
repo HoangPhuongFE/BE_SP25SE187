@@ -4,18 +4,48 @@ export const GROUP_MESSAGE = {
   GROUP_NOT_FOUND: "Không tìm thấy nhóm",
   GROUP_FULL: "Nhóm đã đủ thành viên",
   MEMBER_ALREADY_EXISTS: "Sinh viên này đã có trong nhóm",
+
   INVITATION_SENT: "Đã gửi lời mời",
   INVITATION_EXISTS: "Lời mời đã được gửi trước đó",
   INVITATION_NOT_FOUND: "Không tìm thấy lời mời",
   INVITATION_ACCEPTED: "Chấp nhận lời mời thành công",
   INVITATION_REJECTED: "Từ chối lời mời thành công",
+  INVALID_REQUEST: "Yêu cầu không hợp lệ, vui lòng kiểm tra lại dữ liệu đầu vào.",
+  INVITATION_FAILED: "Gửi lời mời thất bại",
+  INVITATION_RESPONSE_FAILED: "Không thể xử lý phản hồi lời mời, vui lòng thử lại.",
+
+  STUDENT_NOT_FOUND: "Không tìm thấy sinh viên.",
+  STUDENT_NOT_IN_SEMESTER: "Sinh viên chưa đăng ký học kỳ này hoặc danh sách điều kiện chưa được nhập.",
+  STUDENT_NOT_QUALIFIED: "Sinh viên chưa đủ điều kiện tham gia nhóm.",
+
+  GROUP_CODE_GENERATED: "Mã nhóm được tạo thành công.",
+  MAX_GROUP_MEMBERS_REACHED: "Số lượng thành viên nhóm đã đạt giới hạn.",
+  GROUP_CREATION_FAILED: "Tạo nhóm thất bại.",
+  NO_PERMISSION_INVITE: "Bạn không có quyền mời thành viên vào nhóm.",
+  GROUP_LOCKED: "Nhóm đã bị khóa. Không thể gửi lời mời.",
+  GROUP_MAJOR_MISMATCH: "Sinh viên thuộc ngành khác, không thể tham gia nhóm.",
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 } as const;
 
 
 // Thông báo liên quan đến Email
 export const EMAIL_MESSAGE = {
-  EMAIL_SENT: "Email sent successfully",
-  EMAIL_FAILED: "Failed to send email",
+  EMAIL_SENT: "Email đã được gửi thành công.",
+  EMAIL_FAILED: "Gửi email thất bại.",
 } as const;
 
 
@@ -31,7 +61,8 @@ export const USER_MESSAGE = {
   FORBIDDEN: "Truy cập bị cấm",
   INVALID_REFRESH_TOKEN: "Refresh token không hợp lệ",
   UPDATE_PROFILE_SUCCESS: "Cập nhật hồ sơ thành công",
-  USER_ALREADY_EXISTS: "Người dùng đã tồn tại"
+  USER_ALREADY_EXISTS: "Người dùng đã tồn tại",
+
 } as const;
 
 // Thông báo liên quan đến xác thực
@@ -252,4 +283,5 @@ export const MESSAGES = {
   MEETING: MEETING_MESSAGE,
   TOPIC_SUBMISSION_PERIOD: TOPIC_SUBMISSION_PERIOD_MESSAGE,
   COUNCIL_MESSAGE : COUNCIL_MESSAGE,
+
 } as const;
