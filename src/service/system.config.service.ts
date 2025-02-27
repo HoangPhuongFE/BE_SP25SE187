@@ -47,4 +47,25 @@ export class SystemConfigService {
   async getMaxGroupMentors(): Promise<number> {
     return this.getSystemConfigValue("MAX_GROUP_MENTORS", 2) as Promise<number>;
   }
+
+  async getMaxReviewMembers(): Promise<number> {
+    return this.getSystemConfigValue("MAX_REVIEW_MEMBERS", 2) as Promise<number>;
+  }
+
+  async getMaxDefenseMembers(): Promise<number> {
+    return this.getSystemConfigValue("MAX_DEFENSE_MEMBERS", 4) as Promise<number>;
+  }
+
+  async getMaxDefenseChairman(): Promise<number> {
+    return this.getSystemConfigValue("MAX_DEFENSE_CHAIRMAN", 1) as Promise<number>;
+  }
+
+  async getMaxDefenseSecretary(): Promise<number> {
+    return this.getSystemConfigValue("MAX_DEFENSE_SECRETARY", 1) as Promise<number>;
+  }
+
+  async getMaxDefenseReviewers(): Promise<number> {
+    return this.getSystemConfigValue("MAX_DEFENSE_REVIEWERS", 2) as Promise<number>;
+  }
+
 }

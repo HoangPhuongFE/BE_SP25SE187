@@ -1,15 +1,16 @@
 // Thông báo liên quan đến nhóm
 export const GROUP_MESSAGE = {
-  GROUP_CREATED: "Group created successfully",
-  GROUP_NOT_FOUND: "Group not found",
-  GROUP_FULL: "Group is already full",
-  MEMBER_ALREADY_EXISTS: "Student is already in the group",
-  INVITATION_SENT: "Invitation sent successfully",
-  INVITATION_EXISTS: "Invitation already sent",
-  INVITATION_NOT_FOUND: "Invitation not found",
-  INVITATION_ACCEPTED: "Invitation accepted successfully",
-  INVITATION_REJECTED: "Invitation rejected successfully",
+  GROUP_CREATED: "Tạo nhóm thành công",
+  GROUP_NOT_FOUND: "Không tìm thấy nhóm",
+  GROUP_FULL: "Nhóm đã đủ thành viên",
+  MEMBER_ALREADY_EXISTS: "Sinh viên này đã có trong nhóm",
+  INVITATION_SENT: "Đã gửi lời mời",
+  INVITATION_EXISTS: "Lời mời đã được gửi trước đó",
+  INVITATION_NOT_FOUND: "Không tìm thấy lời mời",
+  INVITATION_ACCEPTED: "Chấp nhận lời mời thành công",
+  INVITATION_REJECTED: "Từ chối lời mời thành công",
 } as const;
+
 
 // Thông báo liên quan đến Email
 export const EMAIL_MESSAGE = {
@@ -20,17 +21,17 @@ export const EMAIL_MESSAGE = {
 
 // Thông báo dành cho người dùng
 export const USER_MESSAGE = {
-  VALIDATION_ERROR: "Validation errors",
-  USER_NOT_FOUND: "User not found",
-  INVALID_PASSWORD: "Invalid password",
-  INVALID_TOKEN: "Invalid token",
-  EMAIL_EXISTS: "Email already exists",
-  USERNAME_EXISTS: "Username already exists",
-  UNAUTHORIZED: "Unauthorized access",
-  FORBIDDEN: "Forbidden access",
-  INVALID_REFRESH_TOKEN: "Invalid refresh token",
-  UPDATE_PROFILE_SUCCESS: "Profile updated successfully",
-  USER_ALREADY_EXISTS: "User already exists",
+  VALIDATION_ERROR: "Lỗi xác thực đầu vào",
+  USER_NOT_FOUND: "Không tìm thấy người dùng",
+  INVALID_PASSWORD: "Mật khẩu không chính xác",
+  INVALID_TOKEN: "Token không hợp lệ",
+  EMAIL_EXISTS: "Email đã tồn tại",
+  USERNAME_EXISTS: "Tên đăng nhập đã tồn tại",
+  UNAUTHORIZED: "Không được phép truy cập",
+  FORBIDDEN: "Truy cập bị cấm",
+  INVALID_REFRESH_TOKEN: "Refresh token không hợp lệ",
+  UPDATE_PROFILE_SUCCESS: "Cập nhật hồ sơ thành công",
+  USER_ALREADY_EXISTS: "Người dùng đã tồn tại"
 } as const;
 
 // Thông báo liên quan đến xác thực
@@ -79,17 +80,43 @@ export const SYSTEM_LOG_MESSAGE = {
 
 // Thông báo liên quan đến học kỳ
 export const SEMESTER_MESSAGE = {
-  SEMESTER_CREATED: "Semester created successfully",
-  SEMESTER_UPDATED: "Semester updated successfully",
-  SEMESTER_DELETED: "Semester deleted successfully",
-  SEMESTER_NOT_FOUND: "Semester not found",
-  SEMESTER_STUDENTS_FETCHED: "Students for semester fetched successfully",
-  INVALID_SEMESTER_ID: "Invalid semester ID provided",
-  SEMESTERS_FETCHED: "Semesters fetched successfully",
-  SEMESTER_FETCHED: "Semester fetched successfully",
-  SEMESTER_DETAIL_FETCHED: "Semester detail fetched successfully",
-  SEMESTER_DETAIL_NOT_FOUND: "Semester detail not found",
+  SEMESTER_CREATED: "Tạo học kỳ thành công",
+  SEMESTER_UPDATED: "Cập nhật học kỳ thành công",
+  SEMESTER_DELETED: "Xoá học kỳ thành công",
+  SEMESTER_NOT_FOUND: "Không tìm thấy học kỳ",
+  SEMESTER_STUDENTS_FETCHED: "Đã lấy danh sách sinh viên cho học kỳ",
+  INVALID_SEMESTER_ID: "ID học kỳ không hợp lệ",
+  SEMESTERS_FETCHED: "Lấy danh sách học kỳ thành công",
+  SEMESTER_FETCHED: "Lấy học kỳ thành công",
+  SEMESTER_DETAIL_FETCHED: "Lấy chi tiết học kỳ thành công",
+  SEMESTER_DETAIL_NOT_FOUND: "Không tìm thấy chi tiết học kỳ"
 } as const;
+
+//  
+export const COUNCIL_MESSAGE = {
+  COUNCIL_CREATED: "Tạo hội đồng thành công",
+  COUNCIL_CREATION_FAILED: "Tạo hội đồng thất bại",
+  COUNCIL_NOT_FOUND: "Không tìm thấy hội đồng",
+  COUNCIL_MEMBERS_ADDED: "Thêm thành viên vào hội đồng thành công",
+  COUNCIL_MEMBERS_FAILED: "Thêm thành viên vào hội đồng thất bại",
+  COUNCIL_LIST_FETCHED: "Lấy danh sách hội đồng thành công",
+  COUNCIL_LIST_FAILED: "Lấy danh sách hội đồng thất bại",
+  LECTURERS_ROLES_FETCHED: "Lấy danh sách giảng viên và vai trò thành công",
+  LECTURERS_ROLES_FAILED: "Không thể lấy danh sách giảng viên và vai trò",
+  INVALID_SEMESTER_ID: "ID học kỳ không hợp lệ",
+  COUNCIL_MEMBER_REMOVED: "Xóa thành viên khỏi hội đồng thành công",
+  COUNCIL_MEMBER_REMOVE_FAILED: "Không thể xóa thành viên khỏi hội đồng",
+  COUNCIL_MEMBER_NOT_FOUND: "Không tìm thấy thành viên trong hội đồng",
+  INVALID_REQUEST: "Yêu cầu không hợp lệ",
+  MIN_MEMBERS_REQUIRED: "Không thể xóa, số lượng thành viên còn lại không đủ theo quy định",
+  MAX_MEMBERS_EXCEEDED: "Số lượng thành viên vượt quá quy định",
+  CHAIRMAN_LIMIT: "Số lượng chủ tịch vượt quá giới hạn",
+  SECRETARY_LIMIT: "Số lượng thư ký vượt quá giới hạn",
+  REVIEWER_LIMIT: "Số lượng reviewer vượt quá giới hạn",
+
+} as const;
+
+export default COUNCIL_MESSAGE;
 
 // Thông báo cho sinh viên
 export const STUDENT_MESSAGE = {
@@ -224,4 +251,5 @@ export const MESSAGES = {
   TOPIC: TOPIC_MESSAGE,
   MEETING: MEETING_MESSAGE,
   TOPIC_SUBMISSION_PERIOD: TOPIC_SUBMISSION_PERIOD_MESSAGE,
+  COUNCIL_MESSAGE : COUNCIL_MESSAGE,
 } as const;
