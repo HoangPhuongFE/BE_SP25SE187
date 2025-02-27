@@ -730,6 +730,20 @@ export class TopicService {
         }
       }
 
+      // Tìm đợt đăng ký đề tài đang hoạt động
+      const activePeriod = await prisma.topicSubmissionPeriod.findFirst({
+        where: {
+          semesterId: data.semesterId,
+          status: 'ACTIVE',
+          startDate: { lte: new Date() },
+          endDate: { gte: new Date() }
+        }
+      });
+
+      if (!activePeriod) {
+        throw new Error('Không có đợt đăng ký đề tài nào đang hoạt động');
+      }
+
       // Tạo mã đề tài
       const topicCode = await this.generateTopicCode(data.semesterId, data.majorId);
 
@@ -764,12 +778,16 @@ export class TopicService {
       });
 
       // Tạo đăng ký cho mentor chính
-      await prisma.topicRegistration.create({
+      const topicRegistration = await prisma.topicRegistration.create({
         data: {
           topicId: topic.id,
           userId: data.userId,
           role: 'mentor',
-          status: 'PENDING'
+          status: 'PENDING',
+          submissionPeriodId: activePeriod.id
+        },
+        include: {
+          submissionPeriod: true
         }
       });
 
@@ -791,7 +809,17 @@ export class TopicService {
         data.userId
       );
 
-      return topic;
+      // Trả về thông tin topic kèm thông tin round đăng ký
+      return {
+        ...topic,
+        submissionPeriod: {
+          id: activePeriod.id,
+          round: activePeriod.round,
+          startDate: activePeriod.startDate,
+          endDate: activePeriod.endDate,
+          status: activePeriod.status
+        }
+      };
     } catch (error) {
       throw error;
     }

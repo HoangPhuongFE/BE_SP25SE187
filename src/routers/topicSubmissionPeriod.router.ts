@@ -4,36 +4,40 @@ import { authenticateToken, checkRole } from '../middleware/user.middleware';
 
 const router = express.Router();
 
-// Các route yêu cầu xác thực và quyền Graduation Thesis Manager
+// Create period
 router.post('/', 
     authenticateToken, 
-    checkRole(['GRADUATION_THESIS_MANAGER']), 
+    checkRole(['graduation_thesis_manager']), 
     TopicSubmissionPeriodController.createPeriod
 );
 
+// Update period
 router.put('/:id', 
     authenticateToken, 
-    checkRole(['GRADUATION_THESIS_MANAGER']), 
+    checkRole(['graduation_thesis_manager']), 
     TopicSubmissionPeriodController.updatePeriod
 );
 
+// Delete period
 router.delete('/:id', 
     authenticateToken, 
-    checkRole(['GRADUATION_THESIS_MANAGER']), 
+    checkRole(['graduation_thesis_manager']), 
     TopicSubmissionPeriodController.deletePeriod
 );
 
-// Các route chỉ yêu cầu xác thực
+// Get all periods
 router.get('/', 
     authenticateToken, 
     TopicSubmissionPeriodController.getAllPeriods
 );
 
+// Get active periods
 router.get('/active/:semesterId', 
     authenticateToken, 
     TopicSubmissionPeriodController.getActivePeriods
 );
 
+// Get period by id
 router.get('/:id', 
     authenticateToken, 
     TopicSubmissionPeriodController.getPeriodById
