@@ -2,33 +2,20 @@ import { Router } from "express";
 import { TopicController } from "../controller/topic.controller";
 import { authenticateToken, checkRole } from "../middleware/user.middleware";
 import { validateCreateTopic, validateUpdateTopic, validateTopicRegistration, validateCreateCouncil } from '../middleware/topic.middleware';
-import multer from 'multer';
 
 const router = Router();
 const topicController = new TopicController();
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/topics');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
-  }
-});
-
-const upload = multer({ storage });
 
 // Routes cho academic officer (tạo đề tài chính thức - auto approved)
 router.post(
   "/",
   authenticateToken,
   checkRole(["academic_officer"]),
-  upload.array('documents'),
   validateCreateTopic,
   topicController.createTopic.bind(topicController)
 );
 
+// Route cập nhật topic
 router.put(
   "/:topicId",
   authenticateToken,
@@ -37,10 +24,19 @@ router.put(
   topicController.updateTopic.bind(topicController)
 );
 
+// Route xóa topic
 router.delete(
   "/:topicId",
   authenticateToken,
   checkRole(["academic_officer"]),
+  topicController.deleteTopic.bind(topicController)
+);
+
+// Route xóa topic đăng ký của mentor
+router.delete(
+  "/register/:topicId",
+  authenticateToken,
+  checkRole(["mentor"]),
   topicController.deleteTopic.bind(topicController)
 );
 
@@ -49,16 +45,15 @@ router.post(
   "/register",
   authenticateToken,
   checkRole(["mentor"]),
-  upload.array('documents'),
   validateTopicRegistration,
   topicController.registerTopic.bind(topicController)
 );
 
+// Route cập nhật topic
 router.put(
   "/register/:topicId",
   authenticateToken,
   checkRole(["mentor"]),
-  upload.array('documents'),
   validateUpdateTopic,
   topicController.updateTopic.bind(topicController)
 );
@@ -79,6 +74,7 @@ router.get(
   topicController.getAllTopics.bind(topicController)
 );
 
+// Route duyệt đề tài
 router.put(
   "/registration/:registrationId/approve",
   authenticateToken,
@@ -93,6 +89,7 @@ router.get(
   topicController.getTopicDetail.bind(topicController)
 );
 
+// Route export topic
 router.get(
   "/export/excel",
   authenticateToken,
@@ -100,12 +97,20 @@ router.get(
   topicController.exportTopics.bind(topicController)
 );
 
+// Route import điểm đánh giá đề tài
 router.post(
   "/import/evaluations",
   authenticateToken,
   checkRole(["academic_officer"]),
-  upload.single('file'),
   topicController.importTopicEvaluations.bind(topicController)
+);
+
+// Route gán đề tài cho nhóm
+router.post(
+  "/assign-to-group",
+  authenticateToken,
+  checkRole(["mentor"]),
+  topicController.assignTopicToGroup.bind(topicController)
 );
 
 export default router; 

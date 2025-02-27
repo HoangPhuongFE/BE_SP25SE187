@@ -32,6 +32,7 @@ model User {
   importLogs             ImportLog[]
   systemConfigs          SystemConfig[]
   createdTopics          Topic[]                 @relation("TopicCreator")
+  supervisedTopics       Topic[]                 @relation("TopicSubSupervisor")
   createdGroups          Group[]                 @relation("GroupCreator")
   systemLogs             SystemLog[]
   emailLogs              EmailLog[]
@@ -43,6 +44,8 @@ model User {
   groupMemberships       GroupMember[]           @relation("UserGroupMembers")
   mentorGroups           GroupMentor[]           @relation(name: "MentorGroupRelation")
   addedMentors           GroupMentor[]           @relation(name: "AddedByUserRelation")
+  uploadedDocuments      TopicDocument[]          @relation("UserUploadedDocuments")
+  createdSubmissionPeriods TopicSubmissionPeriod[] @relation("UserCreatedSubmissionPeriods")
 
   @@map("users")
 }
@@ -112,6 +115,9 @@ model Semester {
   semesterTopicMajors   SemesterTopicMajor[]
   yearId                String
   year                  Year                   @relation("YearSemesters", fields: [yearId], references: [id], onDelete: Cascade)
+  submissionPeriods     TopicSubmissionPeriod[]
+
+  @@map("semesters")
 }
 
 model Year {
@@ -203,17 +209,20 @@ model MeetingSchedule {
 }
 
 model TopicRegistration {
-  id              String    @id @default(uuid())
-  topicId         String    @map("topic_id")
-  userId          String    @map("user_id")
-  reviewerId      String?   @map("reviewer_id")
-  role            String
-  status          String
-  decisionFile    String?   @map("decision_file")
-  rejectionReason String?   @map("rejection_reason") @db.Text
-  registeredAt    DateTime  @default(now()) @map("registered_at")
-  reviewedAt      DateTime? @map("reviewed_at")
-  topic           Topic     @relation(fields: [topicId], references: [id])
+  id                 String    @id @default(uuid())
+  topicId            String    @map("topic_id")
+  submissionPeriodId String    @map("submission_period_id")
+  userId             String    @map("user_id")
+  reviewerId         String?   @map("reviewer_id")
+  role               String
+  status             String
+  decisionFile       String?   @map("decision_file")
+  rejectionReason    String?   @map("rejection_reason") @db.Text
+  registeredAt       DateTime  @default(now()) @map("registered_at")
+  reviewedAt         DateTime? @map("reviewed_at")
+  
+  topic             Topic               @relation(fields: [topicId], references: [id])
+  submissionPeriod  TopicSubmissionPeriod @relation(fields: [submissionPeriodId], references: [id])
 
   @@map("topic_registrations")
 }
@@ -263,35 +272,36 @@ model ReviewDefenseCouncil {
 }
 
 model Topic {
-  id                  String               @id @default(uuid())
-  semesterId          String               @map("semester_id")
-  topicCode           String               @unique @map("topic_code")
-  name                String
-  description         String?              @db.Text
-  isBusiness          Boolean              @default(false) @map("is_business")
-  businessPartner     String?              @map("business_partner")
-  source              String?
-  status              String
-  isMultiMajor        Boolean              @default(false) @map("is_multi_major")
-  createdBy           String               @map("created_by")
-  createdAt           DateTime             @default(now()) @map("created_at")
-  updatedAt           DateTime             @updatedAt @map("updated_at")
-  majorId1            Int?                 @map("major_id1")
-  majorId2            Int?                 @map("major_id2")
-  semester            Semester             @relation(fields: [semesterId], references: [id])
-  creator             User                 @relation("TopicCreator", fields: [createdBy], references: [id])
-  topicRegistrations  TopicRegistration[]
-  aiVerificationLogs  AIVerificationLog[]
+  id              String   @id @default(uuid())
+  semesterId      String   @map("semester_id")
+  topicCode       String   @unique @map("topic_code")
+  name            String
+  description     String   @db.Text
+  isBusiness      Boolean  @default(false) @map("is_business")
+  businessPartner String?  @map("business_partner")
+  source          String?
+  status          String
+  createdBy       String   @map("created_by")
+  subSupervisor   String?  @map("sub_supervisor")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  semester           Semester            @relation(fields: [semesterId], references: [id])
+  creator            User                @relation("TopicCreator", fields: [createdBy], references: [id])
+  subMentor          User?               @relation("TopicSubSupervisor", fields: [subSupervisor], references: [id])
+  detailMajorTopics  DetailMajorTopic[]
+  topicRegistrations TopicRegistration[]
+  documents          Document[]          @relation("TopicDocuments")
+  topicAssignments   TopicAssignment[]
+  majors             Major[]            @relation("MajorTopics")
+  aiVerificationLogs AIVerificationLog[]
   semesterTopicMajors SemesterTopicMajor[]
-  topicAssignments    TopicAssignment[]
-  decisions           Decision[]
-  detailMajorTopics   DetailMajorTopic[]
-  majors              Major[]              @relation("MajorTopics")
+  decisions          Decision[]
+  topicDocuments     TopicDocument[]    @relation("TopicDocuments")
 
   @@map("topics")
 }
 
-// 
 model TopicAssignment {
   id              String    @id @default(uuid())
   topicId         String    @map("topic_id")
@@ -301,12 +311,18 @@ model TopicAssignment {
   draftFile       String?   @map("draft_file")
   approvalStatus  String    @map("approval_status")
   defendStatus    String    @map("defend_status")
+  status          String    @default("ASSIGNED") // ASSIGNED, COMPLETED, CANCELLED
   url             String?   @map("URL")
   assignedBy      String    @map("assigned_by")
   reviewCouncilId String?   @map("review_council_id")
   assignedAt      DateTime  @default(now()) @map("assigned_at")
   approvalAt      DateTime? @map("approval_at")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Quan hệ
   topic           Topic     @relation(fields: [topicId], references: [id])
+  group           Group     @relation(fields: [groupId], references: [id])
   councils        Council[]
 
   @@map("topic_assignments")
@@ -334,6 +350,7 @@ model Group {
   decisions        Decision[]
   isLocked         Boolean           @default(false)
   mentors          GroupMentor[]
+  topicAssignments TopicAssignment[]
 
   @@map("groups")
 }
@@ -534,7 +551,9 @@ model Document {
   documentType String   @map("document_type")
   uploadedAt   DateTime @default(now()) @map("uploaded_at")
   uploadedBy   String   @map("uploaded_by")
+  topicId      String?  @map("topic_id")
   uploader     User     @relation(fields: [uploadedBy], references: [id])
+  topic        Topic?   @relation("TopicDocuments", fields: [topicId], references: [id])
 
   @@map("documents")
 }
@@ -616,4 +635,37 @@ model EmailTemplate {
   createdByUser User     @relation("UserEmailTemplates", fields: [createdBy], references: [id])
 
   @@map("email_templates")
+}
+
+model TopicDocument {
+  id          String   @id @default(uuid())
+  topicId     String   @map("topic_id")
+  documentUrl String   @map("document_url")
+  fileName    String   @map("file_name")
+  uploadedBy  String   @map("uploaded_by")
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+  
+  topic      Topic    @relation("TopicDocuments", fields: [topicId], references: [id])
+  uploader   User     @relation("UserUploadedDocuments", fields: [uploadedBy], references: [id])
+
+  @@map("topic_documents")
+}
+
+model TopicSubmissionPeriod {
+  id          String   @id @default(uuid())
+  semesterId  String   @map("semester_id")
+  round       Int      // Lần nộp (1, 2, 3, ...)
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  status      String   @default("ACTIVE") // ACTIVE, INACTIVE, COMPLETED
+  description String?  @db.Text
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  semester           Semester            @relation(fields: [semesterId], references: [id])
+  creator            User               @relation("UserCreatedSubmissionPeriods", fields: [createdBy], references: [id])
+  topicRegistrations TopicRegistration[]
+
+  @@map("topic_submission_periods")
 }

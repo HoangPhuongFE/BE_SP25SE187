@@ -7,6 +7,9 @@ import { TOPIC_MESSAGE } from "../constants/message";
 import ExcelJS from 'exceljs';
 import { validateExcelImport } from '../utils/excelValidator';
 import fs from 'fs';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export class TopicController {
   private topicService = new TopicService();
@@ -59,18 +62,87 @@ export class TopicController {
   // Cập nhật topic
   async updateTopic(req: AuthenticatedRequest, res: Response) {
     try {
-      const { id } = req.params;
-      const updateData = req.body;
+      const { topicId } = req.params;
+      const { 
+        name, 
+        description, 
+        majorId,
+        isBusiness,
+        businessPartner,
+        documents,
+        subSupervisor
+      } = req.body;
 
-      const topic = await this.topicService.updateTopic(id, updateData, req.user!.userId);
+      // Kiểm tra xem người dùng có quyền cập nhật không
+      const userId = req.user!.userId;
+
+      // Validate documents nếu có
+      if (documents) {
+        if (!Array.isArray(documents)) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            message: 'Documents phải là một mảng các URL'
+          });
+        }
+
+        for (const doc of documents) {
+          if (!doc.documentUrl || !doc.fileName) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: 'Mỗi document phải có documentUrl và fileName'
+            });
+          }
+
+          try {
+            new URL(doc.documentUrl);
+          } catch (error) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: 'DocumentUrl không hợp lệ'
+            });
+          }
+        }
+      }
+
+      const topic = await this.topicService.updateTopic(topicId, {
+        name,
+        description,
+        majorId,
+        isBusiness,
+        businessPartner,
+        documents,
+        subSupervisor,
+        updatedBy: userId
+      }, userId);
 
       res.status(HTTP_STATUS.OK).json({
         message: TOPIC_MESSAGE.TOPIC_UPDATED,
         data: topic
       });
     } catch (error) {
+      if (error instanceof Error) {
+        switch(error.message) {
+          case TOPIC_MESSAGE.TOPIC_NOT_FOUND:
+            return res.status(HTTP_STATUS.NOT_FOUND).json({
+              message: error.message
+            });
+          case TOPIC_MESSAGE.MENTOR_MAX_TOPICS_REACHED:
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: error.message
+            });
+          case TOPIC_MESSAGE.UNAUTHORIZED:
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+              message: error.message
+            });
+          case 'ID topic không hợp lệ':
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: error.message
+            });
+          default:
+            return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+              message: error.message
+            });
+        }
+      }
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-        message: (error as Error).message
+        message: 'Lỗi không xác định'
       });
     }
   }
@@ -78,13 +150,32 @@ export class TopicController {
   // Xóa topic
   async deleteTopic(req: AuthenticatedRequest, res: Response) {
     try {
-      const { id } = req.params;
-      await this.topicService.deleteTopic(id);
+      const { topicId } = req.params;
+      const userId = req.user!.userId;
+
+      await this.topicService.deleteTopic(topicId, userId);
 
       res.status(HTTP_STATUS.OK).json({
         message: TOPIC_MESSAGE.TOPIC_DELETED
       });
     } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === TOPIC_MESSAGE.TOPIC_NOT_FOUND) {
+          return res.status(HTTP_STATUS.NOT_FOUND).json({
+            message: error.message
+          });
+        }
+        if (error.message === TOPIC_MESSAGE.INVALID_ID) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            message: error.message
+          });
+        }
+        if (error.message === TOPIC_MESSAGE.TOPIC_IN_USE) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            message: error.message
+          });
+        }
+      }
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         message: (error as Error).message
       });
@@ -108,7 +199,10 @@ export class TopicController {
         {
           status,
           rejectionReason,
-          documents,
+          documents: documents.map(doc => ({
+            fileName: doc.fileName,
+            documentUrl: doc.filePath
+          })),
           reviewerId
         }
       );
@@ -139,7 +233,9 @@ export class TopicController {
         semesterId, 
         majorId,
         isBusiness,
-        businessPartner 
+        businessPartner,
+        documents,
+        subSupervisor
       } = req.body;
       const userId = req.user?.userId;
 
@@ -149,10 +245,30 @@ export class TopicController {
         });
       }
 
-      const documents = Array.isArray(req.files) ? req.files.map((file: Express.Multer.File) => ({
-        fileName: file.originalname,
-        filePath: file.path
-      })) : [];
+      // Validate documents nếu có
+      if (documents) {
+        if (!Array.isArray(documents)) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            message: 'Documents phải là một mảng các URL'
+          });
+        }
+
+        for (const doc of documents) {
+          if (!doc.documentUrl || !doc.fileName) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: 'Mỗi document phải có documentUrl và fileName'
+            });
+          }
+
+          try {
+            new URL(doc.documentUrl);
+          } catch (error) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: 'DocumentUrl không hợp lệ'
+            });
+          }
+        }
+      }
 
       const result = await this.topicService.registerTopic({
         name,
@@ -162,7 +278,8 @@ export class TopicController {
         majorId,
         isBusiness,
         businessPartner,
-        documents
+        documents,
+        subSupervisor
       });
 
       res.status(HTTP_STATUS.CREATED).json({
@@ -170,8 +287,24 @@ export class TopicController {
         data: result
       });
     } catch (error) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        message: (error as Error).message
+      if (error instanceof Error) {
+        switch(error.message) {
+          case TOPIC_MESSAGE.MENTOR_MAX_TOPICS_REACHED:
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+              message: error.message
+            });
+          case TOPIC_MESSAGE.UNAUTHORIZED:
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+              message: error.message
+            });
+          default:
+            return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+              message: error.message
+            });
+        }
+      }
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: 'Lỗi không xác định'
       });
     }
   }
@@ -421,6 +554,87 @@ export class TopicController {
       }
 
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
+
+  // Cập nhật trạng thái đề tài
+  async updateTopicStatus(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { topicId } = req.params;
+      const { status } = req.body;
+      const userId = req.user?.userId;
+
+      if (!userId) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          message: TOPIC_MESSAGE.UNAUTHORIZED
+        });
+      }
+
+      if (!status) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: TOPIC_MESSAGE.MISSING_STATUS
+        });
+      }
+
+      const updatedTopic = await this.topicService.updateTopicStatus(topicId, status, userId);
+
+      return res.status(HTTP_STATUS.OK).json({
+        message: TOPIC_MESSAGE.UPDATE_STATUS_SUCCESS,
+        data: updatedTopic
+      });
+
+    } catch (error) {
+      console.error("Error updating topic status:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
+
+  // Lấy danh sách đề tài theo trạng thái
+  async getTopicsByStatus(req: Request, res: Response) {
+    try {
+      const { status } = req.query;
+      const { page = 1, pageSize = 10 } = req.query;
+
+      const topics = await this.topicService.getTopicsByStatus(
+        status as string,
+        Number(page),
+        Number(pageSize)
+      );
+
+      return res.status(HTTP_STATUS.OK).json({
+        message: TOPIC_MESSAGE.GET_TOPICS_SUCCESS,
+        data: topics
+      });
+
+    } catch (error) {
+      console.error("Error getting topics by status:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
+
+  async assignTopicToGroup(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { topicId, groupId } = req.body;
+      const mentorId = req.user!.userId;
+
+      const result = await this.topicService.assignTopicToGroup({
+        topicId,
+        groupId,
+        mentorId
+      });
+
+      res.status(200).json({
+        message: 'Gán đề tài cho nhóm thành công',
+        data: result
+      });
+    } catch (error) {
+      res.status(400).json({
         message: (error as Error).message
       });
     }

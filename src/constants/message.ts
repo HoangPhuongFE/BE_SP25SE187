@@ -30,6 +30,7 @@ export const USER_MESSAGE = {
   FORBIDDEN: "Forbidden access",
   INVALID_REFRESH_TOKEN: "Invalid refresh token",
   UPDATE_PROFILE_SUCCESS: "Profile updated successfully",
+  USER_ALREADY_EXISTS: "User already exists",
 } as const;
 
 // Thông báo liên quan đến xác thực
@@ -149,6 +150,28 @@ export const TOPIC_MESSAGE = {
   INVALID_TOPIC_NAME: "Invalid topic name: ",
   INVALID_TOPIC_CODE: "Invalid topic code: ",
   TOPIC_FETCHED: "Topic fetched",
+  INVALID_ID: "Invalid topic ID",
+  TOPIC_IN_USE: "Cannot delete topic in use",
+  UNAUTHORIZED: "Unauthorized access",
+  MISSING_STATUS: "Status is required",
+  UPDATE_STATUS_SUCCESS: "Topic status updated successfully",
+  UPDATE_STATUS_FAILED: "Failed to update topic status",
+  TOPIC_STATUS_UPDATED: "Topic status updated successfully",
+  TOPIC_STATUS_UPDATE_FAILED: "Failed to update topic status",
+  GET_TOPICS_SUCCESS: "Topics fetched successfully",
+  GET_TOPICS_FAILED: "Failed to fetch topics",
+  TOPIC_STATUS: {
+    DRAFT: 'DRAFT',           // Đề tài đang trong trạng thái nháp
+    PENDING: 'PENDING',       // Đề tài đang chờ duyệt
+    APPROVED: 'APPROVED',     // Đề tài đã được phê duyệt
+    REJECTED: 'REJECTED',     // Đề tài bị từ chối
+    CONSIDER: 'CONSIDER',     // Đề tài cần xem xét lại
+    IN_PROGRESS: 'IN_PROGRESS', // Đề tài đang được thực hiện
+    COMPLETED: 'COMPLETED',   // Đề tài đã hoàn thành
+    CANCELLED: 'CANCELLED'    // Đề tài đã bị hủy
+  },
+  CANNOT_UPDATE_STATUS: "Cannot update topic status",
+  STATUS_TRANSITION_INVALID: "Status transition is invalid",
 } as const;
 
 
@@ -162,6 +185,26 @@ export const MEETING_MESSAGE = {
   GROUP_NOT_FOUND: "Group not found",
   DELETE_TIME_EXPIRED: "Cannot delete meeting before 1 day of the meeting",
   UPDATE_TIME_EXPIRED: "Cannot update meeting before 1 day of the meeting",
+} as const;
+
+export const TOPIC_SUBMISSION_PERIOD_MESSAGE = {
+  CREATED: "Khoảng thời gian nộp đề tài đã được tạo thành công",
+  UPDATED: "Khoảng thời gian nộp đề tài đã được cập nhật thành công",
+  DELETED: "Khoảng thời gian nộp đề tài đã được xóa thành công",
+  NOT_FOUND: "Không tìm thấy khoảng thời gian nộp đề tài",
+  INVALID_DATE_RANGE: "Khoảng thời gian không hợp lệ",
+  OVERLAPPED_PERIOD: "Khoảng thời gian bị trùng lặp với khoảng thời gian khác",
+  INVALID_SEMESTER: "Học kỳ không hợp lệ",
+  INVALID_ROUND: "Số thứ tự đợt nộp không hợp lệ",
+  STATUS: {
+    ACTIVE: "ACTIVE",
+    INACTIVE: "INACTIVE",
+    COMPLETED: "COMPLETED"
+  },
+  CANNOT_UPDATE_COMPLETED: "Không thể cập nhật khoảng thời gian đã kết thúc",
+  CANNOT_DELETE_ACTIVE: "Không thể xóa khoảng thời gian đang hoạt động",
+  CANNOT_CREATE_IN_PAST: "Không thể tạo khoảng thời gian trong quá khứ",
+  FETCHED: "Lấy danh sách khoảng thời gian nộp đề tài thành công",
 } as const;
 
 // Cập nhật vào danh sách MESSAGES chung
@@ -180,4 +223,5 @@ export const MESSAGES = {
   EMAIL: EMAIL_MESSAGE,
   TOPIC: TOPIC_MESSAGE,
   MEETING: MEETING_MESSAGE,
+  TOPIC_SUBMISSION_PERIOD: TOPIC_SUBMISSION_PERIOD_MESSAGE,
 } as const;
