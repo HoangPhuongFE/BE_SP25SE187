@@ -284,7 +284,27 @@ export class TopicController {
 
       res.status(HTTP_STATUS.CREATED).json({
         message: TOPIC_MESSAGE.TOPIC_REGISTRATION_CREATED,
-        data: result
+        data: {
+          topic: {
+            id: result.id,
+            topicCode: result.topicCode,
+            name: result.name,
+            description: result.description,
+            status: result.status,
+            createdAt: result.createdAt,
+            updatedAt: result.updatedAt,
+            detailMajorTopics: result.detailMajorTopics,
+            creator: result.creator,
+            subMentor: result.subMentor
+          },
+          submissionPeriod: {
+            id: result.submissionPeriod.id,
+            round: result.submissionPeriod.round,
+            startDate: result.submissionPeriod.startDate,
+            endDate: result.submissionPeriod.endDate,
+            status: result.submissionPeriod.status
+          }
+        }
       });
     } catch (error) {
       if (error instanceof Error) {

@@ -3,16 +3,25 @@ import { MESSAGES } from '../constants/message';
 import TopicSubmissionPeriodService from '../service/topicSubmissionPeriod.service';
 import { ICreateTopicSubmissionPeriodDTO, IUpdateTopicSubmissionPeriodDTO } from '../types/topicSubmissionPeriod';
 import { CustomError } from '../models/schemas/Error';
+import { AuthenticatedRequest } from '../middleware/user.middleware';
 
 class TopicSubmissionPeriodController {
-    async createPeriod(req: Request, res: Response) {
+    async createPeriod(req: AuthenticatedRequest, res: Response) {
         try {
+            if (!req.user || !req.user.userId) {
+                return res.status(401).json({
+                    message: "Không có thông tin người dùng. Vui lòng đăng nhập lại."
+                });
+            }
+
             const data: ICreateTopicSubmissionPeriodDTO = {
                 ...req.body,
                 startDate: new Date(req.body.startDate),
                 endDate: new Date(req.body.endDate)
             };
-            const createdBy = req.user?.id;
+            const createdBy = req.user.userId;
+            console.log("Controller - User ID:", createdBy);
+
             const period = await TopicSubmissionPeriodService.createPeriod(data, createdBy);
             res.status(201).json({
                 message: MESSAGES.TOPIC_SUBMISSION_PERIOD.CREATED,
