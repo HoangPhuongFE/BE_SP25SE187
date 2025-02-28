@@ -2,9 +2,12 @@ import { Router } from "express";
 import { TopicController } from "../controller/topic.controller";
 import { authenticateToken, checkRole } from "../middleware/user.middleware";
 import { validateCreateTopic, validateUpdateTopic, validateTopicRegistration, validateCreateCouncil } from '../middleware/topic.middleware';
+import { PrismaClient } from '@prisma/client';
 
 const router = Router();
 const topicController = new TopicController();
+const prisma = new PrismaClient();
+
 
 // Routes cho academic officer (tạo đề tài chính thức - auto approved)
 router.post(
@@ -67,7 +70,7 @@ router.post(
   topicController.createTopicReviewCouncil.bind(topicController)
 );
 
-// Route lấy danh sách topic (cho tất cả user đã đăng nhập)
+// Route lấy danh sách tất cả đề tài (cho tất cả user đã đăng nhập)
 router.get(
   "/",
   authenticateToken,
@@ -87,6 +90,20 @@ router.get(
   "/:id",
   authenticateToken,
   topicController.getTopicDetail.bind(topicController)
+);
+
+// Route lấy chi tiết đề tài chính thức
+router.get(
+  "/official/:id",
+  authenticateToken,
+  topicController.getOfficialTopicDetail.bind(topicController)
+);
+
+// Route lấy chi tiết đề xuất đề tài
+router.get(
+  "/proposed/:id",
+  authenticateToken,
+  topicController.getProposedTopicDetail.bind(topicController)
 );
 
 // Route export topic

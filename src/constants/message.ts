@@ -203,6 +203,7 @@ export const TOPIC_SUBMISSION_PERIOD_MESSAGE = {
   },
   CANNOT_UPDATE_COMPLETED: "Không thể cập nhật khoảng thời gian đã kết thúc",
   CANNOT_DELETE_ACTIVE: "Không thể xóa khoảng thời gian đang hoạt động",
+  CANNOT_DELETE_HAS_REGISTRATIONS: "Không thể xóa khoảng thời gian có đăng ký đề tài",
   CANNOT_CREATE_IN_PAST: "Không thể tạo khoảng thời gian trong quá khứ",
   FETCHED: "Lấy danh sách khoảng thời gian nộp đề tài thành công",
 } as const;
