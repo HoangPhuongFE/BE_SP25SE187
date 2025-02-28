@@ -10,7 +10,7 @@ const upload = multer({ dest: "uploads/" });
 router.post(
   "/roles",
   authenticateToken,
-  checkRole(["admin"]),
+  checkRole(["admin","academic_officer"]),
   upload.single("file"),
   importRoleController.importRoles.bind(importRoleController)
 );

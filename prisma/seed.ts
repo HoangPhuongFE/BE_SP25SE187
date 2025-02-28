@@ -52,20 +52,6 @@ async function createDefaultUsers() {
       roleName: 'examination_officer',
     },
     {
-      email: 'mentor00@gmail.com',
-      username: 'mentor00',
-      password: await hashPassword('a123456'),
-      fullName: 'Mentor User',
-      roleName: 'mentor',
-    },
-    {
-      email: 'mentor11@gmail.com',
-      username: 'mentor11',
-      password: await hashPassword('a123456'),
-      fullName: 'Mentor User11',
-      roleName: 'mentor',
-    },
-    {
       email: 'lecturer@gmail.com',
       username: 'lecturer',
       password: await hashPassword('a123456'),

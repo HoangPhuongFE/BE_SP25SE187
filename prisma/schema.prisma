@@ -12,6 +12,7 @@ model User {
   username                 String                  @unique
   email                    String                  @unique
   passwordHash             String
+  lecturerCode             String?                  @unique
   fullName                 String?
   avatar                   String?
   student_code             String?
@@ -47,7 +48,7 @@ model User {
   uploadedDocuments        TopicDocument[]         @relation("UserUploadedDocuments")
   createdSubmissionPeriods TopicSubmissionPeriod[] @relation("UserCreatedSubmissionPeriods")
   CouncilMember            CouncilMember[]
-
+                    
   @@map("users")
 }
 
