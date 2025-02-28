@@ -42,13 +42,16 @@ export class CouncilService {
         }
     }
 
-    async addCouncilMembers(councilId: string, members: { userId: string; role: string }[]) {
+    async addCouncilMembers(
+        councilId: string,
+        members: { userId?: string; email?: string; role: string }[]
+    ) {
         try {
             // Lấy thông tin hội đồng
             const council = await prisma.council.findUnique({
                 where: { id: councilId }
             });
-
+    
             if (!council) {
                 return {
                     success: false,
@@ -56,53 +59,75 @@ export class CouncilService {
                     message: COUNCIL_MESSAGE.COUNCIL_NOT_FOUND
                 };
             }
-
+    
             const councilType = council.type;
             const councilRound = council.round;
-
+    
             // Lấy số lượng tối đa từ config
             const maxReviewMembers = await systemConfigService.getMaxReviewMembers();
             const maxDefenseMembers = await systemConfigService.getMaxDefenseMembers();
             const maxDefenseChairman = await systemConfigService.getMaxDefenseChairman();
             const maxDefenseSecretary = await systemConfigService.getMaxDefenseSecretary();
             const maxDefenseReviewers = await systemConfigService.getMaxDefenseReviewers();
-
+    
             // Lấy danh sách thành viên hiện tại của hội đồng
             const currentMembers = await prisma.councilMember.findMany({
                 where: { councilId }
             });
-
+    
+            // Tìm userId từ email nếu không có userId
+            const emailUsers = await prisma.user.findMany({
+                where: {
+                    email: { in: members.filter(m => !m.userId && m.email).map(m => m.email!) }
+                },
+                select: { id: true, email: true }
+            });
+    
+            const emailUserMap = new Map(emailUsers.map(user => [user.email, user.id]));
+    
+            // Ánh xạ lại danh sách members, nếu có email thì tìm userId
+            const membersWithId = members.map(member => {
+                if (member.userId) return member;
+    
+                const userId = emailUserMap.get(member.email!);
+                if (!userId) {
+                    throw new Error(`Không tìm thấy người dùng với email: ${member.email}`);
+                }
+    
+                return { userId, role: member.role };
+            });
+    
             // Kiểm tra số lượng thành viên tối đa
-            if (councilType === "review" && currentMembers.length + members.length > maxReviewMembers) {
+            if (councilType === "review" && currentMembers.length + membersWithId.length > maxReviewMembers) {
                 return {
                     success: false,
                     status: HTTP_STATUS.BAD_REQUEST,
                     message: COUNCIL_MESSAGE.MAX_MEMBERS_EXCEEDED
                 };
             }
-
-            if (councilType === "defense" && currentMembers.length + members.length > maxDefenseMembers) {
+    
+            if (councilType === "defense" && currentMembers.length + membersWithId.length > maxDefenseMembers) {
                 return {
                     success: false,
                     status: HTTP_STATUS.BAD_REQUEST,
                     message: COUNCIL_MESSAGE.MAX_MEMBERS_EXCEEDED
                 };
             }
-
+    
             // Kiểm tra số lượng vai trò
             const roleCount: { [key: string]: number } = {
                 chairman: 0,
                 secretary: 0,
                 reviewer: 0
             };
-
+    
             currentMembers.forEach((member) => {
                 if (roleCount[member.role] !== undefined) {
                     roleCount[member.role]++;
                 }
             });
-
-            for (const newMember of members) {
+    
+            for (const newMember of membersWithId) {
                 if (newMember.role === "chairman" && roleCount.chairman >= maxDefenseChairman) {
                     return {
                         success: false,
@@ -124,24 +149,24 @@ export class CouncilService {
                         message: COUNCIL_MESSAGE.REVIEWER_LIMIT
                     };
                 }
-
+    
                 if (roleCount[newMember.role] !== undefined) {
                     roleCount[newMember.role]++;
                 }
             }
-
+    
             // Thêm thành viên vào hội đồng
-            const dataForInsert = members.map((m) => ({
+            const dataForInsert = membersWithId.map((m) => ({
                 councilId,
-                userId: m.userId,
+                userId: m.userId!,
                 role: m.role,
                 status: 'ACTIVE'
             }));
-
+    
             const result = await prisma.councilMember.createMany({
                 data: dataForInsert
             });
-
+    
             return {
                 success: true,
                 status: HTTP_STATUS.CREATED,
@@ -152,11 +177,12 @@ export class CouncilService {
             return {
                 success: false,
                 status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-                message: COUNCIL_MESSAGE.COUNCIL_MEMBERS_FAILED
+                message: COUNCIL_MESSAGE.COUNCIL_MEMBERS_FAILED,
+                error: (error as any).message
             };
         }
     }
-
+    
 
     async getCouncils(filter: { semesterId?: string; type?: string }) {
         try {
@@ -239,7 +265,7 @@ export class CouncilService {
     }
 
 
-    async removeCouncilMember(councilId: string, userId: string) {
+    async removeCouncilMember(councilId: string, userId?: string, email?: string) {
         try {
             // Lấy thông tin hội đồng
             const council = await prisma.council.findUnique({
@@ -254,7 +280,32 @@ export class CouncilService {
                 };
             }
     
-            const councilType = council.type;
+            // Nếu chỉ có email, lấy userId từ email
+            if (!userId && email) {
+                const user = await prisma.user.findUnique({
+                    where: { email },
+                    select: { id: true }
+                });
+    
+                if (!user) {
+                    return {
+                        success: false,
+                        status: HTTP_STATUS.NOT_FOUND,
+                        message: `Không tìm thấy người dùng với email: ${email}`
+                    };
+                }
+                userId = user.id;
+            }
+    
+            if (!userId) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.BAD_REQUEST,
+                    message: COUNCIL_MESSAGE.INVALID_REQUEST
+                };
+            }
+    
+            // Lấy danh sách thành viên hiện tại trong hội đồng
             const currentMembers = await prisma.councilMember.findMany({
                 where: { councilId }
             });
@@ -268,9 +319,9 @@ export class CouncilService {
             }
     
             // Kiểm tra số lượng tối thiểu từ config
-            const minMembers = councilType === "review"
-                ? await systemConfigService.getMaxReviewMembers() // Nếu cần có số lượng tối thiểu riêng, có thể tạo thêm hàm getMinReviewMembers()
-                : await systemConfigService.getMaxDefenseMembers(); // Nếu cần số lượng tối thiểu riêng, có thể tạo thêm hàm getMinDefenseMembers()
+            const minMembers = council.type === "review"
+                ? await systemConfigService.getMaxReviewMembers()
+                : await systemConfigService.getMaxDefenseMembers();
     
             if (currentMembers.length - 1 < minMembers) {
                 return {
@@ -281,9 +332,17 @@ export class CouncilService {
             }
     
             // Xóa thành viên khỏi hội đồng
-            await prisma.councilMember.deleteMany({
+            const deleted = await prisma.councilMember.deleteMany({
                 where: { councilId, userId }
             });
+    
+            if (deleted.count === 0) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.NOT_FOUND,
+                    message: COUNCIL_MESSAGE.COUNCIL_MEMBER_NOT_FOUND
+                };
+            }
     
             return {
                 success: true,
@@ -298,5 +357,6 @@ export class CouncilService {
             };
         }
     }
+    
     
 }
