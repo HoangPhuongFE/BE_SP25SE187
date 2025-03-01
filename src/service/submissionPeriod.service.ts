@@ -31,17 +31,21 @@ export class SubmissionPeriodService {
       // Xác định trạng thái tự động
       const status = this.determineStatus(data.startDate, data.endDate);
 
+      
+
       const newPeriod = await prisma.submissionPeriod.create({
         data: {
           semesterId: data.semesterId,
           roundNumber: data.roundNumber,
           startDate: data.startDate,
           endDate: data.endDate,
-          description: data.description || "Không có mô tả",
+          description: data.description || "",
           createdBy: data.createdBy,
-          status,
+          status, // Lưu trạng thái đã tính toán
         },
       });
+
+     
 
       return {
         success: true,
@@ -138,15 +142,24 @@ export class SubmissionPeriodService {
         orderBy: { roundNumber: "asc" },
       });
 
-      // Cập nhật trạng thái dựa trên thời gian hiện tại
-      const updatedPeriods = periods.map((period) => ({
-        ...period,
-        status: this.determineStatus(period.startDate, period.endDate),
-      }));
+      // Tính toán trạng thái mới
+      const updatedPeriods = periods.map((period) => {
+        const newStatus = this.determineStatus(new Date(period.startDate), new Date(period.endDate));
+
+        // Cập nhật trạng thái trong DB nếu khác với hiện tại
+        if (newStatus !== period.status) {
+          prisma.submissionPeriod.update({
+            where: { id: period.id },
+            data: { status: newStatus }
+          }).catch(err => console.error(`Lỗi cập nhật trạng thái: ${err}`));
+        }
+
+        return { ...period, status: newStatus };
+      });
 
       return { success: true, status: HTTP_STATUS.OK, data: updatedPeriods };
     } catch (error) {
-      console.error("Lỗi khi lấy danh sách đợt đề xuất:", error);
+      console.error(" Lỗi khi lấy danh sách đợt đề xuất:", error);
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
     }
   }
@@ -154,9 +167,7 @@ export class SubmissionPeriodService {
   //  Lấy thông tin một đợt đề xuất theo ID
   async getSubmissionPeriodById(periodId: string) {
     try {
-      const period = await prisma.submissionPeriod.findUnique({
-        where: { id: periodId },
-      });
+      const period = await prisma.submissionPeriod.findUnique({ where: { id: periodId } });
 
       if (!period) {
         return {
@@ -166,15 +177,24 @@ export class SubmissionPeriodService {
         };
       }
 
-      // Cập nhật trạng thái trước khi trả về
-      const updatedPeriod = { ...period, status: this.determineStatus(period.startDate, period.endDate) };
+      // Tính toán trạng thái mới
+      const newStatus = this.determineStatus(new Date(period.startDate), new Date(period.endDate));
 
-      return { success: true, status: HTTP_STATUS.OK, data: updatedPeriod };
+      // Nếu trạng thái khác DB, cập nhật lại
+      if (newStatus !== period.status) {
+        await prisma.submissionPeriod.update({
+          where: { id: period.id },
+          data: { status: newStatus }
+        });
+      }
+
+      return { success: true, status: HTTP_STATUS.OK, data: { ...period, status: newStatus } };
     } catch (error) {
-      console.error("Lỗi khi lấy đợt đề xuất theo ID:", error);
+      console.error(" Lỗi khi lấy đợt đề xuất theo ID:", error);
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
     }
   }
+
 
   //  Xóa đợt đề xuất
   async deleteSubmissionPeriod(periodId: string) {
@@ -209,9 +229,13 @@ export class SubmissionPeriodService {
 
   //  Hàm xác định trạng thái SubmissionPeriod
   private determineStatus(startDate: Date, endDate: Date): string {
-    const now = new Date();
-    if (now < startDate) return "PENDING"; // Chưa bắt đầu
-    if (now >= startDate && now <= endDate) return "ACTIVE"; // Đang mở
+    const now = new Date(); // Lấy thời gian hiện tại của server
+    const start = new Date(startDate); // Chuyển đổi startDate về cùng kiểu Date
+    const end = new Date(endDate); // Chuyển đổi endDate về cùng kiểu Date
+
+    if (now < start) return "PENDING"; // Chưa bắt đầu
+    if (now >= start && now <= end) return "ACTIVE"; // Đang mở
     return "COMPLETE"; // Đã kết thúc
-  }
+}
+
 }
