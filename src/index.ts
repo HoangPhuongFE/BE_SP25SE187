@@ -21,6 +21,7 @@ import importRole from './routers/importRole.router';
 import majorRouter from './routers/major.router';
 import systemConfigRoutes from "./routers/system.config.routes";
 import topicSubmissionPeriodRouter from './routers/topicSubmissionPeriod.router';
+import topicReviewCouncilRouter from './routers/topicReviewCouncil.router';
 
 //
 config();
@@ -56,11 +57,7 @@ app.use("/api/import", importRole);
 app.use("/api/majors", majorRouter);
 app.use("/api/config", systemConfigRoutes);
 app.use('/api/topic-submission-periods', topicSubmissionPeriodRouter);
-
-
-
-
-
+app.use('/api/topic-review-councils', topicReviewCouncilRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -8,7 +8,6 @@ const router = Router();
 const topicController = new TopicController();
 const prisma = new PrismaClient();
 
-
 // Routes cho academic officer (tạo đề tài chính thức - auto approved)
 router.post(
   "/",
@@ -59,54 +58,6 @@ router.put(
   checkRole(["mentor"]),
   validateUpdateTopic,
   topicController.updateTopic.bind(topicController)
-);
-
-// Routes cho Graduation Thesis Manager (tạo hội đồng duyệt đề tài)
-router.post(
-  "/review-councils",
-  authenticateToken,
-  checkRole(["graduation_thesis_manager", "admin"]),
-  topicController.createReviewTopicCouncil.bind(topicController)
-);
-
-// Route thêm thành viên vào hội đồng duyệt đề tài
-router.post(
-  "/review-councils/:councilId/members",
-  authenticateToken,
-  checkRole(["graduation_thesis_manager", "admin"]),
-  topicController.addMembersToReviewCouncil.bind(topicController)
-);
-
-// Route gán người đánh giá chính cho hội đồng duyệt đề tài
-router.post(
-  "/review-councils/:councilId/primary-reviewer",
-  authenticateToken,
-  checkRole(["graduation_thesis_manager", "admin"]),
-  topicController.assignPrimaryReviewer.bind(topicController)
-);
-
-// Route import kết quả đánh giá đề tài từ người đánh giá chính
-router.post(
-  "/review-councils/:councilId/evaluations",
-  authenticateToken,
-  checkRole(["graduation_thesis_manager", "mentor", "admin"]),
-  topicController.importTopicEvaluations.bind(topicController)
-);
-
-// Route lấy danh sách hội đồng duyệt đề tài
-router.get(
-  "/review-councils",
-  authenticateToken,
-  checkRole(["graduation_thesis_manager", "mentor", "admin"]),
-  topicController.getReviewCouncils.bind(topicController)
-);
-
-// Route lấy chi tiết hội đồng duyệt đề tài
-router.get(
-  "/review-councils/:councilId",
-  authenticateToken,
-  checkRole(["graduation_thesis_manager", "mentor", "admin"]),
-  topicController.getReviewCouncilDetail.bind(topicController)
 );
 
 // Route lấy danh sách tất cả đề tài (cho tất cả user đã đăng nhập)
