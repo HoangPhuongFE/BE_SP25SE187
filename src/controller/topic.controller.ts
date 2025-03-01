@@ -3,17 +3,19 @@ import { Express } from 'express';
 import { AuthenticatedRequest } from "../middleware/user.middleware";
 import { TopicService } from "../service/topic.service";
 import HTTP_STATUS from "../constants/httpStatus";
-import { TOPIC_MESSAGE } from "../constants/message";
+import { MESSAGES, TOPIC_MESSAGE } from "../constants/message";
 import ExcelJS from 'exceljs';
 import { validateExcelImport } from '../utils/excelValidator';
 import fs from 'fs';
 import { PrismaClient } from '@prisma/client';
+import { ReviewCouncilService } from "../service/topicReviewCouncil.service";
 
 const prisma = new PrismaClient();
 
 export class TopicController {
   private topicService = new TopicService();
-//
+  private reviewCouncilService = new ReviewCouncilService();
+
   // Tạo topic mới
   async createTopic(req: AuthenticatedRequest, res: Response) {
     try {
@@ -686,63 +688,138 @@ export class TopicController {
     }
   }
 
-  async importTopicEvaluations(req: AuthenticatedRequest, res: Response) {
+  // Tạo hội đồng duyệt đề tài
+  async createReviewTopicCouncil(req: AuthenticatedRequest, res: Response) {
     try {
-      if (!req.file) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          message: 'Vui lòng tải lên file Excel'
-        });
-      }
+      const { 
+        name, 
+        semesterId, 
+        councilType = 'TOPIC_REVIEW',
+        startDate,
+        endDate,
+        description
+      } = req.body;
+      
+      const createdBy = req.user!.userId;
 
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.readFile(req.file.path);
-      const worksheet = workbook.getWorksheet(1);
-
-      if (!worksheet) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          message: 'File Excel không có dữ liệu'
-        });
-      }
-
-      // Validate cấu trúc file Excel
-      const requiredColumns = [
-        'Mã đề tài',
-        'Trạng thái',
-        'Lý do từ chối',
-        'Người đánh giá'
-      ];
-
-      const validationError = validateExcelImport(worksheet, requiredColumns);
-      if (validationError) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          message: validationError
-        });
-      }
-
-      const results = await this.topicService.importTopicEvaluations(
-        worksheet,
-        req.user!.userId
-      );
-
-      // Xóa file tạm sau khi xử lý
-      fs.unlinkSync(req.file.path);
-
-      res.status(HTTP_STATUS.OK).json({
-        message: 'Import đánh giá đề tài thành công',
-        data: {
-          total: results.total,
-          success: results.success,
-          failed: results.failed,
-          errors: results.errors
-        }
+      // Gọi service để tạo hội đồng duyệt đề tài
+      const council = await this.reviewCouncilService.createReviewCouncil({
+        name,
+        semesterId,
+        councilType,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        description,
+        createdBy
       });
 
+      res.status(HTTP_STATUS.CREATED).json({
+        message: MESSAGES.REVIEW_COUNCIL.CREATED,
+        data: council
+      });
     } catch (error) {
-      // Xóa file tạm nếu có lỗi
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
-      }
+      console.error("Error creating review council:", error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
 
+  // Thêm thành viên vào hội đồng duyệt đề tài
+  async addMembersToReviewCouncil(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { councilId } = req.params;
+      const { memberIds } = req.body;
+
+      // Gọi service để thêm thành viên vào hội đồng
+      const members = await this.reviewCouncilService.addMembersToReviewCouncil(
+        councilId,
+        memberIds
+      );
+
+      res.status(HTTP_STATUS.OK).json({
+        message: MESSAGES.REVIEW_COUNCIL.MEMBER_ADDED,
+        data: members
+      });
+    } catch (error) {
+      console.error("Error adding members to review council:", error);
+      
+      if ((error as Error).message === MESSAGES.REVIEW_COUNCIL.NOT_FOUND) {
+        return res.status(HTTP_STATUS.NOT_FOUND).json({
+          message: MESSAGES.REVIEW_COUNCIL.NOT_FOUND
+        });
+      }
+      
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
+
+  // Gán người đánh giá chính cho hội đồng duyệt đề tài
+  async assignPrimaryReviewer(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { councilId } = req.params;
+      const { reviewerId } = req.body;
+
+      // Gọi service để gán người đánh giá chính
+      const council = await this.reviewCouncilService.assignPrimaryReviewer(
+        councilId,
+        reviewerId
+      );
+
+      res.status(HTTP_STATUS.OK).json({
+        message: MESSAGES.REVIEW_COUNCIL.PRIMARY_REVIEWER_ASSIGNED,
+        data: council
+      });
+    } catch (error) {
+      console.error("Error assigning primary reviewer:", error);
+      
+      if ((error as Error).message === MESSAGES.REVIEW_COUNCIL.NOT_FOUND) {
+        return res.status(HTTP_STATUS.NOT_FOUND).json({
+          message: MESSAGES.REVIEW_COUNCIL.NOT_FOUND
+        });
+      }
+      
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        message: (error as Error).message
+      });
+    }
+  }
+
+  // Import kết quả đánh giá đề tài từ người đánh giá chính
+  async importTopicEvaluations(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { councilId } = req.params;
+      const reviewerId = req.user!.userId;
+      const { evaluations } = req.body;
+
+      // Gọi service để import kết quả đánh giá
+      const result = await this.reviewCouncilService.importTopicEvaluations(
+        councilId,
+        reviewerId,
+        evaluations
+      );
+
+      res.status(HTTP_STATUS.OK).json({
+        message: MESSAGES.REVIEW_COUNCIL.EVALUATIONS_IMPORTED,
+        data: result
+      });
+    } catch (error) {
+      console.error("Error importing topic evaluations:", error);
+      
+      if ((error as Error).message === MESSAGES.REVIEW_COUNCIL.NOT_FOUND) {
+        return res.status(HTTP_STATUS.NOT_FOUND).json({
+          message: MESSAGES.REVIEW_COUNCIL.NOT_FOUND
+        });
+      }
+      
+      if ((error as Error).message === MESSAGES.REVIEW_COUNCIL.UNAUTHORIZED) {
+        return res.status(HTTP_STATUS.FORBIDDEN).json({
+          message: MESSAGES.REVIEW_COUNCIL.UNAUTHORIZED
+        });
+      }
+      
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         message: (error as Error).message
       });
@@ -829,4 +906,128 @@ export class TopicController {
       });
     }
   }
-} 
+
+  // Lấy danh sách hội đồng duyệt đề tài
+  async getReviewCouncils(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { 
+        semesterId, 
+        councilType, 
+        status, 
+        page = 1, 
+        pageSize = 10 
+      } = req.query;
+
+      const result = await this.reviewCouncilService.getReviewCouncils({
+        semesterId: semesterId as string,
+        councilType: councilType as string,
+        status: status as string,
+        page: Number(page),
+        pageSize: Number(pageSize)
+      });
+
+      return res.status(200).json({
+        message: MESSAGES.REVIEW_COUNCIL.FETCHED,
+        data: result.data,
+        pagination: result.pagination
+      });
+    } catch (error) {
+      console.error("Error getting review councils:", error);
+      return res.status(500).json({
+        message: MESSAGES.GENERAL.SERVER_ERROR,
+        error: (error as Error).message
+      });
+    }
+  }
+
+  // Lấy chi tiết hội đồng duyệt đề tài
+  async getReviewCouncilDetail(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { councilId } = req.params;
+
+      const result = await this.reviewCouncilService.getReviewCouncilDetail(councilId);
+
+      if (!result) {
+        return res.status(404).json({
+          message: MESSAGES.REVIEW_COUNCIL.NOT_FOUND
+        });
+      }
+
+      return res.status(200).json({
+        message: MESSAGES.REVIEW_COUNCIL.DETAIL_FETCHED,
+        data: result
+      });
+    } catch (error) {
+      console.error("Error getting review council detail:", error);
+      return res.status(500).json({
+        message: MESSAGES.GENERAL.SERVER_ERROR,
+        error: (error as Error).message
+      });
+    }
+  }
+
+  /**
+   * Lấy danh sách các đề tài có thể chọn (đã được phê duyệt và chưa được gán cho nhóm nào)
+   */
+  async getAvailableTopics(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { semesterId, majorId, page = 1, pageSize = 10, search } = req.query;
+
+      if (!semesterId) {
+        return res.status(400).json({
+          message: 'Thiếu thông tin học kỳ'
+        });
+      }
+
+      const result = await this.topicService.getAvailableTopics({
+        semesterId: semesterId as string,
+        majorId: majorId as string | undefined,
+        page: Number(page),
+        pageSize: Number(pageSize),
+        search: search as string | undefined
+      });
+
+      return res.status(200).json({
+        message: 'Lấy danh sách đề tài thành công',
+        ...result
+      });
+    } catch (error) {
+      console.error('Error in getAvailableTopics controller:', error);
+      return res.status(400).json({
+        message: (error as Error).message
+      });
+    }
+  }
+
+  /**
+   * Cho phép nhóm chọn một đề tài đã được phê duyệt
+   */
+  async selectTopicForGroup(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { topicId, groupId } = req.body;
+      const userId = req.user!.userId;
+
+      if (!topicId || !groupId) {
+        return res.status(400).json({
+          message: 'Thiếu thông tin đề tài hoặc nhóm'
+        });
+      }
+
+      const result = await this.topicService.selectTopicForGroup({
+        topicId,
+        groupId,
+        userId
+      });
+
+      return res.status(200).json({
+        message: 'Chọn đề tài cho nhóm thành công',
+        data: result
+      });
+    } catch (error) {
+      console.error('Error in selectTopicForGroup controller:', error);
+      return res.status(400).json({
+        message: (error as Error).message
+      });
+    }
+  }
+}

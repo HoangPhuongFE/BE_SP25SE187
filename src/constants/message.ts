@@ -208,6 +208,32 @@ export const TOPIC_SUBMISSION_PERIOD_MESSAGE = {
   FETCHED: "Lấy danh sách khoảng thời gian nộp đề tài thành công",
 } as const;
 
+export const REVIEW_COUNCIL_MESSAGE = {
+  CREATED: "Hội đồng duyệt đề tài đã được tạo thành công",
+  UPDATED: "Hội đồng duyệt đề tài đã được cập nhật thành công",
+  DELETED: "Hội đồng duyệt đề tài đã được xóa thành công",
+  NOT_FOUND: "Không tìm thấy hội đồng duyệt đề tài",
+  MEMBER_ADDED: "Thành viên đã được thêm vào hội đồng duyệt đề tài",
+  MEMBER_REMOVED: "Thành viên đã được xóa khỏi hội đồng duyệt đề tài",
+  MEMBER_ALREADY_EXISTS: "Thành viên đã tồn tại trong hội đồng duyệt đề tài",
+  PRIMARY_REVIEWER_ASSIGNED: "Đã gán người đánh giá chính cho hội đồng duyệt đề tài",
+  EVALUATIONS_IMPORTED: "Đã nhập kết quả đánh giá đề tài thành công",
+  INVALID_EVALUATION_FORMAT: "Định dạng file đánh giá không hợp lệ",
+  UNAUTHORIZED: "Bạn không có quyền thực hiện hành động này",
+  COUNCIL_TYPES: {
+    TOPIC_REVIEW: "TOPIC_REVIEW",
+    PROGRESS_REVIEW: "PROGRESS_REVIEW",
+    DEFENSE: "DEFENSE"
+  },
+  STATUS: {
+    PENDING: "PENDING",
+    ACTIVE: "ACTIVE",
+    COMPLETED: "COMPLETED"
+  },
+  FETCHED: "Lấy danh sách hội đồng duyệt đề tài thành công",
+  DETAIL_FETCHED: "Lấy chi tiết hội đồng duyệt đề tài thành công"
+} as const;
+
 // Cập nhật vào danh sách MESSAGES chung
 export const MESSAGES = {
   STUDENT: STUDENT_MESSAGE,
@@ -225,4 +251,5 @@ export const MESSAGES = {
   TOPIC: TOPIC_MESSAGE,
   MEETING: MEETING_MESSAGE,
   TOPIC_SUBMISSION_PERIOD: TOPIC_SUBMISSION_PERIOD_MESSAGE,
+  REVIEW_COUNCIL: REVIEW_COUNCIL_MESSAGE,
 } as const;

@@ -290,7 +290,7 @@ export class TopicService {
                 topicId: newTopic.id,
               fileName: doc.fileName,
               documentUrl: doc.filePath,
-              uploadedBy: data.createdBy
+            uploadedBy: data.createdBy
               }
             });
             
@@ -1581,9 +1581,9 @@ export class TopicService {
           endDate: topic.semester.endDate,
           year: topic.semester.year.year
         },
-        majors: topic.detailMajorTopics.map(dmt => ({
-          id: dmt.major.id,
-          name: dmt.major.name
+        majors: topic.detailMajorTopics.map(detail => ({
+          id: detail.major.id,
+          name: detail.major.name
         })),
         documents: topic.topicDocuments.map(doc => ({
           id: doc.id,
@@ -1869,5 +1869,257 @@ export class TopicService {
       console.error("Error in isValidUuid:", error);
       return false;
     }
+  }
+
+  /**
+   * Lấy danh sách các đề tài có thể chọn (đã được phê duyệt và chưa được gán cho nhóm nào)
+   * @param semesterId ID của học kỳ
+   * @param majorId ID của ngành học (tùy chọn)
+   * @param page Số trang
+   * @param pageSize Kích thước trang
+   * @returns Danh sách các đề tài có thể chọn
+   */
+  async getAvailableTopics({
+    semesterId,
+    majorId,
+    page = 1,
+    pageSize = 10,
+    search
+  }: {
+    semesterId: string;
+    majorId?: string;
+    page?: number;
+    pageSize?: number;
+    search?: string;
+  }) {
+    try {
+      // Kiểm tra tính hợp lệ của semesterId
+      if (!this.isValidUuid(semesterId)) {
+        throw new Error('ID học kỳ không hợp lệ');
+      }
+
+      // Kiểm tra tính hợp lệ của majorId nếu có
+      if (majorId && !this.isValidUuid(majorId)) {
+        throw new Error('ID ngành học không hợp lệ');
+      }
+
+      // Xây dựng điều kiện tìm kiếm
+      const whereCondition: any = {
+        semesterId,
+        status: 'APPROVED', // Chỉ lấy các đề tài đã được phê duyệt
+        topicAssignments: {
+          none: {} // Chỉ lấy các đề tài chưa được gán cho nhóm nào
+        }
+      };
+
+      // Thêm điều kiện tìm kiếm theo ngành học nếu có
+      if (majorId) {
+        whereCondition.detailMajorTopics = {
+          some: {
+            majorId
+          }
+        };
+      }
+
+      // Thêm điều kiện tìm kiếm theo từ khóa nếu có
+      if (search) {
+        whereCondition.OR = [
+          { name: { contains: search } },
+          { description: { contains: search } },
+          { topicCode: { contains: search } }
+        ];
+      }
+
+      // Đếm tổng số đề tài thỏa mãn điều kiện
+      const totalCount = await prisma.topic.count({
+        where: whereCondition
+      });
+
+      // Tính toán phân trang
+      const skip = (page - 1) * pageSize;
+      const totalPages = Math.ceil(totalCount / pageSize);
+
+      // Lấy danh sách đề tài
+      const topics = await prisma.topic.findMany({
+        where: whereCondition,
+        include: {
+          creator: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              email: true
+            }
+          },
+          subMentor: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              email: true
+            }
+          },
+          detailMajorTopics: {
+            include: {
+              major: true
+            }
+          },
+          topicDocuments: {
+            select: {
+              id: true,
+              fileName: true,
+              documentUrl: true
+            }
+          }
+        },
+        skip,
+        take: pageSize,
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      // Định dạng kết quả trả về
+      const formattedTopics = topics.map(topic => ({
+        id: topic.id,
+        topicCode: topic.topicCode,
+        name: topic.name,
+        description: topic.description,
+        isBusiness: topic.isBusiness,
+        businessPartner: topic.businessPartner,
+        status: topic.status,
+        createdAt: topic.createdAt,
+        creator: topic.creator,
+        subMentor: topic.subMentor,
+        majors: topic.detailMajorTopics.map(detail => ({
+          id: detail.major.id,
+          name: detail.major.name
+        })),
+        documents: topic.topicDocuments.map(doc => ({
+          id: doc.id,
+          fileName: doc.fileName,
+          documentUrl: doc.documentUrl
+        }))
+      }));
+
+      return {
+        data: formattedTopics,
+        pagination: {
+          totalCount,
+          totalPages,
+          currentPage: page,
+          pageSize
+        }
+      };
+    } catch (error) {
+      console.error('Error in getAvailableTopics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cho phép nhóm chọn một đề tài đã được phê duyệt
+   * @param data Dữ liệu để chọn đề tài
+   * @returns Thông tin về việc gán đề tài
+   */
+  async selectTopicForGroup(data: {
+    topicId: string;
+    groupId: string;
+    userId: string;
+  }) {
+    const { topicId, groupId, userId } = data;
+
+    // Kiểm tra tính hợp lệ của topicId và groupId
+    if (!this.isValidUuid(topicId) || !this.isValidUuid(groupId)) {
+      throw new Error('ID đề tài hoặc ID nhóm không hợp lệ');
+    }
+
+    // Kiểm tra topic có tồn tại không và có trạng thái APPROVED không
+    const topic = await prisma.topic.findUnique({
+      where: { 
+        id: topicId,
+        status: 'APPROVED'
+      }
+    });
+
+    if (!topic) {
+      throw new Error('Đề tài không tồn tại hoặc chưa được phê duyệt');
+    }
+
+    // Kiểm tra topic đã được gán cho nhóm nào chưa
+    const existingTopicAssignment = await prisma.topicAssignment.findFirst({
+      where: { topicId }
+    });
+
+    if (existingTopicAssignment) {
+      throw new Error('Đề tài này đã được gán cho một nhóm khác');
+    }
+
+    // Kiểm tra group có tồn tại không
+    const group = await prisma.group.findUnique({
+      where: { id: groupId }
+    });
+
+    if (!group) {
+      throw new Error('Không tìm thấy nhóm');
+    }
+
+    // Kiểm tra group đã được gán đề tài nào chưa
+    const existingGroupAssignment = await prisma.topicAssignment.findFirst({
+      where: { groupId }
+    });
+
+    if (existingGroupAssignment) {
+      throw new Error('Nhóm này đã được gán đề tài khác');
+    }
+
+    // Kiểm tra người dùng có phải là thành viên của nhóm không
+    const isMember = await prisma.groupMember.findFirst({
+      where: {
+        groupId,
+        userId,
+        isActive: true
+      }
+    });
+
+    if (!isMember) {
+      throw new Error('Bạn không phải là thành viên của nhóm này');
+    }
+
+    // Kiểm tra người dùng có phải là leader của nhóm không
+    const isLeader = isMember.role === 'LEADER';
+    if (!isLeader) {
+      throw new Error('Chỉ trưởng nhóm mới có thể chọn đề tài cho nhóm');
+    }
+
+    // Tạo topic assignment
+    const topicAssignment = await prisma.topicAssignment.create({
+      data: {
+        topicId,
+        groupId,
+        assignedBy: userId,
+        approvalStatus: 'PENDING',
+        defendStatus: 'NOT_STARTED',
+        status: 'ASSIGNED'
+      }
+    });
+
+    // Log hành động
+    await this.logSystemAction(
+      'SELECT_TOPIC',
+      topicId,
+      `Nhóm ${groupId} đã chọn đề tài ${topicId}`,
+      userId
+    );
+
+    return {
+      id: topicAssignment.id,
+      topicId: topicAssignment.topicId,
+      groupId: topicAssignment.groupId,
+      status: topicAssignment.status,
+      approvalStatus: topicAssignment.approvalStatus,
+      defendStatus: topicAssignment.defendStatus,
+      assignedAt: topicAssignment.assignedAt
+    };
   }
 } 

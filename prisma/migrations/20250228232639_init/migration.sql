@@ -202,9 +202,12 @@ CREATE TABLE `system_configs` (
 CREATE TABLE `councils` (
     `council_id` VARCHAR(191) NOT NULL,
     `council_name` VARCHAR(191) NOT NULL,
-    `topicass_id` VARCHAR(191) NOT NULL,
+    `topicass_id` VARCHAR(191) NULL,
     `created_date` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `status` VARCHAR(191) NOT NULL,
+    `status` VARCHAR(191) NULL,
+    `type` VARCHAR(191) NULL,
+    `round` INTEGER NULL,
+    `semesterId` VARCHAR(191) NULL,
 
     PRIMARY KEY (`council_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -487,10 +490,10 @@ CREATE TABLE `council_members` (
     `id` VARCHAR(191) NOT NULL,
     `council_id` VARCHAR(191) NOT NULL,
     `defensecouncils_id` VARCHAR(191) NULL,
-    `user_id` VARCHAR(191) NOT NULL,
     `role` VARCHAR(191) NOT NULL,
     `assigned_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `status` VARCHAR(191) NOT NULL,
+    `user_id` VARCHAR(191) NOT NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -637,7 +640,10 @@ ALTER TABLE `topic_registrations` ADD CONSTRAINT `topic_registrations_submission
 ALTER TABLE `system_configs` ADD CONSTRAINT `system_configs_updated_by_fkey` FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `councils` ADD CONSTRAINT `councils_topicass_id_fkey` FOREIGN KEY (`topicass_id`) REFERENCES `topic_assignments`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `councils` ADD CONSTRAINT `councils_semesterId_fkey` FOREIGN KEY (`semesterId`) REFERENCES `semesters`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `councils` ADD CONSTRAINT `councils_topicass_id_fkey` FOREIGN KEY (`topicass_id`) REFERENCES `topic_assignments`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `review_defense_councils` ADD CONSTRAINT `review_defense_councils_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -737,6 +743,9 @@ ALTER TABLE `documents` ADD CONSTRAINT `documents_topic_id_fkey` FOREIGN KEY (`t
 
 -- AddForeignKey
 ALTER TABLE `council_members` ADD CONSTRAINT `council_members_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `council_members` ADD CONSTRAINT `council_members_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `feedback` ADD CONSTRAINT `feedback_meeting_id_fkey` FOREIGN KEY (`meeting_id`) REFERENCES `meeting_schedules`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

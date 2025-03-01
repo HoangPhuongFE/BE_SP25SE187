@@ -63,11 +63,50 @@ router.put(
 
 // Routes cho Graduation Thesis Manager (tạo hội đồng duyệt đề tài)
 router.post(
-  "/registration/:registrationId/council",
+  "/review-councils",
   authenticateToken,
-  checkRole(["thesis_manager"]),
-  validateCreateCouncil,
-  topicController.createTopicReviewCouncil.bind(topicController)
+  checkRole(["graduation_thesis_manager", "admin"]),
+  topicController.createReviewTopicCouncil.bind(topicController)
+);
+
+// Route thêm thành viên vào hội đồng duyệt đề tài
+router.post(
+  "/review-councils/:councilId/members",
+  authenticateToken,
+  checkRole(["graduation_thesis_manager", "admin"]),
+  topicController.addMembersToReviewCouncil.bind(topicController)
+);
+
+// Route gán người đánh giá chính cho hội đồng duyệt đề tài
+router.post(
+  "/review-councils/:councilId/primary-reviewer",
+  authenticateToken,
+  checkRole(["graduation_thesis_manager", "admin"]),
+  topicController.assignPrimaryReviewer.bind(topicController)
+);
+
+// Route import kết quả đánh giá đề tài từ người đánh giá chính
+router.post(
+  "/review-councils/:councilId/evaluations",
+  authenticateToken,
+  checkRole(["graduation_thesis_manager", "mentor", "admin"]),
+  topicController.importTopicEvaluations.bind(topicController)
+);
+
+// Route lấy danh sách hội đồng duyệt đề tài
+router.get(
+  "/review-councils",
+  authenticateToken,
+  checkRole(["graduation_thesis_manager", "mentor", "admin"]),
+  topicController.getReviewCouncils.bind(topicController)
+);
+
+// Route lấy chi tiết hội đồng duyệt đề tài
+router.get(
+  "/review-councils/:councilId",
+  authenticateToken,
+  checkRole(["graduation_thesis_manager", "mentor", "admin"]),
+  topicController.getReviewCouncilDetail.bind(topicController)
 );
 
 // Route lấy danh sách tất cả đề tài (cho tất cả user đã đăng nhập)
@@ -114,20 +153,28 @@ router.get(
   topicController.exportTopics.bind(topicController)
 );
 
-// Route import điểm đánh giá đề tài
-router.post(
-  "/import/evaluations",
-  authenticateToken,
-  checkRole(["academic_officer"]),
-  topicController.importTopicEvaluations.bind(topicController)
-);
-
 // Route gán đề tài cho nhóm
 router.post(
   "/assign-to-group",
   authenticateToken,
   checkRole(["mentor"]),
   topicController.assignTopicToGroup.bind(topicController)
+);
+
+// Route lấy danh sách đề tài có thể chọn (đã được phê duyệt và chưa được gán cho nhóm nào)
+router.get(
+  "/available/topics",
+  authenticateToken,
+  checkRole(["student", "leader", "mentor", "admin"]),
+  topicController.getAvailableTopics.bind(topicController)
+);
+
+// Route cho phép nhóm chọn một đề tài đã được phê duyệt
+router.post(
+  "/select-for-group",
+  authenticateToken,
+  checkRole(["student", "leader"]),
+  topicController.selectTopicForGroup.bind(topicController)
 );
 
 export default router; 
