@@ -35,7 +35,7 @@ export class ImportService {
         const row = data[i];
         const lecturerCode = String(row[lecturerCodeIndex] || "").trim();
         const email = String(row[emailIndex] || "").trim().toLowerCase();
-        const roleName = String(row[roleIndex] || "").trim();
+        const roleName = String(row[roleIndex] || "").trim().toLowerCase();
 
         if (!lecturerCode || !email || !roleName) {
           errors.push(MESSAGES.IMPORT.IMPORT_ROW_ERROR(i + 1, "Thiếu MSGV, email hoặc vai trò."));
@@ -52,6 +52,59 @@ export class ImportService {
           errors,
           httpStatus: HTTP_STATUS.IMPORT_PARTIALLY_FAILED,
         };
+      }
+
+      for (const user of usersToCreate) {
+        let existingUser = await prisma.user.findUnique({
+          where: { email: user.email },
+        });
+
+        if (!existingUser) {
+          existingUser = await prisma.user.create({
+            data: {
+              lecturerCode: user.lecturerCode,
+              email: user.email,
+              username: user.email.split("@")[0], 
+              passwordHash: await bcrypt.hash(DEFAULT_PASSWORD, 10),
+            },
+          });
+        }
+
+        if (!existingUser) {
+          throw new Error(`Không tìm thấy hoặc tạo được user với email: ${user.email}`);
+        }
+
+        const role = await prisma.role.findUnique({
+          where: { name: user.roleName },
+        });
+
+        if (!role) {
+          console.error(`Role '${user.roleName}' không tồn tại trong hệ thống.`);
+          throw new Error(`Role '${user.roleName}' không tồn tại trong hệ thống.`);
+        }
+
+        const existingUserRole = await prisma.userRole.findFirst({
+          where: { userId: existingUser.id },
+        });
+
+        if (existingUserRole) {
+          await prisma.userRole.updateMany({
+            where: { userId: existingUser.id },
+            data: {
+              roleId: role.id,
+              assignedAt: new Date(),
+            },
+          });
+        } else {
+          await prisma.userRole.create({
+            data: {
+              userId: existingUser.id,
+              roleId: role.id,
+              isActive: true,
+              assignedAt: new Date(),
+            },
+          });
+        }
       }
 
       return {

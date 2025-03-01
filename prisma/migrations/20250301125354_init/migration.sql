@@ -22,7 +22,6 @@ CREATE TABLE `users` (
 
     UNIQUE INDEX `users_username_key`(`username`),
     UNIQUE INDEX `users_email_key`(`email`),
-    UNIQUE INDEX `users_lecturerCode_key`(`lecturerCode`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -238,7 +237,8 @@ CREATE TABLE `topics` (
     `id` VARCHAR(191) NOT NULL,
     `semester_id` VARCHAR(191) NOT NULL,
     `topic_code` VARCHAR(191) NOT NULL,
-    `name` VARCHAR(191) NOT NULL,
+    `name_vi` VARCHAR(191) NOT NULL,
+    `name_en` VARCHAR(191) NOT NULL,
     `description` TEXT NOT NULL,
     `is_business` BOOLEAN NOT NULL DEFAULT false,
     `business_partner` VARCHAR(191) NULL,
@@ -479,12 +479,13 @@ CREATE TABLE `review_assignments` (
 CREATE TABLE `documents` (
     `id` VARCHAR(191) NOT NULL,
     `file_name` VARCHAR(191) NOT NULL,
-    `file_path` VARCHAR(191) NOT NULL,
-    `related_table` VARCHAR(191) NOT NULL,
-    `document_type` VARCHAR(191) NOT NULL,
+    `file_url` VARCHAR(191) NOT NULL,
+    `file_type` VARCHAR(191) NOT NULL,
     `uploaded_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `uploaded_by` VARCHAR(191) NOT NULL,
     `topic_id` VARCHAR(191) NULL,
+    `council_id` VARCHAR(191) NULL,
+    `group_id` VARCHAR(191) NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -566,34 +567,6 @@ CREATE TABLE `email_templates` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `topic_documents` (
-    `id` VARCHAR(191) NOT NULL,
-    `topic_id` VARCHAR(191) NOT NULL,
-    `document_url` VARCHAR(191) NOT NULL,
-    `file_name` VARCHAR(191) NOT NULL,
-    `uploaded_by` VARCHAR(191) NOT NULL,
-    `uploaded_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `topic_submission_periods` (
-    `id` VARCHAR(191) NOT NULL,
-    `semester_id` VARCHAR(191) NOT NULL,
-    `round` INTEGER NOT NULL,
-    `start_date` DATETIME(3) NOT NULL,
-    `end_date` DATETIME(3) NOT NULL,
-    `status` VARCHAR(191) NOT NULL DEFAULT 'ACTIVE',
-    `description` TEXT NULL,
-    `created_by` VARCHAR(191) NOT NULL,
-    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updated_at` DATETIME(3) NOT NULL,
-
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
 CREATE TABLE `_MajorTopics` (
     `A` VARCHAR(191) NOT NULL,
     `B` VARCHAR(191) NOT NULL,
@@ -637,9 +610,6 @@ ALTER TABLE `import_logs` ADD CONSTRAINT `import_logs_import_by_fkey` FOREIGN KE
 
 -- AddForeignKey
 ALTER TABLE `topic_registrations` ADD CONSTRAINT `topic_registrations_topic_id_fkey` FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `topic_registrations` ADD CONSTRAINT `topic_registrations_submission_period_id_fkey` FOREIGN KEY (`submission_period_id`) REFERENCES `topic_submission_periods`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `system_configs` ADD CONSTRAINT `system_configs_updated_by_fkey` FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -747,6 +717,12 @@ ALTER TABLE `documents` ADD CONSTRAINT `documents_uploaded_by_fkey` FOREIGN KEY 
 ALTER TABLE `documents` ADD CONSTRAINT `documents_topic_id_fkey` FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `documents` ADD CONSTRAINT `documents_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `documents` ADD CONSTRAINT `documents_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `council_members` ADD CONSTRAINT `council_members_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -775,18 +751,6 @@ ALTER TABLE `detail_major_topic` ADD CONSTRAINT `detail_major_topic_topic_id_fke
 
 -- AddForeignKey
 ALTER TABLE `email_templates` ADD CONSTRAINT `email_templates_createdBy_fkey` FOREIGN KEY (`createdBy`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `topic_documents` ADD CONSTRAINT `topic_documents_topic_id_fkey` FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `topic_documents` ADD CONSTRAINT `topic_documents_uploaded_by_fkey` FOREIGN KEY (`uploaded_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `topic_submission_periods` ADD CONSTRAINT `topic_submission_periods_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `topic_submission_periods` ADD CONSTRAINT `topic_submission_periods_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `_MajorTopics` ADD CONSTRAINT `_MajorTopics_A_fkey` FOREIGN KEY (`A`) REFERENCES `majors`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

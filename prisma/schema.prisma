@@ -8,47 +8,45 @@ datasource db {
 }
 
 model User {
-  id                       String                  @id @default(uuid())
-  username                 String                  @unique
-  email                    String                  @unique
-  passwordHash             String
-  lecturerCode             String?                  @unique
-  fullName                 String?
-  avatar                   String?
-  student_code             String?
-  profession               String?
-  specialty                String?
-  programming_language     String?
-  gender                   String?
-  phone                    String?
-  personal_Email           String?
-  semester_user            String?
-  isActive                 Boolean                 @default(true)
-  lastLogin                DateTime?
-  createdAt                DateTime                @default(now())
-  updatedAt                DateTime                @updatedAt
-  refreshTokens            RefreshToken[]
-  roles                    UserRole[]
-  students                 Student[]
-  importLogs               ImportLog[]
-  systemConfigs            SystemConfig[]
-  createdTopics            Topic[]                 @relation("TopicCreator")
-  supervisedTopics         Topic[]                 @relation("TopicSubSupervisor")
-  createdGroups            Group[]                 @relation("GroupCreator")
-  systemLogs               SystemLog[]
-  emailLogs                EmailLog[]
-  createdDecisions         Decision[]              @relation("DecisionCreator")
-  reviewCouncils           ReviewCouncil[]         @relation("ReviewCouncilCreator")
-  documents                Document[]
-  notificationRecipients   NotificationRecipient[]
-  createdEmailTemplates    EmailTemplate[]         @relation("UserEmailTemplates")
-  groupMemberships         GroupMember[]           @relation("UserGroupMembers")
-  mentorGroups             GroupMentor[]           @relation(name: "MentorGroupRelation")
-  addedMentors             GroupMentor[]           @relation(name: "AddedByUserRelation")
-  uploadedDocuments        TopicDocument[]         @relation("UserUploadedDocuments")
-  createdSubmissionPeriods TopicSubmissionPeriod[] @relation("UserCreatedSubmissionPeriods")
-  CouncilMember            CouncilMember[]
-                    
+  id                     String                  @id @default(uuid())
+  username               String                  @unique
+  email                  String                  @unique
+  passwordHash           String
+  lecturerCode           String?
+  fullName               String?
+  avatar                 String?
+  student_code           String?
+  profession             String?
+  specialty              String?
+  programming_language   String?
+  gender                 String?
+  phone                  String?
+  personal_Email         String?
+  semester_user          String?
+  isActive               Boolean                 @default(true)
+  lastLogin              DateTime?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  refreshTokens          RefreshToken[]
+  roles                  UserRole[]
+  students               Student[]
+  importLogs             ImportLog[]
+  systemConfigs          SystemConfig[]
+  createdTopics          Topic[]                 @relation("TopicCreator")
+  supervisedTopics       Topic[]                 @relation("TopicSubSupervisor")
+  createdGroups          Group[]                 @relation("GroupCreator")
+  systemLogs             SystemLog[]
+  emailLogs              EmailLog[]
+  createdDecisions       Decision[]              @relation("DecisionCreator")
+  reviewCouncils         ReviewCouncil[]         @relation("ReviewCouncilCreator")
+  documents              Document[]
+  notificationRecipients NotificationRecipient[]
+  createdEmailTemplates  EmailTemplate[]         @relation("UserEmailTemplates")
+  groupMemberships       GroupMember[]           @relation("UserGroupMembers")
+  mentorGroups           GroupMentor[]           @relation(name: "MentorGroupRelation")
+  addedMentors           GroupMentor[]           @relation(name: "AddedByUserRelation")
+  CouncilMember          CouncilMember[]
+
   @@map("users")
 }
 
@@ -103,12 +101,12 @@ model Student {
 }
 
 model Semester {
-  id                    String                  @id @default(uuid())
+  id                    String                 @id @default(uuid())
   code                  String
-  startDate             DateTime                @map("start_date")
-  endDate               DateTime                @map("end_date")
+  startDate             DateTime               @map("start_date")
+  endDate               DateTime               @map("end_date")
   status                String
-  createdAt             DateTime                @default(now()) @map("created_at")
+  createdAt             DateTime               @default(now()) @map("created_at")
   semesterStudents      SemesterStudent[]
   reviewDefenseCouncils ReviewDefenseCouncil[]
   topics                Topic[]
@@ -117,8 +115,7 @@ model Semester {
   reviewCouncils        ReviewCouncil[]
   semesterTopicMajors   SemesterTopicMajor[]
   yearId                String
-  year                  Year                    @relation("YearSemesters", fields: [yearId], references: [id], onDelete: Cascade)
-  submissionPeriods     TopicSubmissionPeriod[]
+  year                  Year                   @relation("YearSemesters", fields: [yearId], references: [id], onDelete: Cascade)
 
   @@map("semesters")
 }
@@ -224,8 +221,7 @@ model TopicRegistration {
   registeredAt       DateTime  @default(now()) @map("registered_at")
   reviewedAt         DateTime? @map("reviewed_at")
 
-  topic            Topic                 @relation(fields: [topicId], references: [id])
-  submissionPeriod TopicSubmissionPeriod @relation(fields: [submissionPeriodId], references: [id])
+  topic Topic @relation(fields: [topicId], references: [id])
 
   @@map("topic_registrations")
 }
@@ -244,20 +240,21 @@ model SystemConfig {
 
 model Council {
   id                    String                 @id @default(uuid()) @map("council_id")
-  code                   String?                           @unique @map("council_code")
+  code                  String?                @unique @map("council_code")
   name                  String                 @map("council_name")
-  topicAssId     String?  @map("topicass_id")
+  topicAssId            String?                @map("topicass_id")
   createdDate           DateTime               @default(now()) @map("created_date")
   status                String?
   type                  String?
   round                 Int?
-  semesterId            String?                 @map("semester_id")
+  semesterId            String?                @map("semester_id")
   semester              Semester?              @relation(fields: [semesterId], references: [id])
-  topicAssignment TopicAssignment? @relation(fields: [topicAssId], references: [id])
+  topicAssignment       TopicAssignment?       @relation(fields: [topicAssId], references: [id])
   members               CouncilMember[]
   reviewDefenseCouncils ReviewDefenseCouncil[]
   reviewAssignments     ReviewAssignment[]
   defenseSchedules      DefenseSchedule[]
+  documents             Document[]             @relation("CouncilDocuments")
 
   @@map("councils")
 }
@@ -283,7 +280,9 @@ model Topic {
   id              String   @id @default(uuid())
   semesterId      String   @map("semester_id")
   topicCode       String   @unique @map("topic_code")
-  name            String
+  nameVi          String   @map("name_vi")
+  nameEn          String   @map("name_en")
+  name            String    @map("name_project")
   description     String   @db.Text
   isBusiness      Boolean  @default(false) @map("is_business")
   businessPartner String?  @map("business_partner")
@@ -299,13 +298,12 @@ model Topic {
   subMentor           User?                @relation("TopicSubSupervisor", fields: [subSupervisor], references: [id])
   detailMajorTopics   DetailMajorTopic[]
   topicRegistrations  TopicRegistration[]
-  documents           Document[]           @relation("TopicDocuments")
   topicAssignments    TopicAssignment[]
   majors              Major[]              @relation("MajorTopics")
   aiVerificationLogs  AIVerificationLog[]
   semesterTopicMajors SemesterTopicMajor[]
   decisions           Decision[]
-  topicDocuments      TopicDocument[]      @relation("TopicDocuments")
+  documents           Document[]           @relation("TopicDocuments")
 
   @@map("topics")
 }
@@ -359,6 +357,7 @@ model Group {
   isLocked         Boolean           @default(false)
   mentors          GroupMentor[]
   topicAssignments TopicAssignment[]
+  documents        Document[]        @relation("GroupDocuments")
 
   @@map("groups")
 }
@@ -552,16 +551,25 @@ model ReviewAssignment {
 }
 
 model Document {
-  id           String   @id @default(uuid())
-  fileName     String   @map("file_name")
-  filePath     String   @map("file_path")
-  relatedTable String   @map("related_table")
-  documentType String   @map("document_type")
-  uploadedAt   DateTime @default(now()) @map("uploaded_at")
-  uploadedBy   String   @map("uploaded_by")
-  topicId      String?  @map("topic_id")
-  uploader     User     @relation(fields: [uploadedBy], references: [id])
-  topic        Topic?   @relation("TopicDocuments", fields: [topicId], references: [id])
+  id         String   @id @default(uuid())
+  fileName   String   @map("file_name") //  Tên file
+  fileUrl    String   @map("file_url") //  URL file trên Cloudinary/S3
+  fileType   String   @map("file_type") //  Định dạng file (pdf, docx, xlsx,...)
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+  uploadedBy String   @map("uploaded_by")
+
+  //  Liên kết đến các bảng khác nhau
+  topicId   String? @map("topic_id")
+  councilId String? @map("council_id")
+  groupId   String? @map("group_id")
+
+  // Quan hệ với User (người upload)
+  uploader User @relation(fields: [uploadedBy], references: [id])
+
+  // Quan hệ đối ứng chính xác
+  topic   Topic?   @relation("TopicDocuments", fields: [topicId], references: [id])
+  council Council? @relation("CouncilDocuments", fields: [councilId], references: [id])
+  group   Group?   @relation("GroupDocuments", fields: [groupId], references: [id])
 
   @@map("documents")
 }
@@ -575,8 +583,8 @@ model CouncilMember {
   status            String
   council           Council  @relation(fields: [councilId], references: [id])
   userId            String   @map("user_id")
-  semesterId        String   @map("semester_id") 
-  user User @relation(fields: [userId], references: [id])
+  semesterId        String   @map("semester_id")
+  user              User     @relation(fields: [userId], references: [id])
 
   @@map("council_members")
 }
@@ -645,37 +653,4 @@ model EmailTemplate {
   createdByUser User     @relation("UserEmailTemplates", fields: [createdBy], references: [id])
 
   @@map("email_templates")
-}
-
-model TopicDocument {
-  id          String   @id @default(uuid())
-  topicId     String   @map("topic_id")
-  documentUrl String   @map("document_url")
-  fileName    String   @map("file_name")
-  uploadedBy  String   @map("uploaded_by")
-  uploadedAt  DateTime @default(now()) @map("uploaded_at")
-
-  topic    Topic @relation("TopicDocuments", fields: [topicId], references: [id])
-  uploader User  @relation("UserUploadedDocuments", fields: [uploadedBy], references: [id])
-
-  @@map("topic_documents")
-}
-
-model TopicSubmissionPeriod {
-  id          String   @id @default(uuid())
-  semesterId  String   @map("semester_id")
-  round       Int // Lần nộp (1, 2, 3, ...)
-  startDate   DateTime @map("start_date")
-  endDate     DateTime @map("end_date")
-  status      String   @default("ACTIVE") // ACTIVE, INACTIVE, COMPLETED
-  description String?  @db.Text
-  createdBy   String   @map("created_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  semester           Semester            @relation(fields: [semesterId], references: [id])
-  creator            User                @relation("UserCreatedSubmissionPeriods", fields: [createdBy], references: [id])
-  topicRegistrations TopicRegistration[]
-
-  @@map("topic_submission_periods")
 }

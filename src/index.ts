@@ -13,16 +13,16 @@ import semesterRouter from './routers/semester.route';
 import importConditionRouter from './routers/importCondition.router';
 import exportRouter from './routers/export.router';
 import groupRoutes from './routers/group.routes';
-import topicRouter from './routers/topic.router';
 import meetingRouter from './routers/meeting.router';
 import emailRouter from './routers/email.router';
 import emailTemplateRouter from "./routers/emailTemplate.router";
 import importRole from './routers/importRole.router';
 import majorRouter from './routers/major.router';
 import systemConfigRoutes from "./routers/system.config.routes";
-import topicSubmissionPeriodRouter from './routers/topicSubmissionPeriod.router';
 import councilRouter from './routers/council.router'
 import importCouncilRoutes from "./routers/import-council.routes";
+import topicRoutes from "./routers/topic.routes";
+
 //
 config();
 const app = express();
@@ -49,16 +49,15 @@ app.use('/api/semester', semesterRouter);
 app.use('/api/import', importConditionRouter);
 app.use('/api/export', exportRouter);
 app.use('/api/groups', groupRoutes);
-app.use('/api/topics', topicRouter);
 app.use('/api/meetings', meetingRouter);
 app.use('/api', emailRouter);
 app.use("/api/email-templates", emailTemplateRouter);
 app.use("/api/import", importRole);
 app.use("/api/majors", majorRouter);
 app.use("/api/config", systemConfigRoutes);
-app.use('/api/topic-submission-periods', topicSubmissionPeriodRouter);
 app.use('/api/councils', councilRouter);
 app.use("/api/import-councils", importCouncilRoutes);
+app.use("/api/topics", topicRoutes);
 
 
 

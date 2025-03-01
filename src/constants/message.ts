@@ -38,7 +38,6 @@ export const GROUP_MESSAGE = {
 
 
 
-
 } as const;
 
 
@@ -181,56 +180,50 @@ export const YEAR_MESSAGE = {
 };
 
 export const TOPIC_MESSAGE = {
-  TOPIC_CREATED: "Topic created successfully",
-  TOPIC_UPDATED: "Topic updated successfully",
-  TOPIC_DELETED: "Topic deleted successfully",
-  TOPIC_NOT_FOUND: "Topic not found",
-  TOPIC_REGISTRATION_UPDATED: "Topic registration updated successfully",
-  TOPIC_REGISTRATION_NOT_FOUND: "Topic registration not found",
-  INVALID_STATUS: "Status is invalid",
-  INVALID_REVIEWER: "Reviewer is invalid",
-  DUPLICATE_TOPIC_CODE: "Topic code already exists",
-  INVALID_MAJOR: "Major is invalid",
-  SEMESTER_REQUIRED: "Semester is required",
-  INVALID_BUSINESS_INFO: "Business info is invalid",
-  MAX_STUDENTS_INVALID: "Number of students is invalid",
-  DESCRIPTION_REQUIRED: "Description is required",
-  NAME_REQUIRED: "Name is required",
-  MENTOR_MAX_TOPICS_REACHED: "Mentor has reached the maximum limit of 5 topics",
-  MENTOR_NO_BUSINESS_TOPICS: "Mentor cannot register a business topic",
-  LEADER_NO_BUSINESS_TOPICS: "Leader cannot register a business topic",
-  GROUP_ALREADY_HAS_TOPIC: "Group already has a topic",
-  TOPIC_REGISTRATION_CREATED: "Topic registration created successfully",
-  TOPICS_FETCHED: "Topics fetched successfully",
-  STUDENT_CANNOT_UPDATE: "Student cannot update topic when it is not rejected",
-  UNAUTHORIZED_UPDATE: "Unauthorized update",
-  AI_VALIDATION_FAILED: "AI validation failed: ",
-  INVALID_TOPIC_NAME: "Invalid topic name: ",
-  INVALID_TOPIC_CODE: "Invalid topic code: ",
-  TOPIC_FETCHED: "Topic fetched",
-  INVALID_ID: "Invalid topic ID",
-  TOPIC_IN_USE: "Cannot delete topic in use",
-  UNAUTHORIZED: "Unauthorized access",
-  MISSING_STATUS: "Status is required",
-  UPDATE_STATUS_SUCCESS: "Topic status updated successfully",
-  UPDATE_STATUS_FAILED: "Failed to update topic status",
-  TOPIC_STATUS_UPDATED: "Topic status updated successfully",
-  TOPIC_STATUS_UPDATE_FAILED: "Failed to update topic status",
-  GET_TOPICS_SUCCESS: "Topics fetched successfully",
-  GET_TOPICS_FAILED: "Failed to fetch topics",
-  TOPIC_STATUS: {
-    DRAFT: 'DRAFT',           // Đề tài đang trong trạng thái nháp
-    PENDING: 'PENDING',       // Đề tài đang chờ duyệt
-    APPROVED: 'APPROVED',     // Đề tài đã được phê duyệt
-    REJECTED: 'REJECTED',     // Đề tài bị từ chối
-    CONSIDER: 'CONSIDER',     // Đề tài cần xem xét lại
-    IN_PROGRESS: 'IN_PROGRESS', // Đề tài đang được thực hiện
-    COMPLETED: 'COMPLETED',   // Đề tài đã hoàn thành
-    CANCELLED: 'CANCELLED'    // Đề tài đã bị hủy
-  },
-  CANNOT_UPDATE_STATUS: "Cannot update topic status",
-  STATUS_TRANSITION_INVALID: "Status transition is invalid",
+  TOPIC_CREATED: "Tạo đề tài thành công",
+  TOPIC_UPDATED: "Cập nhật đề tài thành công",
+  TOPIC_DELETED: "Xóa đề tài thành công",
+  TOPIC_NOT_FOUND: "Không tìm thấy đề tài",
+  TOPIC_CREATION_FAILED: "Tạo đề tài thất bại", 
+  TOPIC_REGISTRATION_UPDATED: "Cập nhật đăng ký đề tài thành công",
+  TOPIC_REGISTRATION_NOT_FOUND: "Không tìm thấy đăng ký đề tài",
+  INVALID_STATUS: "Trạng thái không hợp lệ",
+  INVALID_REVIEWER: "Người đánh giá không hợp lệ",
+  DUPLICATE_TOPIC_CODE: "Mã đề tài đã tồn tại",
+  INVALID_MAJOR: "Ngành học không hợp lệ",
+  SEMESTER_REQUIRED: "Học kỳ là bắt buộc",
+  INVALID_BUSINESS_INFO: "Thông tin doanh nghiệp không hợp lệ",
+  MAX_STUDENTS_INVALID: "Số lượng sinh viên không hợp lệ",
+  DESCRIPTION_REQUIRED: "Mô tả đề tài là bắt buộc",
+  NAME_REQUIRED: "Tên đề tài là bắt buộc",
+  MENTOR_MAX_TOPICS_REACHED: "Giảng viên đã đạt giới hạn tối đa 5 đề tài",
+  MENTOR_NO_BUSINESS_TOPICS: "Giảng viên không thể đăng ký đề tài doanh nghiệp",
+  LEADER_NO_BUSINESS_TOPICS: "Trưởng nhóm không thể đăng ký đề tài doanh nghiệp",
+  GROUP_ALREADY_HAS_TOPIC: "Nhóm đã có đề tài",
+  TOPIC_REGISTRATION_CREATED: "Đăng ký đề tài thành công",
+  TOPICS_FETCHED: "Lấy danh sách đề tài thành công",
+  STUDENT_CANNOT_UPDATE: "Sinh viên không thể cập nhật đề tài khi chưa bị từ chối",
+  UNAUTHORIZED_UPDATE: "Không có quyền cập nhật",
+  AI_VALIDATION_FAILED: "Kiểm tra AI thất bại: ",
+  INVALID_TOPIC_NAME: "Tên đề tài không hợp lệ: ",
+  INVALID_TOPIC_CODE: "Mã đề tài không hợp lệ: ",
+  TOPIC_FETCHED: "Lấy thông tin đề tài thành công",
+  INVALID_ID: "ID đề tài không hợp lệ",
+  TOPIC_IN_USE: "Không thể xóa đề tài đang được sử dụng",
+  UNAUTHORIZED: "Không có quyền truy cập",
+  MISSING_STATUS: "Trạng thái là bắt buộc",
+  UPDATE_STATUS_SUCCESS: "Cập nhật trạng thái đề tài thành công",
+  UPDATE_STATUS_FAILED: "Cập nhật trạng thái đề tài thất bại",
+  TOPIC_STATUS_UPDATED: "Trạng thái đề tài đã được cập nhật",
+  TOPIC_STATUS_UPDATE_FAILED: "Không thể cập nhật trạng thái đề tài",
+  GET_TOPICS_SUCCESS: "Lấy danh sách đề tài thành công",
+  GET_TOPICS_FAILED: "Không thể lấy danh sách đề tài",
+  CANNOT_UPDATE_STATUS: "Không thể cập nhật trạng thái đề tài",
+  STATUS_TRANSITION_INVALID: "Chuyển đổi trạng thái không hợp lệ",
+  INVALID_REQUEST : "Yêu cầu không hợp lệ",
+  ACTION_FAILED: "Thao tác thất bại",
 } as const;
+
 
 
 export const MEETING_MESSAGE = {
