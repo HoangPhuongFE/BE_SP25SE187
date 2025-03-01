@@ -669,6 +669,7 @@ model SubmissionPeriod {
   createdAt   DateTime @default(now()) @map("created_at") // Thời gian tạo
   updatedAt   DateTime @updatedAt @map("updated_at") // Thời gian cập nhật
   description String   @map("description")
+  status      String   @default("PENDING") @map("status")
   semester Semester @relation(fields: [semesterId], references: [id]) // Liên kết với học kỳ
   creator  User     @relation(fields: [createdBy], references: [id]) // Người tạo đợt nộp
   topics   Topic[] // Các đề tài thuộc đợt nộp này

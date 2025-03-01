@@ -18,7 +18,7 @@ export class MeetingController {
       const mentorId = req.user!.userId;
       const { groupId, meetingTime, location, agenda } = req.body;
 
-      // ✅ Kiểm tra mentor có thuộc nhóm không
+      //  Kiểm tra mentor có thuộc nhóm không
       const isMentor = await prisma.groupMentor.findFirst({
         where: {
           groupId,
@@ -32,7 +32,7 @@ export class MeetingController {
         });
       }
 
-      // ✅ Tạo meeting
+      //  Tạo meeting
       const meeting = await this.meetingService.createMeeting({
         mentorId,
         groupId,
@@ -61,7 +61,7 @@ export class MeetingController {
       const mentorId = req.user!.userId;
       const updateData = req.body;
 
-      // ✅ Kiểm tra quyền mentor
+      //  Kiểm tra quyền mentor
       const meeting = await prisma.meetingSchedule.findUnique({
         where: { id },
       });
@@ -78,7 +78,7 @@ export class MeetingController {
         });
       }
 
-      // ✅ Cập nhật meeting
+      //  Cập nhật meeting
       const updatedMeeting = await this.meetingService.updateMeeting(id, mentorId, updateData);
 
       res.status(HTTP_STATUS.OK).json({
@@ -93,14 +93,14 @@ export class MeetingController {
   }
 
   /**
-   * 📌 Xóa meeting
+   *  Xóa meeting
    */
   async deleteMeeting(req: AuthenticatedRequest, res: Response) {
     try {
       const { id } = req.params;
       const mentorId = req.user!.userId;
 
-      // ✅ Kiểm tra quyền mentor
+      //  Kiểm tra quyền mentor
       const meeting = await prisma.meetingSchedule.findUnique({
         where: { id },
       });
@@ -117,7 +117,7 @@ export class MeetingController {
         });
       }
 
-      // ✅ Xóa meeting
+      //  Xóa meeting
       await this.meetingService.deleteMeeting(id, mentorId);
 
       res.status(HTTP_STATUS.OK).json({
@@ -131,13 +131,13 @@ export class MeetingController {
   }
 
   /**
-   * 📌 Lấy danh sách meetings theo groupId
+   *  Lấy danh sách meetings theo groupId
    */
   async getMeetingsByGroup(req: AuthenticatedRequest, res: Response) {
     try {
       const { groupId } = req.params;
 
-      // ✅ Kiểm tra group có tồn tại không
+      //  Kiểm tra group có tồn tại không
       const group = await prisma.group.findUnique({
         where: { id: groupId },
       });
@@ -148,7 +148,7 @@ export class MeetingController {
         });
       }
 
-      // ✅ Lấy danh sách meetings
+      //  Lấy danh sách meetings
       const meetings = await this.meetingService.getMeetingsByGroup(groupId);
 
       res.status(HTTP_STATUS.OK).json({

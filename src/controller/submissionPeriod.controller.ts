@@ -7,7 +7,7 @@ const service = new SubmissionPeriodService();
 export class SubmissionPeriodController {
   async createSubmissionPeriod(req: Request, res: Response) {
     const { semesterId, roundNumber, startDate, endDate, description } = req.body;
-    const createdBy = req.user!.userId; // Lấy từ token
+    const createdBy = req.user!.userId; 
 
     const result = await service.createSubmissionPeriod({ semesterId, roundNumber, startDate, endDate, description, createdBy });
 
