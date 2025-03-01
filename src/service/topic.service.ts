@@ -1090,10 +1090,11 @@ export class TopicService {
           status: 'PENDING',
           members: {
             create: data.mentorIds.map(mentorId => ({
-              userId: mentorId,
+              user: { connect: { id: mentorId } },
               role: 'REVIEWER',
               status: 'PENDING',
-              assignedAt: new Date()
+              assignedAt: new Date(),
+              semesterId: registration.topic.semesterId
             }))
           }
         },

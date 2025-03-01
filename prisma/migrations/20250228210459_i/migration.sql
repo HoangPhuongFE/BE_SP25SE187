@@ -203,14 +203,16 @@ CREATE TABLE `system_configs` (
 -- CreateTable
 CREATE TABLE `councils` (
     `council_id` VARCHAR(191) NOT NULL,
+    `council_code` VARCHAR(191) NULL,
     `council_name` VARCHAR(191) NOT NULL,
     `topicass_id` VARCHAR(191) NULL,
     `created_date` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `status` VARCHAR(191) NULL,
     `type` VARCHAR(191) NULL,
     `round` INTEGER NULL,
-    `semesterId` VARCHAR(191) NULL,
+    `semester_id` VARCHAR(191) NULL,
 
+    UNIQUE INDEX `councils_council_code_key`(`council_code`),
     PRIMARY KEY (`council_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -496,6 +498,7 @@ CREATE TABLE `council_members` (
     `assigned_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `status` VARCHAR(191) NOT NULL,
     `user_id` VARCHAR(191) NOT NULL,
+    `semester_id` VARCHAR(191) NOT NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -642,7 +645,7 @@ ALTER TABLE `topic_registrations` ADD CONSTRAINT `topic_registrations_submission
 ALTER TABLE `system_configs` ADD CONSTRAINT `system_configs_updated_by_fkey` FOREIGN KEY (`updated_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `councils` ADD CONSTRAINT `councils_semesterId_fkey` FOREIGN KEY (`semesterId`) REFERENCES `semesters`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `councils` ADD CONSTRAINT `councils_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `councils` ADD CONSTRAINT `councils_topicass_id_fkey` FOREIGN KEY (`topicass_id`) REFERENCES `topic_assignments`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;

@@ -10,23 +10,35 @@ export class CouncilService {
     async createCouncil(data: {
         topicAssId: null;
         name: string;
+        code?: string;
         type?: string;
         round?: number;
-        semesterId?: string | null;
+        semesterId: string | null;
         status?: string;
     }) {
         try {
-            const { name, type, round, semesterId, status } = data;
+            console.log(" Dữ liệu nhận vào service:", data);
+    
+            if (!data.semesterId) {
+                console.error(" Lỗi: `semesterId` bị thiếu");
+                return {
+                    success: false,
+                    status: HTTP_STATUS.BAD_REQUEST,
+                    message: "Thiếu `semesterId`, vui lòng kiểm tra lại."
+                };
+            }
+    
             const council = await prisma.council.create({
                 data: {
-                    name,
-                    type,
-                    round,
-                    semesterId: semesterId ?? null,
-                    status: status || 'ACTIVE'
+                    name: data.name,
+                    code: data.code,
+                    type: data.type,
+                    round: data.round,
+                    semesterId: data.semesterId,  // Kiểm tra giá trị này
+                    status: data.status || 'ACTIVE'
                 }
             });
-
+    
             return {
                 success: true,
                 status: HTTP_STATUS.CREATED,
@@ -34,6 +46,7 @@ export class CouncilService {
                 data: council
             };
         } catch (error) {
+            console.error(" Lỗi khi tạo hội đồng:", error);
             return {
                 success: false,
                 status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
@@ -41,7 +54,7 @@ export class CouncilService {
             };
         }
     }
-
+    
     async addCouncilMembers(
         councilId: string,
         members: { userId?: string; email?: string; role: string }[]
@@ -160,7 +173,8 @@ export class CouncilService {
                 councilId,
                 userId: m.userId!,
                 role: m.role,
-                status: 'ACTIVE'
+                status: 'ACTIVE',
+                semesterId: council.semesterId ?? ''
             }));
     
             const result = await prisma.councilMember.createMany({
