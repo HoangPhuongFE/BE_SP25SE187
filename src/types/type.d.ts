@@ -24,6 +24,7 @@ interface RegisterDTO {
 }
 
 interface TokenPayload {
+  [x: string]: any;
   userId: string;
   email: string;
   roles: string[];

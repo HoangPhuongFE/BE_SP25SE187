@@ -4,8 +4,9 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import { LoginDTO, RegisterDTO } from '~/types/type';
 import bcrypt from 'bcryptjs';
-
 import { AUTH_MESSAGE ,USER_MESSAGE } from '~/constants/message';
+import { AuthenticatedRequest } from '~/middleware/user.middleware';
+import { Response } from 'express';
 const prisma = new PrismaClient();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -89,9 +90,6 @@ export class UserService {
         }
     };
 }
-
-
-
 
 
 
@@ -254,6 +252,37 @@ export class UserService {
       },
     });
   }
+  
+    async getProfile(userId: string) {
+      return await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          fullName: true,
+          avatar: true,
+          student_code: true,
+          profession: true,
+          specialty: true,
+          programming_language: true,
+          gender: true,
+          phone: true,
+          semester_user: true,
+          personal_Email: true,
+          lecturerCode: true,
+          isActive: true,
+          lastLogin: true,
+          createdAt: true,
+          updatedAt: true,
+          roles: { select: { role: true } },
+          students: { select: { id: true, majorId: true, specializationId: true, isEligible: true } },
+          groupMemberships: { select: { groupId: true, role: true } },
+        },
+      });
+    }
+
+  
   
   
   

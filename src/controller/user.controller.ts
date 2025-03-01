@@ -54,17 +54,32 @@ export class UserController {
       });
     }
   }
+  
   async getProfile(req: AuthenticatedRequest, res: Response) {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: USER_MESSAGE.UNAUTHORIZED });
+      try {
+        // Kiểm tra nếu user chưa đăng nhập
+        if (!req.user || !req.user.userId) {
+          return res.status(401).json({ message: USER_MESSAGE.UNAUTHORIZED });
+        }
+  
+        // Gọi hàm getProfile từ UserService
+        const user = await userService.getProfile(req.user.userId);
+  
+        // Kiểm tra nếu user không tồn tại
+        if (!user) {
+          return res.status(404).json({ message: USER_MESSAGE.USER_NOT_FOUND });
+        }
+  
+        // Trả về thông tin đầy đủ của user
+        res.json({ user });
+  
+      } catch (error) {
+        res.status(500).json({ message: (error as Error).message });
       }
-      res.json({ user: req.user });
-    } catch (error) {
-      const errorMessage = (error as Error).message;
-      res.status(500).json({ message: errorMessage });
     }
-  }
+  
+  
+  
 
   async logout(req: AuthenticatedRequest, res: Response) {
     try {
