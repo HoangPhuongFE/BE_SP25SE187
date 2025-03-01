@@ -161,7 +161,8 @@ export class ReviewCouncilService {
               userId,
               role: "MEMBER",
               assignedAt: new Date(),
-              status: "ACTIVE"
+              status: "ACTIVE",
+              semesterId: reviewCouncil.semesterId
             }
           });
         })
@@ -242,7 +243,8 @@ export class ReviewCouncilService {
             userId: reviewerId,
             role: "PRIMARY_REVIEWER",
             assignedAt: new Date(),
-            status: "ACTIVE"
+            status: "ACTIVE",
+            semesterId: reviewCouncil.semesterId
           }
         });
       } else {

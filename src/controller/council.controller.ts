@@ -8,31 +8,48 @@ const councilService = new CouncilService();
 export class CouncilController {
     async createCouncil(req: Request, res: Response) {
         try {
-            const { name, type, round, semesterId, status } = req.body;
+            console.log(" Dữ liệu nhận được từ request:", req.body);
+            const { name, code, type, round, semesterId, status } = req.body;
+    
+            if (!semesterId) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                    success: false,
+                    message: "Thiếu `semesterId`, vui lòng kiểm tra lại."
+                });
+            }
+    
             const result = await councilService.createCouncil({
                 name,
+                code,
                 type,
                 round,
                 semesterId,
                 status,
                 topicAssId: null
             });
-
+    
             return res.status(result.status).json(result);
         } catch (error) {
-            console.error(error);
+            console.error(" Lỗi khi tạo hội đồng:", error);
             return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
                 success: false,
                 message: COUNCIL_MESSAGE.COUNCIL_CREATION_FAILED
             });
         }
     }
-
+    
     async addMembers(req: Request, res: Response) {
         try {
             const { councilId } = req.params;
-            const { members } = req.body;
-
+            const { members } = req.body; 
+    
+            if (!members || members.length === 0) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                    success: false,
+                    message: "Danh sách thành viên không được để trống."
+                });
+            }
+    
             const result = await councilService.addCouncilMembers(councilId, members);
             return res.status(result.status).json(result);
         } catch (error) {
@@ -43,6 +60,7 @@ export class CouncilController {
             });
         }
     }
+    
 
     async getCouncils(req: Request, res: Response) {
         try {
@@ -86,16 +104,17 @@ export class CouncilController {
 
   async removeCouncilMember(req: Request, res: Response) {
     try {
-        const { councilId, userId } = req.params;
+        const { councilId } = req.params;
+        const { userId, email } = req.body;
 
-        if (!councilId || !userId) {
+        if (!councilId || (!userId && !email)) {
             return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 success: false,
                 message: COUNCIL_MESSAGE.INVALID_REQUEST
             });
         }
 
-        const result = await councilService.removeCouncilMember(councilId, userId);
+        const result = await councilService.removeCouncilMember(councilId, userId, email);
         return res.status(result.status).json(result);
     } catch (error) {
         console.error(error);
@@ -105,5 +124,6 @@ export class CouncilController {
         });
     }
 }
+
 
 }

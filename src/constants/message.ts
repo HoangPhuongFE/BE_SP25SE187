@@ -292,6 +292,35 @@ export const REVIEW_COUNCIL_MESSAGE = {
   DETAIL_FETCHED: "Lấy chi tiết hội đồng duyệt đề tài thành công"
 } as const;
 
+// Thông báo liên quan đến MSGV (Mã số giảng viên)
+export const MSGV_MESSAGE = {
+  MSGV_NOT_FOUND: "Không tìm thấy mã số giảng viên.",
+  MSGV_DUPLICATE: "Mã số giảng viên đã tồn tại trong hệ thống.",
+  MSGV_INVALID: "Mã số giảng viên không hợp lệ.",
+  MSGV_UPDATED: "Cập nhật mã số giảng viên thành công.",
+  MSGV_ASSIGNMENT_FAILED: "Gán mã số giảng viên thất bại.",
+} as const;
+
+//  Thông báo liên quan đến quá trình Import dữ liệu
+export const IMPORT_MESSAGE = {
+  IMPORT_SUCCESS: "Import dữ liệu thành công.",
+  IMPORT_FAILED: "Import dữ liệu thất bại.",
+  IMPORT_PARTIALLY_FAILED: "Một số dòng bị lỗi trong quá trình import.",
+  IMPORT_DUPLICATE_FOUND: "Có dữ liệu trùng lặp trong file import.",
+  IMPORT_INVALID_FILE_FORMAT: "File không đúng định dạng.",
+  IMPORT_MISSING_REQUIRED_FIELDS: "File thiếu thông tin bắt buộc.",
+  IMPORT_ROW_ERROR: (rowNumber: number, error: string) => `Lỗi tại dòng ${rowNumber}: ${error}`,
+} as const;
+
+//  Thông báo liên quan đến Database
+export const DATABASE_MESSAGE = {
+  DUPLICATE_ENTRY: "Dữ liệu bị trùng lặp trong hệ thống.",
+  RECORD_NOT_FOUND: "Không tìm thấy bản ghi trong hệ thống.",
+  UNAUTHORIZED_ACCESS: "Bạn không có quyền thực hiện thao tác này.",
+  DATABASE_ERROR: "Lỗi hệ thống cơ sở dữ liệu.",
+} as const;
+
+
 // Cập nhật vào danh sách MESSAGES chung
 export const MESSAGES = {
   STUDENT: STUDENT_MESSAGE,
@@ -311,4 +340,7 @@ export const MESSAGES = {
   TOPIC_SUBMISSION_PERIOD: TOPIC_SUBMISSION_PERIOD_MESSAGE,
   COUNCIL_MESSAGE : COUNCIL_MESSAGE,
   REVIEW_COUNCIL: REVIEW_COUNCIL_MESSAGE,
+  MSGV: MSGV_MESSAGE, 
+  IMPORT: IMPORT_MESSAGE, 
+  DATABASE: DATABASE_MESSAGE,
 } as const;

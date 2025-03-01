@@ -12,6 +12,7 @@ model User {
   username                 String                  @unique
   email                    String                  @unique
   passwordHash             String
+  lecturerCode             String?                  @unique
   fullName                 String?
   avatar                   String?
   student_code             String?
@@ -47,7 +48,7 @@ model User {
   uploadedDocuments        TopicDocument[]         @relation("UserUploadedDocuments")
   createdSubmissionPeriods TopicSubmissionPeriod[] @relation("UserCreatedSubmissionPeriods")
   CouncilMember            CouncilMember[]
-
+                    
   @@map("users")
 }
 
@@ -243,13 +244,14 @@ model SystemConfig {
 
 model Council {
   id                    String                 @id @default(uuid()) @map("council_id")
+  code                   String?                           @unique @map("council_code")
   name                  String                 @map("council_name")
   topicAssId     String?  @map("topicass_id")
-    createdDate           DateTime               @default(now()) @map("created_date")
+  createdDate           DateTime               @default(now()) @map("created_date")
   status                String?
   type                  String?
   round                 Int?
-  semesterId            String?
+  semesterId            String?                 @map("semester_id")
   semester              Semester?              @relation(fields: [semesterId], references: [id])
   topicAssignment TopicAssignment? @relation(fields: [topicAssId], references: [id])
   members               CouncilMember[]
@@ -573,7 +575,7 @@ model CouncilMember {
   status            String
   council           Council  @relation(fields: [councilId], references: [id])
   userId            String   @map("user_id")
-
+  semesterId        String   @map("semester_id") 
   user User @relation(fields: [userId], references: [id])
 
   @@map("council_members")
