@@ -22,7 +22,7 @@ import systemConfigRoutes from "./routers/system.config.routes";
 import councilRouter from './routers/council.router'
 import importCouncilRoutes from "./routers/import-council.routes";
 import topicRoutes from "./routers/topic.routes";
-
+import submissionPeriod from './routers/submissionPeriod.routes';
 //
 config();
 const app = express();
@@ -58,7 +58,7 @@ app.use("/api/config", systemConfigRoutes);
 app.use('/api/councils', councilRouter);
 app.use("/api/import-councils", importCouncilRoutes);
 app.use("/api/topics", topicRoutes);
-
+app.use("/api/submission-periods", submissionPeriod);
 
 
 
