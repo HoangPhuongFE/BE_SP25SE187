@@ -4,6 +4,7 @@ import { validate as isUUID } from 'uuid';
 import axios from 'axios';
 import ExcelJS from 'exceljs';
 import fs from 'fs';
+import { v4 as uuidv4 } from "uuid";
 
 const prisma = new PrismaClient();
 
@@ -209,7 +210,9 @@ export class TopicService {
   }
 
   private async createTopicDocument(topicId: string, document: TopicDocument & { uploadedBy: string }) {
-    return prisma.topicDocument.create({
+    console.log("Creating topic document:", { topicId, document });
+    
+    const result = await prisma.topicDocument.create({
       data: {
         topicId,
         fileName: document.fileName,
@@ -217,6 +220,9 @@ export class TopicService {
         uploadedBy: document.uploadedBy
       }
     });
+    
+    console.log("Topic document created:", result);
+    return result;
   }
 
   async createTopic(data: {
@@ -235,6 +241,12 @@ export class TopicService {
     }>;
   }) {
     try {
+      console.log("Service createTopic - Input data:", {
+        ...data,
+        documents: data.documents || []
+      });
+
+      // Bắt đầu transaction
       const topic = await prisma.$transaction(async (tx) => {
         // Tạo topic
         const newTopic = await tx.topic.create({
@@ -263,18 +275,60 @@ export class TopicService {
           }
         });
 
+        console.log("Topic created:", newTopic);
+
         // Tạo documents nếu có
-        if (data.documents?.length) {
-          await Promise.all(data.documents.map(doc => 
-            this.createTopicDocument (newTopic.id, {
+        if (data.documents && data.documents.length > 0) {
+          console.log("Creating documents:", data.documents);
+          
+          const createdDocs = [];
+          for (const doc of data.documents) {
+            console.log("Creating document in transaction:", { topicId: newTopic.id, fileName: doc.fileName });
+            
+            const createdDoc = await tx.topicDocument.create({
+              data: {
+                topicId: newTopic.id,
               fileName: doc.fileName,
               documentUrl: doc.filePath,
-              uploadedBy: data.createdBy
-            })
-          ));
+            uploadedBy: data.createdBy
+              }
+            });
+            
+            createdDocs.push(createdDoc);
+          }
+          
+          console.log("Documents created:", createdDocs);
         }
 
-        return newTopic;
+        // Lấy topic đã cập nhật bao gồm documents
+        const updatedTopic = await tx.topic.findUnique({
+          where: { id: newTopic.id },
+          include: {
+            detailMajorTopics: {
+              include: {
+                major: true
+              }
+            },
+            topicDocuments: {
+              select: {
+                id: true,
+                fileName: true,
+                documentUrl: true,
+                uploadedAt: true,
+                uploader: {
+                  select: {
+                    id: true,
+                    fullName: true
+                  }
+                }
+              }
+            }
+          }
+        });
+
+        console.log("Updated topic with documents:", updatedTopic);
+        
+        return updatedTopic || newTopic;
       });
 
       // Ghi log thành công
@@ -288,6 +342,8 @@ export class TopicService {
       return topic;
 
     } catch (error) {
+      console.error("Error in service createTopic:", error);
+      
       // Ghi log lỗi
       await this.logSystemAction(
         'CREATE_TOPIC_ERROR',
@@ -687,50 +743,69 @@ export class TopicService {
 
   async registerTopic(data: RegisterTopicData) {
     try {
-      // Kiểm tra mentor chính
-      const mentor = await prisma.user.findFirst({
+      // Kiểm tra xem mentorID có phải là mentor không
+      const mentorRole = await prisma.userRole.findFirst({
         where: {
-          id: data.userId,
-          roles: {
-            some: {
+          userId: data.userId,
               role: {
                 name: 'mentor'
+              }
+            }
+      });
+
+      if (!mentorRole) {
+        throw new Error(TOPIC_MESSAGE.UNAUTHORIZED);
+      }
+
+      // Kiểm tra xem đã vượt quá số lượng đề tài có thể đăng ký chưa
+      const mentorTopicsCount = await prisma.topic.count({
+        where: {
+          createdBy: data.userId,
+          topicRegistrations: {
+            some: {
+              userId: data.userId,
+              submissionPeriod: {
+                semesterId: data.semesterId,
+                status: 'ACTIVE'
               }
             }
           }
         }
       });
 
-      if (!mentor) {
-        throw new Error('Chỉ mentor mới có thể đăng ký đề tài');
+      // Nếu đã vượt quá 3 đề tài
+      if (mentorTopicsCount >= 3) {
+        throw new Error(TOPIC_MESSAGE.MENTOR_MAX_TOPICS_REACHED);
       }
 
-      // Kiểm tra mentor phụ nếu có
+      // Kiểm tra semesterId và majorId đều là UUID hợp lệ
+      if (!this.isValidUuid(data.semesterId)) {
+        throw new Error('semesterId không hợp lệ');
+      }
+      if (!this.isValidUuid(data.majorId)) {
+        throw new Error('majorId không hợp lệ');
+      }
+
+      // Nếu có subSupervisor, kiểm tra subSupervisor có tồn tại và có phải mentor không
       if (data.subSupervisor) {
-        const subMentor = await prisma.user.findFirst({
+        const subMentor = await prisma.userRole.findFirst({
           where: {
-            id: data.subSupervisor,
-            roles: {
-              some: {
+            userId: data.subSupervisor,
                 role: {
                   name: 'mentor'
                 }
-              }
-            }
+          },
+          include: {
+            user: true
           }
         });
 
         if (!subMentor) {
-          throw new Error('Mentor phụ không hợp lệ');
-        }
-
-        // Kiểm tra xem subSupervisor có phải là mentor chính không
-        if (data.subSupervisor === data.userId) {
-          throw new Error('Mentor phụ không thể là mentor chính');
+          throw new Error('Mentor phụ không tồn tại hoặc không phải là mentor');
         }
       }
 
-      // Tìm đợt đăng ký đề tài đang hoạt động
+      // Tìm đợt đăng ký đề tài hiện tại
       const activePeriod = await prisma.topicSubmissionPeriod.findFirst({
         where: {
           semesterId: data.semesterId,
@@ -741,14 +816,16 @@ export class TopicService {
       });
 
       if (!activePeriod) {
-        throw new Error('Không có đợt đăng ký đề tài nào đang hoạt động');
+        throw new Error('Không có đợt đăng ký đề tài nào đang diễn ra');
       }
 
-      // Tạo mã đề tài
+      // Tạo topicCode
       const topicCode = await this.generateTopicCode(data.semesterId, data.majorId);
 
+      // Sử dụng transaction để đảm bảo tính nhất quán dữ liệu
+      const result = await prisma.$transaction(async (tx) => {
       // Tạo topic mới với subSupervisor
-      const topic = await prisma.topic.create({
+        const newTopic = await tx.topic.create({
         data: {
           topicCode,
           name: data.name,
@@ -777,10 +854,12 @@ export class TopicService {
         }
       });
 
+        console.log("Topic created:", newTopic);
+
       // Tạo đăng ký cho mentor chính
-      const topicRegistration = await prisma.topicRegistration.create({
+        const registration = await tx.topicRegistration.create({
         data: {
-          topicId: topic.id,
+            topicId: newTopic.id,
           userId: data.userId,
           role: 'mentor',
           status: 'PENDING',
@@ -791,27 +870,61 @@ export class TopicService {
         }
       });
 
+        console.log("Registration created:", registration);
+
       // Xử lý documents nếu có
+        const createdDocs = [];
       if (data.documents && data.documents.length > 0) {
+          console.log("Creating documents:", data.documents);
+          
         for (const doc of data.documents) {
-          await this.createTopicDocument(topic.id, {
-            ...doc,
+            console.log("Creating document in transaction:", { topicId: newTopic.id, fileName: doc.fileName });
+            
+            const createdDoc = await tx.topicDocument.create({
+              data: {
+                topicId: newTopic.id,
+                fileName: doc.fileName,
+                documentUrl: doc.documentUrl || '',
             uploadedBy: data.userId
-          });
+              }
+            });
+            
+            createdDocs.push(createdDoc);
+          }
+          
+          console.log("Documents created:", createdDocs);
         }
-      }
 
-      // Log hành động
-      await this.logSystemAction(
-        'REGISTER_TOPIC',
-        topic.id,
-        `Mentor ${data.userId} đã đăng ký đề tài mới${data.subSupervisor ? ` với mentor phụ ${data.subSupervisor}` : ''}`,
-        data.userId
-      );
+        // Lấy topic đã cập nhật bao gồm documents
+        const updatedTopic = await tx.topic.findUnique({
+          where: { id: newTopic.id },
+          include: {
+            creator: true,
+            subMentor: true,
+            detailMajorTopics: {
+              include: {
+                major: true
+              }
+            },
+            topicDocuments: {
+              select: {
+                id: true,
+                fileName: true,
+                documentUrl: true,
+                uploadedAt: true,
+                uploader: {
+                  select: {
+                    id: true,
+                    fullName: true
+                  }
+                }
+              }
+            }
+          }
+        });
 
-      // Trả về thông tin topic kèm thông tin round đăng ký
       return {
-        ...topic,
+          ...updatedTopic,
         submissionPeriod: {
           id: activePeriod.id,
           round: activePeriod.round,
@@ -820,6 +933,17 @@ export class TopicService {
           status: activePeriod.status
         }
       };
+      });
+
+      // Log hành động
+      await this.logSystemAction(
+        'REGISTER_TOPIC',
+        result?.id || 'unknown',
+        `Mentor ${data.userId} đã đăng ký đề tài mới${data.subSupervisor ? ` với mentor phụ ${data.subSupervisor}` : ''}`,
+        data.userId
+      );
+
+      return result;
     } catch (error) {
       throw error;
     }
@@ -833,7 +957,8 @@ export class TopicService {
     status,
     isBusiness,
     search,
-    createdBy
+    createdBy,
+    isOfficial
   }: {
     page: number;
     pageSize: number;
@@ -843,82 +968,258 @@ export class TopicService {
     isBusiness?: boolean;
     search?: string;
     createdBy?: string;
+    isOfficial?: boolean;
   }) {
-    // Kiểm tra UUID nếu có semesterId hoặc majorId
-    if (semesterId && !isUUID(semesterId)) {
-      throw new Error('ID semester is not valid');
-    }
+    try {
+      
+      // Xác thực các tham số tìm kiếm
+      if (semesterId && !this.isValidUuid(semesterId)) {
+        throw new Error("semesterId not valid");
+      }
+      if (majorId && !this.isValidUuid(majorId)) {
+        throw new Error("majorId not valid");
+      }
 
+      let whereClause: any = {};
 
-    if (majorId && !isUUID(majorId)) {
-      throw new Error('ID major is not valid');
-    }
-
-
-    const where = {
-      ...(semesterId && { semesterId }),
-      ...(majorId && {
-        detailMajorTopics: {
-          some: {
-            majorId
+      // Lọc theo nhóm đề tài (chính thức hay đề xuất) nếu isOfficial được xác định rõ ràng
+      if (isOfficial === true) {
+        console.log("Filtering by isOfficial: true (official topics)");
+        
+        // Tìm người dùng với vai trò academic_officer
+        const academicOfficers = await prisma.userRole.findMany({
+          where: {
+            role: {
+              name: 'academic_officer'
+            }
+          },
+          select: {
+            userId: true
           }
+        });
+
+        const academicOfficerIds = academicOfficers.map(officer => officer.userId);
+        console.log("Academic officer IDs:", academicOfficerIds);
+        
+        if (academicOfficerIds.length > 0) {
+          whereClause.createdBy = { in: academicOfficerIds };
+        } else {
+          console.log("No academic officers found");
+          // Không có academic officers nào, trả về mảng rỗng
+          return {
+            data: [],
+            pagination: {
+              page,
+              pageSize,
+              totalItems: 0,
+              totalPages: 0,
+              hasNext: false,
+              hasPrevious: false
+            }
+          };
         }
-      }),
-      ...(status && { status }),
-      ...(isBusiness !== undefined && { isBusiness }),
-      ...(createdBy && { createdBy }),
-      ...(search && {
-        OR: [
+      } else if (isOfficial === false) {
+        console.log("Filtering by isOfficial: false (proposed topics)");
+        
+        // Tìm người dùng với vai trò mentor
+        const mentors = await prisma.userRole.findMany({
+          where: {
+            role: {
+              name: 'mentor'
+            }
+          },
+          select: {
+            userId: true
+          }
+        });
+
+        const mentorIds = mentors.map(mentor => mentor.userId);
+        console.log("Mentor IDs:", mentorIds);
+        
+        if (mentorIds.length > 0) {
+          whereClause.createdBy = { in: mentorIds };
+        } else {
+          console.log("No mentors found");
+          // Không có mentors nào, trả về mảng rỗng
+          return {
+            data: [],
+            pagination: {
+              page,
+              pageSize,
+              totalItems: 0,
+              totalPages: 0,
+              hasNext: false,
+              hasPrevious: false
+            }
+          };
+        }
+
+        // Thêm điều kiện cho đề xuất đề tài
+        whereClause.topicRegistrations = {
+          some: {}
+        };
+      } else {
+        console.log("Not filtering by isOfficial, showing all topics");
+      }
+
+      // Bổ sung thêm các điều kiện lọc khác
+      if (semesterId) {
+        whereClause.semesterId = semesterId;
+      }
+
+      if (status) {
+        whereClause.status = status;
+      }
+
+      if (isBusiness !== undefined) {
+        whereClause.isBusiness = isBusiness;
+      }
+
+      if (createdBy) {
+        whereClause.createdBy = createdBy;
+      }
+
+      if (majorId) {
+        whereClause.detailMajorTopics = {
+          some: {
+            majorId: majorId
+          }
+        };
+      }
+
+      if (search) {
+        whereClause.OR = [
           { name: { contains: search } },
           { description: { contains: search } },
           { topicCode: { contains: search } }
-        ]
-      })
-    };
+        ];
+      }
 
-    const [topics, totalItems] = await Promise.all([
-      prisma.topic.findMany({
+      console.log("Final whereClause:", JSON.stringify(whereClause, null, 2));
+
+      // Truy vấn không ràng buộc để xem có topics nào trong DB không
+      const allTopicsCount = await prisma.topic.count();
+      console.log("Total topics in DB (ignoring filters):", allTopicsCount);
+      
+      if (allTopicsCount === 0) {
+        console.log("No topics in DB at all");
+        return {
+          data: [],
+          pagination: {
+            page,
+            pageSize,
+            totalItems: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrevious: false
+          }
+        };
+      }
+
+      // Đếm tổng số đề tài theo điều kiện lọc
+      const totalTopics = await prisma.topic.count({
+        where: whereClause
+      });
+      
+      console.log("Total topics count with filters:", totalTopics);
+
+      // Lấy đề tài có phân trang
+      const topics = await prisma.topic.findMany({
+        where: whereClause,
         skip: (page - 1) * pageSize,
         take: pageSize,
-        where,
         include: {
+          creator: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              email: true
+            }
+          },
+          subMentor: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              email: true
+            }
+          },
+          semester: {
+            select: {
+              id: true,
+              code: true,
+              year: {
+                select: {
+                  id: true,
+              year: true
+                }
+              }
+            }
+          },
           detailMajorTopics: {
             include: {
               major: true
             }
           },
-          semester: {
-            include: {
-              year: true
-            }
-          },
-          creator: {
+          topicRegistrations: {
             select: {
               id: true,
-              fullName: true,
-              email: true
-            }
+              status: true,
+              submissionPeriod: {
+                select: {
+                  id: true,
+                  round: true,
+                  startDate: true,
+                  endDate: true,
+                  status: true
+                }
+              }
+            },
+            take: 1
           },
-          topicRegistrations: {
-            include: {
-              topic: true
+          topicDocuments: {
+            select: {
+              id: true,
+              fileName: true,
+              documentUrl: true,
+              uploadedAt: true,
+              uploader: {
+                select: {
+                  id: true,
+                  fullName: true
+                }
+              }
             }
           }
         },
         orderBy: {
           createdAt: 'desc'
         }
-      }),
-      prisma.topic.count({ where })
-    ]);
+      });
+      
+      console.log("Topics found:", topics.length);
+
+      // Tính toán thông tin phân trang
+      const totalPages = Math.ceil(totalTopics / pageSize);
+      const hasNext = page < totalPages;
+      const hasPrevious = page > 1;
 
     return {
       data: topics,
-      currentPage: page,
-      totalPages: Math.ceil(totalItems / pageSize),
-      totalItems,
-      pageSize
-    };
+        pagination: {
+          page,
+          pageSize,
+          totalItems: totalTopics,
+          totalPages,
+          hasNext,
+          hasPrevious
+        }
+      };
+    } catch (error) {
+      console.error('Error in getAllTopics:', error);
+      throw error;
+    }
   }
 
   async approveTopicRegistration(
@@ -1118,36 +1419,129 @@ export class TopicService {
     return council;
   }
 
-  async getTopicDetail(id: string) {
+  async getTopicDetail(id: string, isOfficial?: boolean) {
     try {
-      if (!isUUID(id)) {
-        throw new Error('ID topic không hợp lệ');
+      if (!this.isValidUuid(id)) {
+        throw new Error(TOPIC_MESSAGE.INVALID_ID);
       }
 
-      const topic = await prisma.topic.findUnique({
-        where: { id },
+      // Tạo điều kiện lọc theo loại đề tài nếu có
+      let whereClause: any = { id };
+
+      if (isOfficial !== undefined) {
+        // Đề tài chính thức được tạo bởi academic_officer không qua TopicRegistration
+        // Đề xuất đề tài được tạo bởi mentor qua TopicRegistration
+        if (isOfficial) {
+          // Tìm người dùng với vai trò academic_officer
+          const academicOfficers = await prisma.userRole.findMany({
+            where: {
+              role: {
+                name: 'academic_officer'
+              }
+            },
+            select: {
+              userId: true
+            }
+          });
+
+          const academicOfficerIds = academicOfficers.map(officer => officer.userId);
+          whereClause.createdBy = { in: academicOfficerIds };
+        } else {
+          // Tìm người dùng với vai trò mentor
+          const mentors = await prisma.userRole.findMany({
+            where: {
+              role: {
+                name: 'mentor'
+              }
+            },
+            select: {
+              userId: true
+            }
+          });
+
+          const mentorIds = mentors.map(mentor => mentor.userId);
+          whereClause.createdBy = { in: mentorIds };
+
+          // Thêm điều kiện cho đề xuất đề tài
+          whereClause.topicRegistrations = {
+            some: {}
+          };
+        }
+      }
+
+      const topic = await prisma.topic.findFirst({
+        where: whereClause,
         include: {
+          creator: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              email: true,
+              roles: {
+                include: {
+                  role: true
+                }
+              }
+            }
+          },
+          subMentor: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              email: true
+            }
+          },
+          semester: {
+            select: {
+              id: true,
+              code: true,
+              startDate: true,
+              endDate: true,
+              year: {
+                select: {
+                  id: true,
+                  year: true
+                }
+              }
+            }
+          },
           detailMajorTopics: {
             include: {
               major: true
             }
           },
-          semester: {
-            include: {
-              year: true
-            }
-          },
-          creator: {
-            select: {
-              id: true,
-              fullName: true,
-              email: true,
-              avatar: true
-            }
-          },
           topicRegistrations: {
             include: {
-              topic: true
+              submissionPeriod: true
+            }
+          },
+          topicDocuments: {
+        select: {
+          id: true,
+          fileName: true,
+              documentUrl: true,
+          uploadedAt: true,
+          uploader: {
+            select: {
+                  id: true,
+                  fullName: true
+                }
+              }
+            }
+          },
+          topicAssignments: {
+            include: {
+              group: {
+                include: {
+                  members: {
+                    include: {
+                      student: true
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -1157,53 +1551,79 @@ export class TopicService {
         throw new Error(TOPIC_MESSAGE.TOPIC_NOT_FOUND);
       }
 
-      // Lấy documents từ bảng Document
-      const documents = await prisma.document.findMany({
-        where: {
-          relatedTable: 'topics',
-          documentType: 'TOPIC'
+      return {
+        id: topic.id,
+        topicCode: topic.topicCode,
+        name: topic.name,
+        description: topic.description,
+        isBusiness: topic.isBusiness,
+        businessPartner: topic.businessPartner,
+        status: topic.status,
+        createdAt: topic.createdAt,
+        updatedAt: topic.updatedAt,
+        creator: {
+          id: topic.creator.id,
+          username: topic.creator.username,
+          fullName: topic.creator.fullName,
+          email: topic.creator.email,
+          roles: topic.creator.roles.map(r => r.role.name)
         },
-        select: {
-          id: true,
-          fileName: true,
-          filePath: true,
-          documentType: true,
-          uploadedAt: true,
-          uploadedBy: true,
+        subMentor: topic.subMentor ? {
+          id: topic.subMentor.id,
+          username: topic.subMentor.username,
+          fullName: topic.subMentor.fullName,
+          email: topic.subMentor.email
+        } : null,
+        semester: {
+          id: topic.semester.id,
+          code: topic.semester.code,
+          startDate: topic.semester.startDate,
+          endDate: topic.semester.endDate,
+          year: topic.semester.year.year
+        },
+        majors: topic.detailMajorTopics.map(detail => ({
+          id: detail.major.id,
+          name: detail.major.name
+        })),
+        documents: topic.topicDocuments.map(doc => ({
+          id: doc.id,
+          fileName: doc.fileName,
+          documentUrl: doc.documentUrl,
+          uploadedAt: doc.uploadedAt,
           uploader: {
-            select: {
-              fullName: true,
-              email: true
-            }
+            id: doc.uploader.id,
+            fullName: doc.uploader.fullName
           }
-        }
-      });
-
-      const topicWithUrls = {
-        ...topic,
-        documents: documents.map(doc => ({
-          ...doc,
-          fileUrl: `${process.env.BASE_URL}/uploads/topics/${doc.filePath}`
+        })),
+        registration: topic.topicRegistrations.length > 0 ? {
+          id: topic.topicRegistrations[0].id,
+          status: topic.topicRegistrations[0].status,
+          submissionPeriod: {
+            id: topic.topicRegistrations[0].submissionPeriod.id,
+            round: topic.topicRegistrations[0].submissionPeriod.round,
+            startDate: topic.topicRegistrations[0].submissionPeriod.startDate,
+            endDate: topic.topicRegistrations[0].submissionPeriod.endDate,
+            status: topic.topicRegistrations[0].submissionPeriod.status
+          }
+        } : null,
+        assignments: topic.topicAssignments.map(assignment => ({
+          id: assignment.id,
+          group: {
+            id: assignment.group.id,
+            groupCode: assignment.group.groupCode,
+            members: assignment.group.members.map(member => ({
+              id: member.id,
+              student: member.student ? {
+                id: member.student.id,
+                studentCode: member.student.studentCode
+              } : null
+            }))
+          },
+          status: assignment.status
         }))
       };
-
-      // Ghi log
-      await this.logSystemAction(
-        'VIEW_TOPIC_DETAIL',
-        id,
-        `Viewed topic detail: ${topic.name}`,
-        'SYSTEM'
-      );
-
-      return topicWithUrls;
     } catch (error) {
-      await this.logSystemAction(
-        'VIEW_TOPIC_DETAIL_ERROR',
-        id,
-        'Failed to view topic detail',
-        'SYSTEM',
-        error as Error
-      );
+      console.error('Error in getTopicDetail:', error);
       throw error;
     }
   }
@@ -1429,5 +1849,277 @@ export class TopicService {
     );
 
     return topicAssignment;
+  }
+
+  private isValidUuid(id: string): boolean {
+    console.log("Validating UUID:", id);
+    try {
+      // Nếu id là rỗng hoặc không được định nghĩa, trả về false
+      if (!id) {
+        console.log("UUID is empty or undefined");
+        return false;
+      }
+      
+      // Kiểm tra xem có phải là UUID hợp lệ hay không
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const isValid = uuidPattern.test(id);
+      console.log("UUID validation result:", isValid);
+      return isValid;
+    } catch (error) {
+      console.error("Error in isValidUuid:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Lấy danh sách các đề tài có thể chọn (đã được phê duyệt và chưa được gán cho nhóm nào)
+   * @param semesterId ID của học kỳ
+   * @param majorId ID của ngành học (tùy chọn)
+   * @param page Số trang
+   * @param pageSize Kích thước trang
+   * @returns Danh sách các đề tài có thể chọn
+   */
+  async getAvailableTopics({
+    semesterId,
+    majorId,
+    page = 1,
+    pageSize = 10,
+    search
+  }: {
+    semesterId: string;
+    majorId?: string;
+    page?: number;
+    pageSize?: number;
+    search?: string;
+  }) {
+    try {
+      // Kiểm tra tính hợp lệ của semesterId
+      if (!this.isValidUuid(semesterId)) {
+        throw new Error('ID học kỳ không hợp lệ');
+      }
+
+      // Kiểm tra tính hợp lệ của majorId nếu có
+      if (majorId && !this.isValidUuid(majorId)) {
+        throw new Error('ID ngành học không hợp lệ');
+      }
+
+      // Xây dựng điều kiện tìm kiếm
+      const whereCondition: any = {
+        semesterId,
+        status: 'APPROVED', // Chỉ lấy các đề tài đã được phê duyệt
+        topicAssignments: {
+          none: {} // Chỉ lấy các đề tài chưa được gán cho nhóm nào
+        }
+      };
+
+      // Thêm điều kiện tìm kiếm theo ngành học nếu có
+      if (majorId) {
+        whereCondition.detailMajorTopics = {
+          some: {
+            majorId
+          }
+        };
+      }
+
+      // Thêm điều kiện tìm kiếm theo từ khóa nếu có
+      if (search) {
+        whereCondition.OR = [
+          { name: { contains: search } },
+          { description: { contains: search } },
+          { topicCode: { contains: search } }
+        ];
+      }
+
+      // Đếm tổng số đề tài thỏa mãn điều kiện
+      const totalCount = await prisma.topic.count({
+        where: whereCondition
+      });
+
+      // Tính toán phân trang
+      const skip = (page - 1) * pageSize;
+      const totalPages = Math.ceil(totalCount / pageSize);
+
+      // Lấy danh sách đề tài
+      const topics = await prisma.topic.findMany({
+        where: whereCondition,
+        include: {
+          creator: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              email: true
+            }
+          },
+          subMentor: {
+            select: {
+              id: true,
+              username: true,
+              fullName: true,
+              email: true
+            }
+          },
+          detailMajorTopics: {
+            include: {
+              major: true
+            }
+          },
+          topicDocuments: {
+            select: {
+              id: true,
+              fileName: true,
+              documentUrl: true
+            }
+          }
+        },
+        skip,
+        take: pageSize,
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      // Định dạng kết quả trả về
+      const formattedTopics = topics.map(topic => ({
+        id: topic.id,
+        topicCode: topic.topicCode,
+        name: topic.name,
+        description: topic.description,
+        isBusiness: topic.isBusiness,
+        businessPartner: topic.businessPartner,
+        status: topic.status,
+        createdAt: topic.createdAt,
+        creator: topic.creator,
+        subMentor: topic.subMentor,
+        majors: topic.detailMajorTopics.map(detail => ({
+          id: detail.major.id,
+          name: detail.major.name
+        })),
+        documents: topic.topicDocuments.map(doc => ({
+          id: doc.id,
+          fileName: doc.fileName,
+          documentUrl: doc.documentUrl
+        }))
+      }));
+
+      return {
+        data: formattedTopics,
+        pagination: {
+          totalCount,
+          totalPages,
+          currentPage: page,
+          pageSize
+        }
+      };
+    } catch (error) {
+      console.error('Error in getAvailableTopics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cho phép nhóm chọn một đề tài đã được phê duyệt
+   * @param data Dữ liệu để chọn đề tài
+   * @returns Thông tin về việc gán đề tài
+   */
+  async selectTopicForGroup(data: {
+    topicId: string;
+    groupId: string;
+    userId: string;
+  }) {
+    const { topicId, groupId, userId } = data;
+
+    // Kiểm tra tính hợp lệ của topicId và groupId
+    if (!this.isValidUuid(topicId) || !this.isValidUuid(groupId)) {
+      throw new Error('ID đề tài hoặc ID nhóm không hợp lệ');
+    }
+
+    // Kiểm tra topic có tồn tại không và có trạng thái APPROVED không
+    const topic = await prisma.topic.findUnique({
+      where: { 
+        id: topicId,
+        status: 'APPROVED'
+      }
+    });
+
+    if (!topic) {
+      throw new Error('Đề tài không tồn tại hoặc chưa được phê duyệt');
+    }
+
+    // Kiểm tra topic đã được gán cho nhóm nào chưa
+    const existingTopicAssignment = await prisma.topicAssignment.findFirst({
+      where: { topicId }
+    });
+
+    if (existingTopicAssignment) {
+      throw new Error('Đề tài này đã được gán cho một nhóm khác');
+    }
+
+    // Kiểm tra group có tồn tại không
+    const group = await prisma.group.findUnique({
+      where: { id: groupId }
+    });
+
+    if (!group) {
+      throw new Error('Không tìm thấy nhóm');
+    }
+
+    // Kiểm tra group đã được gán đề tài nào chưa
+    const existingGroupAssignment = await prisma.topicAssignment.findFirst({
+      where: { groupId }
+    });
+
+    if (existingGroupAssignment) {
+      throw new Error('Nhóm này đã được gán đề tài khác');
+    }
+
+    // Kiểm tra người dùng có phải là thành viên của nhóm không
+    const isMember = await prisma.groupMember.findFirst({
+      where: {
+        groupId,
+        userId,
+        isActive: true
+      }
+    });
+
+    if (!isMember) {
+      throw new Error('Bạn không phải là thành viên của nhóm này');
+    }
+
+    // Kiểm tra người dùng có phải là leader của nhóm không
+    const isLeader = isMember.role === 'LEADER';
+    if (!isLeader) {
+      throw new Error('Chỉ trưởng nhóm mới có thể chọn đề tài cho nhóm');
+    }
+
+    // Tạo topic assignment
+    const topicAssignment = await prisma.topicAssignment.create({
+      data: {
+        topicId,
+        groupId,
+        assignedBy: userId,
+        approvalStatus: 'PENDING',
+        defendStatus: 'NOT_STARTED',
+        status: 'ASSIGNED'
+      }
+    });
+
+    // Log hành động
+    await this.logSystemAction(
+      'SELECT_TOPIC',
+      topicId,
+      `Nhóm ${groupId} đã chọn đề tài ${topicId}`,
+      userId
+    );
+
+    return {
+      id: topicAssignment.id,
+      topicId: topicAssignment.topicId,
+      groupId: topicAssignment.groupId,
+      status: topicAssignment.status,
+      approvalStatus: topicAssignment.approvalStatus,
+      defendStatus: topicAssignment.defendStatus,
+      assignedAt: topicAssignment.assignedAt
+    };
   }
 } 

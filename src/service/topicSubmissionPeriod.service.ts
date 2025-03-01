@@ -6,6 +6,18 @@ import { ICreateTopicSubmissionPeriodDTO, ITopicSubmissionPeriod, ITopicSubmissi
 const prisma = new PrismaClient();
 
 class TopicSubmissionPeriodService implements ITopicSubmissionPeriodService {
+    // Hàm kiểm tra và trả về trạng thái dựa trên thời gian
+    private getStatusBasedOnTime(startDate: Date, endDate: Date): string {
+        const now = new Date();
+        if (now < startDate) {
+            return MESSAGES.TOPIC_SUBMISSION_PERIOD.STATUS.INACTIVE;
+        } else if (now >= startDate && now <= endDate) {
+            return MESSAGES.TOPIC_SUBMISSION_PERIOD.STATUS.ACTIVE;
+        } else {
+            return MESSAGES.TOPIC_SUBMISSION_PERIOD.STATUS.COMPLETED;
+        }
+    }
+
     async createPeriod(data: ICreateTopicSubmissionPeriodDTO, createdBy: string): Promise<ITopicSubmissionPeriod> {
         console.log("Creating period with semesterId:", data.semesterId);
         console.log("Creator ID:", createdBy);
@@ -42,12 +54,15 @@ class TopicSubmissionPeriodService implements ITopicSubmissionPeriodService {
                 throw new NotFoundError("Không tìm thấy người dùng với ID " + createdBy);
             }
             
+            // Xác định trạng thái dựa trên thời gian
+            const status = this.getStatusBasedOnTime(data.startDate, data.endDate);
+            
             const period = await prisma.topicSubmissionPeriod.create({
                 data: {
                     round: data.round,
                     startDate: data.startDate,
                     endDate: data.endDate,
-                    status: 'ACTIVE',
+                    status: status,
                     description: data.description,
                     semester: {
                         connect: { id: data.semesterId }
@@ -87,16 +102,19 @@ class TopicSubmissionPeriodService implements ITopicSubmissionPeriodService {
             throw new BadRequestError(MESSAGES.TOPIC_SUBMISSION_PERIOD.CANNOT_UPDATE_COMPLETED);
         }
 
-        if (data.startDate && data.endDate) {
-            // Kiểm tra thời gian hợp lệ
-            if (data.startDate >= data.endDate) {
-                throw new BadRequestError(MESSAGES.TOPIC_SUBMISSION_PERIOD.INVALID_DATE_RANGE);
-            }
+        const startDate = data.startDate || period.startDate;
+        const endDate = data.endDate || period.endDate;
 
-            // Kiểm tra trùng lặp thời gian
+        // Kiểm tra thời gian hợp lệ
+        if (startDate >= endDate) {
+            throw new BadRequestError(MESSAGES.TOPIC_SUBMISSION_PERIOD.INVALID_DATE_RANGE);
+        }
+
+        // Kiểm tra trùng lặp thời gian nếu có thay đổi ngày
+        if (data.startDate || data.endDate) {
             const isOverlapped = await this.checkPeriodOverlap(
-                data.startDate, 
-                data.endDate, 
+                startDate,
+                endDate,
                 period.semesterId,
                 id
             );
@@ -105,13 +123,16 @@ class TopicSubmissionPeriodService implements ITopicSubmissionPeriodService {
             }
         }
 
+        // Xác định trạng thái dựa trên thời gian
+        const status = this.getStatusBasedOnTime(startDate, endDate);
+
         const updatedPeriod = await prisma.topicSubmissionPeriod.update({
             where: { id },
             data: {
                 round: data.round,
                 startDate: data.startDate,
                 endDate: data.endDate,
-                status: data.status,
+                status: status,
                 description: data.description
             }
         });
@@ -121,7 +142,10 @@ class TopicSubmissionPeriodService implements ITopicSubmissionPeriodService {
 
     async deletePeriod(id: string): Promise<void> {
         const period = await prisma.topicSubmissionPeriod.findUnique({
-            where: { id }
+            where: { id },
+            include: {
+                topicRegistrations: true
+            }
         });
 
         if (!period) {
@@ -132,9 +156,19 @@ class TopicSubmissionPeriodService implements ITopicSubmissionPeriodService {
             throw new BadRequestError(MESSAGES.TOPIC_SUBMISSION_PERIOD.CANNOT_DELETE_ACTIVE);
         }
 
-        await prisma.topicSubmissionPeriod.delete({
-            where: { id }
-        });
+        // Kiểm tra xem có đăng ký đề tài nào không
+        if (period.topicRegistrations.length > 0) {
+            throw new BadRequestError(MESSAGES.TOPIC_SUBMISSION_PERIOD.CANNOT_DELETE_HAS_REGISTRATIONS);
+        }
+
+        try {
+            await prisma.topicSubmissionPeriod.delete({
+                where: { id }
+            });
+        } catch (error: any) {
+            console.error('Error deleting topic submission period:', error);
+            throw new BadRequestError(`Lỗi khi xóa khoảng thời gian: ${error.message}`);
+        }
     }
 
     async getPeriodById(id: string): Promise<ITopicSubmissionPeriodResponse | null> {
