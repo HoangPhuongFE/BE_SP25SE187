@@ -40,5 +40,12 @@ router.delete(
   councilController.removeCouncilMember.bind(councilController)
 );
 
+// Xóa hội đồng
+router.delete(
+  "/:councilId",
+  authenticateToken,
+  checkRole(["admin", "graduation_thesis_manager", "academic_officer"]),
+  councilController.removeCouncil.bind(councilController)
+);
 
 export default router;

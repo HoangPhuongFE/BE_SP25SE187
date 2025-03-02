@@ -127,6 +127,9 @@ export const COUNCIL_MESSAGE = {
   COUNCIL_CREATED: "Tạo hội đồng thành công",
   COUNCIL_CREATION_FAILED: "Tạo hội đồng thất bại",
   COUNCIL_NOT_FOUND: "Không tìm thấy hội đồng",
+  COUNCIL_UPDATED: "Cập nhật hội đồng thành công",
+  COUNCIL_DELETED: "Xóa hội đồng thành công",
+  COUNCIL_DELETE_FAILED: "Không thể xóa hội đồng, vui lòng thử lại",
   COUNCIL_MEMBERS_ADDED: "Thêm thành viên vào hội đồng thành công",
   COUNCIL_MEMBERS_FAILED: "Thêm thành viên vào hội đồng thất bại",
   COUNCIL_LIST_FETCHED: "Lấy danh sách hội đồng thành công",
@@ -143,7 +146,12 @@ export const COUNCIL_MESSAGE = {
   CHAIRMAN_LIMIT: "Số lượng chủ tịch vượt quá giới hạn",
   SECRETARY_LIMIT: "Số lượng thư ký vượt quá giới hạn",
   REVIEWER_LIMIT: "Số lượng reviewer vượt quá giới hạn",
-
+  MEMBER_ALREADY_EXISTS: "Thành viên đã có trong hội đồng",
+  USER_NOT_FOUND: "Người dùng không tồn tại trong hệ thống",
+  EMAIL_REQUIRED: "Email không hợp lệ hoặc chưa được cung cấp",
+  USER_ADDED_BY_EMAIL: "Thành viên đã được thêm vào hội đồng bằng Email",
+  USER_ADDED_BY_ID: "Thành viên đã được thêm vào hội đồng bằng ID",
+  COUNCIL_STATUS_UPDATED: "Trạng thái hội đồng đã được cập nhật",
 } as const;
 
 export default COUNCIL_MESSAGE;
@@ -160,9 +168,9 @@ export const STUDENT_MESSAGE = {
 
 // Thông báo chung
 export const GENERAL_MESSAGE = {
-  ACTION_SUCCESS: "Action completed successfully",
-  ACTION_FAILED: "Action failed",
-  SERVER_ERROR: "Internal server error",
+  ACTION_SUCCESS: "Thao tác thành công",
+  ACTION_FAILED: "Thao tác thất bại",
+  SERVER_ERROR: "Lỗi máy chủ nội bộ",
 } as const;
 
 export const EXPORT_MESSAGE = {

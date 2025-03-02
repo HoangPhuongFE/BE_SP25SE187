@@ -2,13 +2,15 @@ import { PrismaClient } from '@prisma/client';
 import HTTP_STATUS from '../constants/httpStatus';
 import COUNCIL_MESSAGE from '../constants/message';
 import { SystemConfigService } from '../service/system.config.service';
+import crypto from "crypto";
 
 const prisma = new PrismaClient();
 const systemConfigService = new SystemConfigService();
 
 export class CouncilService {
+
     async createCouncil(data: {
-        topicAssId: null;
+        topicAssId?: string | null;
         name: string;
         code?: string;
         type?: string;
@@ -17,10 +19,7 @@ export class CouncilService {
         status?: string;
     }) {
         try {
-            console.log(" Dữ liệu nhận vào service:", data);
-    
             if (!data.semesterId) {
-                console.error(" Lỗi: `semesterId` bị thiếu");
                 return {
                     success: false,
                     status: HTTP_STATUS.BAD_REQUEST,
@@ -28,14 +27,18 @@ export class CouncilService {
                 };
             }
     
+            // Sinh `council_code` nếu không có
+            const councilCode = data.code || `${data.type?.toUpperCase()}-${data.round || 1}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
+    
+            // Tạo hội đồng
             const council = await prisma.council.create({
                 data: {
                     name: data.name,
-                    code: data.code,
+                    code: councilCode,
                     type: data.type,
                     round: data.round,
-                    semesterId: data.semesterId,  // Kiểm tra giá trị này
-                    status: data.status || 'ACTIVE'
+                    semesterId: data.semesterId,
+                    status: data.status || "ACTIVE"
                 }
             });
     
@@ -46,7 +49,6 @@ export class CouncilService {
                 data: council
             };
         } catch (error) {
-            console.error(" Lỗi khi tạo hội đồng:", error);
             return {
                 success: false,
                 status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
@@ -54,6 +56,7 @@ export class CouncilService {
             };
         }
     }
+    
     
     async addCouncilMembers(
         councilId: string,
@@ -197,21 +200,31 @@ export class CouncilService {
         }
     }
     
+    
+    
 
     async getCouncils(filter: { semesterId?: string; type?: string }) {
         try {
             const { semesterId, type } = filter;
+    
+            // Lấy danh sách hội đồng kèm danh sách thành viên
             const councils = await prisma.council.findMany({
                 where: {
                     ...(semesterId && { semesterId }),
                     ...(type && { type })
                 },
                 include: {
-                    members: { include: { user: true } },
+                    members: {
+                        include: {
+                            user: {
+                                select: { id: true, fullName: true, email: true }
+                            }
+                        }
+                    },
                     semester: true
                 }
             });
-
+    
             return {
                 success: true,
                 status: HTTP_STATUS.OK,
@@ -226,13 +239,15 @@ export class CouncilService {
             };
         }
     }
+    
 
-    async getLecturersRolesInSemester(semesterId: string) {
+    async getLecturersRolesInSemester(semesterId: string, type?: string) {
         try {
             const memberships = await prisma.councilMember.findMany({
                 where: {
                     council: {
-                        semesterId
+                        semesterId,
+                        ...(type && { type })
                     }
                 },
                 include: {
@@ -240,8 +255,8 @@ export class CouncilService {
                     council: true
                 }
             });
-
-            // Gom group theo userId
+    
+            // Gom nhóm theo userId
             const mapUserRoles = new Map<string, any>();
             for (const mem of memberships) {
                 const uid = mem.userId;
@@ -249,6 +264,7 @@ export class CouncilService {
                     mapUserRoles.set(uid, {
                         userId: mem.user.id,
                         fullName: mem.user.fullName,
+                        email: mem.user.email,
                         rolesInCouncils: []
                     });
                 }
@@ -260,14 +276,12 @@ export class CouncilService {
                     role: mem.role
                 });
             }
-
-            const result = Array.from(mapUserRoles.values());
-
+    
             return {
                 success: true,
                 status: HTTP_STATUS.OK,
                 message: COUNCIL_MESSAGE.LECTURERS_ROLES_FETCHED,
-                data: result
+                data: Array.from(mapUserRoles.values())
             };
         } catch (error) {
             return {
@@ -277,6 +291,7 @@ export class CouncilService {
             };
         }
     }
+    
 
 
     async removeCouncilMember(councilId: string, userId?: string, email?: string) {
@@ -372,5 +387,62 @@ export class CouncilService {
         }
     }
     
+    async deleteCouncil(councilId: string) {
+        try {
+            // Kiểm tra xem hội đồng có tồn tại không
+            const existingCouncil = await prisma.council.findUnique({
+                where: { id: councilId },
+                include: {
+                    members: true, // Kiểm tra có thành viên không
+                    reviewAssignments: true, // Kiểm tra liên kết khác nếu cần
+                    defenseSchedules: true
+                }
+            });
+    
+            if (!existingCouncil) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.NOT_FOUND,
+                    message: "Hội đồng không tồn tại."
+                };
+            }
+    
+            // Kiểm tra nếu hội đồng có thành viên -> Không cho xóa
+            if (existingCouncil.members.length > 0) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.BAD_REQUEST,
+                    message: "Không thể xóa hội đồng khi vẫn còn thành viên. Hãy xóa thành viên trước."
+                };
+            }
+    
+            // Kiểm tra nếu hội đồng có dữ liệu liên quan (Review/Defense)
+            if (existingCouncil.reviewAssignments.length > 0 || existingCouncil.defenseSchedules.length > 0) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.BAD_REQUEST,
+                    message: "Không thể xóa hội đồng khi vẫn còn dữ liệu liên quan."
+                };
+            }
+    
+            // Nếu không có vấn đề, tiến hành xóa hội đồng
+            await prisma.council.delete({
+                where: { id: councilId }
+            });
+    
+            return {
+                success: true,
+                status: HTTP_STATUS.OK,
+                message: "Hội đồng đã được xóa thành công."
+            };
+        } catch (error) {
+            console.error("Lỗi khi xóa hội đồng:", error);
+            return {
+                success: false,
+                status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+                message: "Lỗi server khi xóa hội đồng."
+            };
+        }
+    }
     
 }
