@@ -9,7 +9,7 @@ export class CouncilController {
     async createCouncil(req: Request, res: Response) {
         try {
             console.log(" Dữ liệu nhận được từ request:", req.body);
-            const { name, code, type, round, semesterId, status } = req.body;
+            const { name, code, type, round, semesterId, status,submissionPeriodId  } = req.body;
     
             if (!semesterId) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -25,7 +25,8 @@ export class CouncilController {
                 round,
                 semesterId,
                 status,
-                topicAssId: null
+                topicAssId: null,
+                submissionPeriodId  
             });
     
             return res.status(result.status).json(result);

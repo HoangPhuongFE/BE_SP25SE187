@@ -17,46 +17,75 @@ export class CouncilService {
         round?: number;
         semesterId: string | null;
         status?: string;
-    }) {
+      }) {
         try {
-            if (!data.semesterId) {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.BAD_REQUEST,
-                    message: "Thiếu `semesterId`, vui lòng kiểm tra lại."
-                };
-            }
-    
-            // Sinh `council_code` nếu không có
-            const councilCode = data.code || `${data.type?.toUpperCase()}-${data.round || 1}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`;
-    
-            // Tạo hội đồng
-            const council = await prisma.council.create({
-                data: {
-                    name: data.name,
-                    code: councilCode,
-                    type: data.type,
-                    round: data.round,
-                    semesterId: data.semesterId,
-                    status: data.status || "ACTIVE"
-                }
+          if (!data.semesterId) {
+            return {
+              success: false,
+              status: HTTP_STATUS.BAD_REQUEST,
+              message: "Thiếu `semesterId`, vui lòng kiểm tra lại."
+            };
+          }
+      
+          // Xác định hội đồng này là thuộc loại nào
+          let councilData: {
+            name: string;
+            code: string;
+            type?: string;
+            round?: number;
+            semesterId: string;
+            status: string;
+            submissionPeriodId?: string;
+          } = {
+            name: data.name,
+            code: data.code || `${data.type?.toUpperCase()}-${data.round || 1}-${crypto.randomBytes(3).toString("hex").toUpperCase()}`,
+            type: data.type,
+            round: data.round,
+            semesterId: data.semesterId,
+            status: data.status || "ACTIVE"
+          };
+      
+          // Nếu hội đồng là hội đồng duyệt đề tài trước học kỳ (pre-semester review), sẽ cần submissionPeriodId
+          if (data.type === "topictopic") {
+            // Chú ý: Bạn cần tạo Submission Period trước khi tạo hội đồng, vì hội đồng duyệt đề tài liên quan đến Submission Period
+            const submissionPeriod = await prisma.submissionPeriod.create({
+              data: {
+                semesterId: data.semesterId,
+                roundNumber: data.round || 1,
+                startDate: new Date(),
+                endDate: new Date(),
+                description: "Đợt nộp đề tài trước học kỳ",
+                createdBy: "system" // or any appropriate value
+              }
             });
-    
-            return {
-                success: true,
-                status: HTTP_STATUS.CREATED,
-                message: COUNCIL_MESSAGE.COUNCIL_CREATED,
-                data: council
+      
+            councilData = {
+              ...councilData,
+              submissionPeriodId: submissionPeriod.id 
             };
+          }
+      
+          // Tạo hội đồng
+          const council = await prisma.council.create({
+            data: councilData
+          });
+      
+          return {
+            success: true,
+            status: HTTP_STATUS.CREATED,
+            message: COUNCIL_MESSAGE.COUNCIL_CREATED,
+            data: council
+          };
+      
         } catch (error) {
-            return {
-                success: false,
-                status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-                message: COUNCIL_MESSAGE.COUNCIL_CREATION_FAILED
-            };
+          return {
+            success: false,
+            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            message: COUNCIL_MESSAGE.COUNCIL_CREATION_FAILED
+          };
         }
-    }
-    
+      }
+      
     
     async addCouncilMembers(
         councilId: string,
@@ -203,43 +232,43 @@ export class CouncilService {
     
     
 
-    async getCouncils(filter: { semesterId?: string; type?: string }) {
+    async getCouncils(filter: { semesterId?: string; type?: string; submissionPeriodId?: string }) {
         try {
-            const { semesterId, type } = filter;
-    
-            // Lấy danh sách hội đồng kèm danh sách thành viên
-            const councils = await prisma.council.findMany({
-                where: {
-                    ...(semesterId && { semesterId }),
-                    ...(type && { type })
-                },
+          const { semesterId, type, submissionPeriodId } = filter;
+      
+          const councils = await prisma.council.findMany({
+            where: {
+              ...(semesterId && { semesterId }),
+              ...(type && { type }),
+              ...(submissionPeriodId && { submissionPeriodId })  // Lọc theo submissionPeriodId nếu có
+            },
+            include: {
+              members: {
                 include: {
-                    members: {
-                        include: {
-                            user: {
-                                select: { id: true, fullName: true, email: true }
-                            }
-                        }
-                    },
-                    semester: true
+                  user: {
+                    select: { id: true, fullName: true, email: true }
+                  }
                 }
-            });
-    
-            return {
-                success: true,
-                status: HTTP_STATUS.OK,
-                message: COUNCIL_MESSAGE.COUNCIL_LIST_FETCHED,
-                data: councils
-            };
+              },
+              semester: true
+            }
+          });
+      
+          return {
+            success: true,
+            status: HTTP_STATUS.OK,
+            message: COUNCIL_MESSAGE.COUNCIL_LIST_FETCHED,
+            data: councils
+          };
         } catch (error) {
-            return {
-                success: false,
-                status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-                message: COUNCIL_MESSAGE.COUNCIL_LIST_FAILED
-            };
+          return {
+            success: false,
+            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            message: COUNCIL_MESSAGE.COUNCIL_LIST_FAILED
+          };
         }
-    }
-    
+      }
+      
 
     async getLecturersRolesInSemester(semesterId: string, type?: string) {
         try {

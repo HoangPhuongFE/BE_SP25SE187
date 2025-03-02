@@ -4,7 +4,6 @@ import { TOPIC_MESSAGE ,GROUP_MESSAGE } from "../constants/message";
 import HTTP_STATUS from "../constants/httpStatus";
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
 const topicService = new TopicService();
 
 
@@ -159,4 +158,106 @@ async getTopicsBySemester(req: Request, res: Response) {
     });
   }
 }
+
+
+  //  Lấy danh sách đề tài có thể đăng ký
+  async getAvailableTopics(req: Request, res: Response) {
+    try {
+      const result = await topicService.getAvailableTopics(req.query);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: "Lỗi hệ thống!" });
+    }
+  }
+
+
+  
+
+//  Nhóm trưởng đăng ký đề tài
+async registerTopic(req: Request, res: Response) {
+  try {
+      const leaderId = req.user?.userId;  // Lấy userId từ token
+      const result = await topicService.registerTopic(req.body, leaderId);
+      return res.status(result.status).json(result);
+  } catch (error) {
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ 
+          success: false, 
+          message: "Lỗi hệ thống!" 
+      });
+  }
+}
+
+//  Mentor duyệt nhóm đăng ký đề tài
+async approveTopicRegistration(req: Request, res: Response) {
+  try {
+      const mentorId = req.user?.userId;  // Lấy userId từ token
+      const result = await topicService.approveTopicRegistration(req.body, mentorId);
+      return res.status(result.status).json(result);
+  } catch (error) {
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ 
+          success: false, 
+          message: "Lỗi hệ thống!" 
+      });
+  }
+}
+
+
+
+async getTopicsForApprovalBySubmission(req: Request, res: Response) {
+  try {
+    const { submissionPeriodId, round, semesterId } = req.query;
+    const query = {
+      submissionPeriodId: submissionPeriodId as string | undefined,
+      round: round ? Number(round) : undefined,
+      semesterId: semesterId as string | undefined,
+    };
+
+    if (!query.submissionPeriodId && (query.round === undefined || !query.semesterId)) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: "Thiếu submissionPeriodId hoặc round và semesterId!",
+      });
+    }
+
+    const result = await topicService.getTopicsForApprovalBySubmission(query);
+    return res.status(result.status).json(result);
+  } catch (error) {
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Lỗi hệ thống!",
+    });
+  }
+}
+
+
+
+
+  //  Hội đồng xét duyệt cập nhật trạng thái đề tài
+  async updateTopicStatus(req: Request, res: Response) {
+    try {
+      const result = await topicService.updateTopicStatus(req.params.topicId, req.body, req.user.userId);  // Lấy userId từ token
+      return res.status(result.status).json(result);
+    } catch (error) {
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: "Lỗi hệ thống!" });
+    }
+  }
+  
+ 
+    //  Xóa đề tài
+    async deleteTopic(req: Request, res: Response) {
+      try {
+        const { topicId } = req.params;
+        const userRole = req.user?.role;
+        
+        if (!topicId) {
+          return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: "Thiếu topicId!" });
+        }
+  
+        const result = await topicService.deleteTopic(topicId, userRole);
+        return res.status(result.status).json(result);
+        
+      } catch (error) {
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: "Lỗi hệ thống!" });
+      }
+    }
 }

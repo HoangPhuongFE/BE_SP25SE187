@@ -257,7 +257,8 @@ model Council {
   reviewAssignments     ReviewAssignment[]
   defenseSchedules      DefenseSchedule[]
   documents             Document[]             @relation("CouncilDocuments")
-
+  submissionPeriodId    String?                @map("submission_period_id")
+  submissionPeriod      SubmissionPeriod?      @relation(name: "SubmissionPeriodCouncils", fields: [submissionPeriodId], references: [id])
   @@map("councils")
 }
 
@@ -295,7 +296,7 @@ model Topic {
   subSupervisor      String?  @map("sub_supervisor")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
-
+  reviewReason       String?  @db.Text
   semester            Semester             @relation(fields: [semesterId], references: [id])
   creator             User                 @relation("TopicCreator", fields: [createdBy], references: [id])
   subMentor           User?                @relation("TopicSubSupervisor", fields: [subSupervisor], references: [id])
@@ -673,6 +674,6 @@ model SubmissionPeriod {
   semester Semester @relation(fields: [semesterId], references: [id]) // Liên kết với học kỳ
   creator  User     @relation(fields: [createdBy], references: [id]) // Người tạo đợt nộp
   topics   Topic[] // Các đề tài thuộc đợt nộp này
-
+  councils    Council[] @relation("SubmissionPeriodCouncils")
   @@map("submission_periods")
 }
