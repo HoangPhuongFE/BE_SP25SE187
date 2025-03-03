@@ -39,6 +39,7 @@ router.get(
 router.get(
   '/available-topics',
   authenticateToken,
+  checkRole(["leader", "student"]), // Giới hạn quyền cho leader và student
   topicController.getAvailableTopics.bind(topicController)
 );
 
@@ -50,29 +51,29 @@ router.post(
   topicController.registerTopic.bind(topicController)
 );
 
-
 // Lấy danh sách đề tài cần duyệt của hội đồng (theo submissionPeriodId, round, semesterId)
 router.get(
   '/approval',
   authenticateToken,
-  checkRole(["admin", "review", "lecturer"]),
+  checkRole(["admin", "review", "lecturer"]), // Giữ nguyên nếu cần, hoặc điều chỉnh nếu không cần lecturer
   topicController.getTopicsForApprovalBySubmission.bind(topicController)
 );
 
-
-
+// Mentor duyệt đăng ký đề tài
 router.put(
-  '/topic-registrations/:registrationId/approve', // Cập nhật để chấp nhận registrationId như params
+  '/topic-registrations/:registrationId/approve',
   authenticateToken,
-  checkRole(["mentor"]), // Chỉ cho phép mentor
+  checkRole(["mentor"]),
   topicController.approveTopicRegistrationByMentor.bind(topicController)
 );
-// Hội đồng xét duyệt cập nhật trạng thái đề tài
-router.put(
+
+
+//
+router.post(
   '/:topicId/status',
   authenticateToken,
-  checkRole(["admin", "academic_officer", "review", "lecturer", "mentor"]),
-  topicController.updateTopicStatus.bind(topicController)
+  checkRole(["academic_officer", "admin", "graduation_thesis_manager"]),
+  topicController.approveTopicByAcademic.bind(topicController)
 );
 
 // Xóa đề tài

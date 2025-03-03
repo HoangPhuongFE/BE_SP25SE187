@@ -254,6 +254,7 @@ CREATE TABLE `topics` (
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
     `reviewReason` TEXT NULL,
+    `proposed_group_id` VARCHAR(191) NULL,
 
     UNIQUE INDEX `topics_topic_code_key`(`topic_code`),
     PRIMARY KEY (`id`)
@@ -659,6 +660,9 @@ ALTER TABLE `topics` ADD CONSTRAINT `topics_created_by_fkey` FOREIGN KEY (`creat
 
 -- AddForeignKey
 ALTER TABLE `topics` ADD CONSTRAINT `topics_sub_supervisor_fkey` FOREIGN KEY (`sub_supervisor`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `topics` ADD CONSTRAINT `topics_proposed_group_id_fkey` FOREIGN KEY (`proposed_group_id`) REFERENCES `groups`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `topics` ADD CONSTRAINT `topics_submission_period_id_fkey` FOREIGN KEY (`submission_period_id`) REFERENCES `submission_periods`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
