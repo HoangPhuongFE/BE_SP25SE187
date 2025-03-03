@@ -1,4 +1,7 @@
 import { Request, Response } from "express";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 import { TopicService } from "../service/topic.service";
 import { TOPIC_MESSAGE, GROUP_MESSAGE } from "../constants/message";
 import HTTP_STATUS from "../constants/httpStatus";
@@ -127,7 +130,7 @@ export class TopicController {
 
 async approveTopicRegistrationByMentor(req: Request, res: Response) {
   try {
-    const { registrationId } = req.params; // Lấy registrationId từ URL params
+    const { registrationId } = req.params;
     const { status, reason } = req.body;
     if (!registrationId) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -141,11 +144,45 @@ async approveTopicRegistrationByMentor(req: Request, res: Response) {
         message: "Thiếu trạng thái để duyệt!",
       });
     }
+
+    // Lấy roleId từ req.user.roles
+    const userRoleIds = req.user!.roles || [];
+    if (!userRoleIds.length) {
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: "Không có vai trò nào được gán cho người dùng!",
+      });
+    }
+
+    // Tra cứu tên vai trò từ bảng UserRole và Role
+    const userRoleRecord = await prisma.userRole.findFirst({
+      where: {
+        userId: req.user!.userId,
+        roleId: { in: userRoleIds },
+        isActive: true,
+      },
+      include: {
+        role: {
+          select: { name: true },
+        },
+      },
+    });
+
+    const userRole = userRoleRecord?.role.name;
+  //  console.log("User role từ UserRole:", userRole);
+
+    if (!userRole) {
+      return res.status(HTTP_STATUS.FORBIDDEN).json({
+        success: false,
+        message: "Không tìm thấy vai trò hợp lệ cho người dùng!",
+      });
+    }
+
     const result = await topicService.approveTopicRegistrationByMentor(
       registrationId,
       { status, reason },
       req.user!.userId,
-      req.user!.role
+      userRole
     );
     return res.status(result.status).json(result);
   } catch (error) {

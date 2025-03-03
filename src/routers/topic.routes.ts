@@ -59,9 +59,7 @@ router.get(
   topicController.getTopicsForApprovalBySubmission.bind(topicController)
 );
 
-// Thêm vào file topic.route.ts
 
-// Thêm vào file topic.route.ts
 
 router.put(
   '/topic-registrations/:registrationId/approve', // Cập nhật để chấp nhận registrationId như params
