@@ -85,14 +85,15 @@ export class UserController {
       res.status(500).json({ message: (error as Error).message });
     }
   }
-
   async updateProfile(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {
-        return res.status(401).json({ message: USER_MESSAGE.UNAUTHORIZED });
+        return res.status(401).json({ message: USER_MESSAGE.UNAUTHORIZED }); // Người dùng chưa đăng nhập
       }
   
+      // Lấy dữ liệu từ body request
       const updatedUser = await userService.updateProfile(req.user.userId, {
+        username: req.body.username,
         fullName: req.body.fullName,
         avatar: req.body.avatar,
         gender: req.body.gender,
@@ -100,15 +101,19 @@ export class UserController {
         personal_Email: req.body.personal_Email,
         profession: req.body.profession,
         specialty: req.body.specialty,
-        programming_language: req.body.programming_language
+        programming_language: req.body.programming_language,
+        lecturerCode: req.body.lecturerCode,
+        student_code: req.body.student_code,
+        semester_user: req.body.semester_user,
+        isActive: req.body.isActive,
       });
   
-      res.json({ 
-        message: USER_MESSAGE.UPDATE_PROFILE_SUCCESS,
+      return res.json({ 
+        message: USER_MESSAGE.UPDATE_PROFILE_SUCCESS, // Cập nhật thành công
         user: updatedUser 
       });
     } catch (error) {
-      res.status(500).json({ message: (error as Error).message });
+      res.status(500).json({ message: `Cập nhật hồ sơ thất bại: ${(error as Error).message}` });
     }
   }
   

@@ -216,45 +216,92 @@ async getUserProfile(userId: string) {
     });
   }
 
-  async updateProfile(userId: string, data: { 
-    fullName?: string; 
-    avatar?: string;
-    gender?: string;
-    phone?: string;
-    personal_Email?: string;
-    profession?: string;
-    specialty?: string;
-    programming_language?: string;
-  }): Promise<any> {
-    return prisma.user.update({
-      where: { id: userId },
-      data: {
-        fullName: data.fullName,
-        avatar: data.avatar,
-        gender: data.gender,
-        phone: data.phone,
-        personal_Email: data.personal_Email,
-        profession: data.profession,
-        specialty: data.specialty,
-        programming_language: data.programming_language,
-        updatedAt: new Date(),
-      },
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        fullName: true,
-        avatar: true,
-        gender: true,
-        phone: true,
-        personal_Email: true,
-        profession: true,
-        specialty: true,
-        programming_language: true,
-        updatedAt: true,
-      },
-    });
+  async updateProfile(userId: string, data: Partial<{
+    username: string;
+    fullName: string;
+    avatar: string;
+    gender: string;
+    phone: string;
+    personal_Email: string;
+    profession: string;
+    specialty: string;
+    programming_language: string;
+    lecturerCode: string;
+    student_code: string;
+    semester_user: string;
+    isActive: boolean;
+  }>): Promise<any> {
+    try {
+      // Kiểm tra xem người dùng có tồn tại không
+      const existingUser = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+  
+      if (!existingUser) {
+        throw new Error(USER_MESSAGE.USER_NOT_FOUND);
+      }
+  
+      // Cập nhật thông tin người dùng
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: {
+          username: data.username,
+          fullName: data.fullName,
+          avatar: data.avatar,
+          gender: data.gender,
+          phone: data.phone,
+          personal_Email: data.personal_Email,
+          profession: data.profession,
+          specialty: data.specialty,
+          programming_language: data.programming_language,
+          lecturerCode: data.lecturerCode,
+          student_code: data.student_code,
+          semester_user: data.semester_user,
+          isActive: data.isActive,
+          updatedAt: new Date(),
+        },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          fullName: true,
+          avatar: true,
+          gender: true,
+          phone: true,
+          personal_Email: true,
+          profession: true,
+          specialty: true,
+          programming_language: true,
+          lecturerCode: true,
+          student_code: true,
+          semester_user: true,
+          isActive: true,
+          updatedAt: true,
+          roles: {
+            select: {
+              role: true, // Lấy thông tin vai trò của người dùng
+            },
+          },
+          groupMemberships: {
+            select: {
+              groupId: true,
+              role: true,
+            },
+          },
+          mentorGroups: {
+            select: {
+              groupId: true,
+            },
+          },
+        },
+      });
+  
+      return updatedUser;
+    } catch (error) {
+      throw new Error(`Lỗi khi cập nhật hồ sơ: ${(error as Error).message}`);
+    }
   }
+  
   
 
   async getUsers() {
