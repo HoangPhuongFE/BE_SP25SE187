@@ -620,7 +620,12 @@ async getTopicsForApprovalBySubmission(query: { submissionPeriodId?: string; rou
 
 
   //  Hội đồng xét duyệt cập nhật trạng thái đề tài
-  async updateTopicStatus(topicId: string, data: { status: string; reason?: string }, userId: string) {
+  async updateTopicStatus(
+    topicId: string, 
+    data: { status: string; reason?: string }, 
+    userId: string, 
+    userRole: string
+  ) {
     try {
       // Kiểm tra trạng thái hợp lệ
       if (!["APPROVED", "NOT APPROVED", "IMPROVE"].includes(data.status)) {
@@ -637,28 +642,46 @@ async getTopicsForApprovalBySubmission(query: { submissionPeriodId?: string; rou
         return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Không tìm thấy đề tài!" };
       }
   
-      // Kiểm tra hội đồng cho từng trường hợp
+      // Nếu user có vai trò admin hoặc academic_officer, cho phép cập nhật luôn
+      if (userRole === "admin" || userRole === "academic_officer") {
+        await prisma.topic.update({
+          where: { id: topicId },
+          data: { status: data.status, reviewReason: data.reason },
+        });
+        return { success: true, status: HTTP_STATUS.OK, message: "Cập nhật trạng thái đề tài thành công!" };
+      }
+  
+      // Đối với các vai trò khác, xác định hội đồng áp dụng
       let councilId: string;
       if (topic.submissionPeriodId) {
-        // Nếu có `submissionPeriodId`, đây là hội đồng duyệt đề tài (pre-semester review)
         councilId = topic.submissionPeriodId;
       } else {
-        // Nếu không có `submissionPeriodId`, đây là hội đồng trong học kỳ (review hoặc defense)
         councilId = topic.semesterId;
       }
   
-      // Kiểm tra vai trò của người dùng trong hội đồng
-      const councilMembers = await prisma.councilMember.findMany({
+      // Tìm hội đồng topic dựa trên submissionPeriodId và type "topic"
+      const council = await prisma.council.findFirst({
         where: {
-          councilId,
+          submissionPeriodId: topic.submissionPeriodId,
+          type: "topic"
         },
-        select: {
-          userId: true,
-          role: true,
-        },
+        select: { id: true }
       });
   
-      // Kiểm tra xem người dùng có vai trò reviewer không
+      if (!council) {
+        return { 
+          success: false, 
+          status: HTTP_STATUS.NOT_FOUND, 
+          message: "Không tìm thấy hội đồng duyệt đề tài tương ứng!" 
+        };
+      }
+  
+      // Dùng council.id để truy vấn bảng council_members
+      const councilMembers = await prisma.councilMember.findMany({
+        where: { councilId: council.id },
+        select: { userId: true, role: true },
+      });
+  
       const isReviewer = councilMembers.some(
         (member) => member.userId === userId && member.role === 'reviewer'
       );
@@ -679,6 +702,7 @@ async getTopicsForApprovalBySubmission(query: { submissionPeriodId?: string; rou
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống khi cập nhật trạng thái đề tài." };
     }
   }
+  
   
   
   
@@ -720,7 +744,6 @@ async getTopicsForApprovalBySubmission(query: { submissionPeriodId?: string; rou
       }
     }
   }
-
 
 
 //"APPROVED", "NOT APPROVED", "IMPROVE"

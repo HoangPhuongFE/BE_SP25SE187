@@ -25,8 +25,7 @@ export class CouncilController {
                 round,
                 semesterId,
                 status,
-                topicAssId: null,
-                submissionPeriodId  
+                topicAssId: null,  
             });
     
             return res.status(result.status).json(result);

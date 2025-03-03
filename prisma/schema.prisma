@@ -257,8 +257,11 @@ model Council {
   reviewAssignments     ReviewAssignment[]
   defenseSchedules      DefenseSchedule[]
   documents             Document[]             @relation("CouncilDocuments")
+  councilStartDate      DateTime?              @map("council_start_date")
+  councilEndDate        DateTime?              @map("council_end_date")
   submissionPeriodId    String?                @map("submission_period_id")
   submissionPeriod      SubmissionPeriod?      @relation(name: "SubmissionPeriodCouncils", fields: [submissionPeriodId], references: [id])
+
   @@map("councils")
 }
 
@@ -280,23 +283,23 @@ model ReviewDefenseCouncil {
 }
 
 model Topic {
-  id                 String   @id @default(uuid())
-  semesterId         String   @map("semester_id")
-  submissionPeriodId String?  @map("submission_period_id")
-  topicCode          String   @unique @map("topic_code")
-  nameVi             String   @map("name_vi")
-  nameEn             String   @map("name_en")
-  name               String   @map("name_project")
-  description        String   @db.Text
-  isBusiness         Boolean  @default(false) @map("is_business")
-  businessPartner    String?  @map("business_partner")
-  source             String?
-  status             String
-  createdBy          String   @map("created_by")
-  subSupervisor      String?  @map("sub_supervisor")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-  reviewReason       String?  @db.Text
+  id                  String               @id @default(uuid())
+  semesterId          String               @map("semester_id")
+  submissionPeriodId  String?              @map("submission_period_id")
+  topicCode           String               @unique @map("topic_code")
+  nameVi              String               @map("name_vi")
+  nameEn              String               @map("name_en")
+  name                String               @map("name_project")
+  description         String               @db.Text
+  isBusiness          Boolean              @default(false) @map("is_business")
+  businessPartner     String?              @map("business_partner")
+  source              String?
+  status              String
+  createdBy           String               @map("created_by")
+  subSupervisor       String?              @map("sub_supervisor")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  reviewReason        String?              @db.Text
   semester            Semester             @relation(fields: [semesterId], references: [id])
   creator             User                 @relation("TopicCreator", fields: [createdBy], references: [id])
   subMentor           User?                @relation("TopicSubSupervisor", fields: [subSupervisor], references: [id])
@@ -661,19 +664,20 @@ model EmailTemplate {
 }
 
 model SubmissionPeriod {
-  id          String   @id @default(uuid())
-  semesterId  String   @map("semester_id") // Học kỳ áp dụng
-  roundNumber Int      @map("round_number") // Số thứ tự của đợt nộp (1,2,3,...)
-  startDate   DateTime @map("start_date") // Ngày bắt đầu đợt nộp
-  endDate     DateTime @map("end_date") // Ngày kết thúc đợt nộp
-  createdBy   String   @map("created_by") // Người thiết lập đợt nộp
-  createdAt   DateTime @default(now()) @map("created_at") // Thời gian tạo
-  updatedAt   DateTime @updatedAt @map("updated_at") // Thời gian cập nhật
-  description String   @map("description")
-  status      String   @default("PENDING") @map("status")
-  semester Semester @relation(fields: [semesterId], references: [id]) // Liên kết với học kỳ
-  creator  User     @relation(fields: [createdBy], references: [id]) // Người tạo đợt nộp
-  topics   Topic[] // Các đề tài thuộc đợt nộp này
+  id          String    @id @default(uuid())
+  semesterId  String    @map("semester_id") // Học kỳ áp dụng
+  roundNumber Int       @map("round_number") // Số thứ tự của đợt nộp (1,2,3,...)
+  startDate   DateTime  @map("start_date") // Ngày bắt đầu đợt nộp
+  endDate     DateTime  @map("end_date") // Ngày kết thúc đợt nộp
+  createdBy   String    @map("created_by") // Người thiết lập đợt nộp
+  createdAt   DateTime  @default(now()) @map("created_at") // Thời gian tạo
+  updatedAt   DateTime  @updatedAt @map("updated_at") // Thời gian cập nhật
+  description String    @map("description")
+  status      String    @default("PENDING") @map("status")
+  semester    Semester  @relation(fields: [semesterId], references: [id]) // Liên kết với học kỳ
+  creator     User      @relation(fields: [createdBy], references: [id]) // Người tạo đợt nộp
+  topics      Topic[] // Các đề tài thuộc đợt nộp này
   councils    Council[] @relation("SubmissionPeriodCouncils")
+
   @@map("submission_periods")
 }

@@ -23,6 +23,8 @@ import councilRouter from './routers/council.router'
 import importCouncilRoutes from "./routers/import-council.routes";
 import topicRoutes from "./routers/topic.routes";
 import submissionPeriodRoutes from './routers/submissionPeriod.routes';
+import councilTopicRoutes from './routers/council.topic.routes';
+
 //
 config();
 const app = express();
@@ -59,6 +61,7 @@ app.use('/api/councils', councilRouter);
 app.use("/api/import-councils", importCouncilRoutes);
 app.use("/api/topics", topicRoutes);
 app.use("/api/submission-periods", submissionPeriodRoutes);
+app.use('/api/council-topic', councilTopicRoutes);
 
 
 

@@ -235,7 +235,7 @@ async getTopicsForApprovalBySubmission(req: Request, res: Response) {
   //  Hội đồng xét duyệt cập nhật trạng thái đề tài
   async updateTopicStatus(req: Request, res: Response) {
     try {
-      const result = await topicService.updateTopicStatus(req.params.topicId, req.body, req.user.userId);  // Lấy userId từ token
+      const result = await topicService.updateTopicStatus(req.params.topicId, req.body, req.user.userId,req.user.role);  // Lấy userId từ token
       return res.status(result.status).json(result);
     } catch (error) {
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: "Lỗi hệ thống!" });

@@ -152,6 +152,8 @@ export const COUNCIL_MESSAGE = {
   USER_ADDED_BY_EMAIL: "Thành viên đã được thêm vào hội đồng bằng Email",
   USER_ADDED_BY_ID: "Thành viên đã được thêm vào hội đồng bằng ID",
   COUNCIL_STATUS_UPDATED: "Trạng thái hội đồng đã được cập nhật",
+  COUNCIL_UPDATE_FAILED: "Không thể cập nhật trạng thái hội đồng",
+  COUNCIL_FETCHED: "Lấy thông tin hội đồng thành công",
 } as const;
 
 export default COUNCIL_MESSAGE;
