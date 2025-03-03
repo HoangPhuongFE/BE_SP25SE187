@@ -130,51 +130,6 @@ export class TopicController {
     }
   }
 
-  // Lấy danh sách đề tài khả dụng cho sinh viên đăng ký
-  async getAvailableTopics(req: Request, res: Response) {
-    try {
-      const { semesterId, status } = req.query;
-      const filter = { semesterId: semesterId as string, status: status as string };
-      const result = await topicService.getAvailableTopics(filter);
-      return res.status(result.status).json(result);
-    } catch (error) {
-      console.error("Lỗi khi lấy danh sách đề tài khả dụng:", error);
-      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Lỗi hệ thống khi lấy danh sách đề tài khả dụng!",
-      });
-    }
-  }
-
-  // Nhóm trưởng đăng ký đề tài
-  async registerTopic(req: Request, res: Response) {
-    try {
-      const leaderId = req.user?.userId;
-      if (!leaderId) {
-        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
-          success: false,
-          message: "Không tìm thấy thông tin người dùng!",
-        });
-      }
-
-      const { topicId, topicCode } = req.body;
-      if (!topicId && !topicCode) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          success: false,
-          message: "Thiếu topicId hoặc topicCode để đăng ký!",
-        });
-      }
-
-      const result = await topicService.registerTopic({ topicId, topicCode }, leaderId);
-      return res.status(result.status).json(result);
-    } catch (error) {
-      console.error("Lỗi khi đăng ký đề tài:", error);
-      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Lỗi hệ thống khi đăng ký đề tài!",
-      });
-    }
-  }
 
   // Mentor duyệt đăng ký đề tài
   async approveTopicRegistrationByMentor(req: Request, res: Response) {
@@ -303,7 +258,56 @@ export class TopicController {
       });
     }
   }
+   // Nhóm trưởng đăng ký đề tài
+   async registerTopic(req: Request, res: Response) {
+    try {
+      const leaderId = req.user?.userId;
+      if (!leaderId) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: "Không tìm thấy thông tin người dùng!",
+        });
+      }
 
+      const { topicId, topicCode } = req.body;
+      if (!topicId && !topicCode) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: "Thiếu topicId hoặc topicCode để đăng ký!",
+        });
+      }
+
+      const result = await topicService.registerTopic({ topicId, topicCode }, leaderId);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error("Lỗi khi đăng ký đề tài:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Lỗi hệ thống khi đăng ký đề tài!",
+      });
+    }
+  }
+
+  // Lấy danh sách đề tài khả dụng cho sinh viên đăng ký
+  async getAvailableTopics(req: Request, res: Response) {
+    try {
+      console.log("Nhận request getAvailableTopics - query:", req.query);
+      const { semesterId, status } = req.query;
+      const filter = { semesterId: semesterId as string, status: status as string };
+      console.log("Filter gửi đến TopicService:", filter);
+      const result = await topicService.getAvailableTopics(filter);
+      console.log("Kết quả từ TopicService:", result);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách đề tài khả dụng:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Lỗi hệ thống khi lấy danh sách đề tài khả dụng!",
+      });
+    }
+  }
+
+ 
   // Lấy danh sách đề tài cần duyệt của hội đồng
   async getTopicsForApprovalBySubmission(req: Request, res: Response) {
     try {
@@ -330,4 +334,26 @@ export class TopicController {
       });
     }
   }
+
+  async getRegisteredTopicsByMentor(req: Request, res: Response) {
+    try {
+      const mentorId = req.user?.userId; // Lấy ID của mentor từ token
+      if (!mentorId) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: "Không tìm thấy thông tin người dùng!",
+        });
+      }
+  
+      const result = await topicService.getRegisteredTopicsByMentor(mentorId);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error("❌ Lỗi khi lấy danh sách đề tài đã đăng ký:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Lỗi hệ thống khi lấy danh sách đề tài đã đăng ký!",
+      });
+    }
+  }
+  
 }
