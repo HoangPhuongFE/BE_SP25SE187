@@ -54,17 +54,23 @@ export class UserController {
       });
     }
   }
+
   async getProfile(req: AuthenticatedRequest, res: Response) {
     try {
       if (!req.user) {
         return res.status(401).json({ message: USER_MESSAGE.UNAUTHORIZED });
       }
-      res.json({ user: req.user });
+  
+      // Truy vấn thông tin người dùng đầy đủ từ UserService
+      const userProfile = await userService.getUserProfile(req.user.userId);
+  
+      res.json({ user: userProfile });
     } catch (error) {
       const errorMessage = (error as Error).message;
       res.status(500).json({ message: errorMessage });
     }
   }
+  
 
   async logout(req: AuthenticatedRequest, res: Response) {
     try {

@@ -91,7 +91,52 @@ export class UserService {
 }
 
 
+async getUserProfile(userId: string) {
+  try {
+    // Truy vấn dữ liệu người dùng từ cơ sở dữ liệu (Lấy thông tin người dùng với tất cả các mối quan hệ)
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        fullName: true,
+        lecturerCode: true,
+        avatar: true,
+        student_code: true,
+        profession: true,
+        specialty: true,
+        programming_language: true,
+        gender: true,
+        phone: true,
+        personal_Email: true,
+        semester_user: true,
+        isActive: true,
+        lastLogin: true,
+        createdAt: true,
+        updatedAt: true,
+        roles: {
+          select: {
+            role: true,  // Lấy thông tin các vai trò của người dùng
+          },
+        },
+        // Các quan hệ khác (ví dụ, topics, students, group memberships, v.v.)
+        createdTopics: true,
+        createdGroups: true,
+        CouncilMember: true, // Thêm các quan hệ khác nếu cần
+      },
+    });
 
+    // Nếu người dùng không tồn tại
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    return user;
+  } catch (error) {
+    throw new Error(`Error fetching user profile: ${(error as Error).message}`);
+  }
+}
 
 
 
