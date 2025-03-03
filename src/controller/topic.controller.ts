@@ -115,18 +115,40 @@ export class TopicController {
   }
 
   // Nhóm trưởng đăng ký đề tài
-  async registerTopic(req: Request, res: Response) {
-    try {
-      const leaderId = req.user?.userId;
-      const result = await topicService.registerTopic(req.body, leaderId);
-      return res.status(result.status).json(result);
-    } catch (error) {
-      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: "Lỗi hệ thống!" });
+
+async registerTopic(req: Request, res: Response) {
+  try {
+    // Lấy userId từ token (đã xác thực qua middleware authenticateToken)
+    const leaderId = req.user?.userId;
+    if (!leaderId) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+        success: false,
+        message: "Không tìm thấy thông tin người dùng!",
+      });
     }
+
+    // Lấy topicId hoặc topicCode từ body
+    const { topicId, topicCode } = req.body;
+    if (!topicId && !topicCode) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: "Thiếu topicId hoặc topicCode để đăng ký!",
+      });
+    }
+
+    // Gọi service để xử lý
+    const result = await topicService.registerTopic({ topicId, topicCode }, leaderId);
+    return res.status(result.status).json(result);
+  } catch (error) {
+    console.error("Lỗi khi đăng ký đề tài:", error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Lỗi hệ thống khi đăng ký đề tài!",
+    });
   }
+}
 
 
-// Thêm vào file topic.controller.ts
 
 async approveTopicRegistrationByMentor(req: Request, res: Response) {
   try {
