@@ -1,86 +1,88 @@
-import { Router } from "express";
-import { TopicController } from "../controller/topic.controller";
-import { authenticateToken, checkRole } from "../middleware/user.middleware";
+import { Router } from 'express';
+import { TopicController } from '../controller/topic.controller';
+import { authenticateToken, checkRole } from '../middleware/user.middleware';
 
 const router = Router();
 const topicController = new TopicController();
 
-// 1. API: Tạo đề tài (Chỉ Academic có quyền)
+// Tạo đề tài
 router.post(
-  "/",
+  '/',
   authenticateToken,
   checkRole(["academic_officer", "admin", "mentor", "graduation_thesis_manager"]),
   topicController.createTopic.bind(topicController)
 );
 
-// 2. Lấy danh sách đề tài theo học kỳ
+// Cập nhật đề tài
+router.put(
+  '/:topicId',
+  authenticateToken,
+  checkRole(["mentor", "academic_officer", "admin", "graduation_thesis_manager"]),
+  topicController.updateTopic.bind(topicController)
+);
+
+// Lấy danh sách đề tài theo học kỳ
 router.get(
-  "/semester/:semesterId",
+  '/semester/:semesterId',
   authenticateToken,
   topicController.getTopicsBySemester.bind(topicController)
 );
 
-// 3. Lấy danh sách đề tài có thể đăng ký
+// Lấy chi tiết đề tài theo topicId
 router.get(
-  "/available-topics",
+  '/:topicId',
+  authenticateToken,
+  topicController.getTopicById.bind(topicController)
+);
+
+// Lấy danh sách đề tài khả dụng cho đăng ký (cho sinh viên)
+router.get(
+  '/available-topics',
   authenticateToken,
   topicController.getAvailableTopics.bind(topicController)
 );
 
-// 4. Nhóm trưởng đăng ký đề tài
+// Nhóm trưởng đăng ký đề tài
 router.post(
-  "/topic-registrations",
+  '/topic-registrations',
   authenticateToken,
   checkRole(["leader", "student"]),
   topicController.registerTopic.bind(topicController)
 );
 
-// 5. Mentor duyệt nhóm đăng ký đề tài
-router.put(
-  "/topic-registrations/approve",
-  authenticateToken,
-  checkRole(["mentor"]),
-  topicController.approveTopicRegistration.bind(topicController)
-);
 
-// 6. Route duyệt đề tài (approval) dành cho hội đồng
+// Lấy danh sách đề tài cần duyệt của hội đồng (theo submissionPeriodId, round, semesterId)
 router.get(
-  "/approval",
+  '/approval',
   authenticateToken,
-  checkRole(["admin", "review", "lecturer", "graduation_thesis_manager", "academic_officer"]),
+  checkRole(["admin", "review", "lecturer"]),
   topicController.getTopicsForApprovalBySubmission.bind(topicController)
 );
-// --------------------- Các route động ---------------------
 
-// 7. Cập nhật đề tài theo topicId
+// Thêm vào file topic.route.ts
+
+// Thêm vào file topic.route.ts
+
 router.put(
-  "/:topicId",
+  '/topic-registrations/:registrationId/approve', // Cập nhật để chấp nhận registrationId như params
   authenticateToken,
-  checkRole(["mentor", "academic_officer", "admin", "graduation_thesis_manager", "lecturer"]),
-  topicController.updateTopic.bind(topicController)
+  checkRole(["mentor"]), // Chỉ cho phép mentor
+  topicController.approveTopicRegistrationByMentor.bind(topicController)
+);
+// Hội đồng xét duyệt cập nhật trạng thái đề tài
+router.put(
+  '/:topicId/status',
+  authenticateToken,
+  checkRole(["admin", "academic_officer", "review", "lecturer", "mentor"]),
+  topicController.updateTopicStatus.bind(topicController)
 );
 
-// 8. Lấy chi tiết đề tài theo topicId
-router.get(
-  "/:topicId",
-  authenticateToken,
-  topicController.getTopicById.bind(topicController)
-);
-
-// 9. Xóa đề tài theo topicId
+// Xóa đề tài
 router.delete(
-  "/:topicId",
+  '/:topicId',
   authenticateToken,
   checkRole(["admin", "graduation_thesis_manager"]),
   topicController.deleteTopic.bind(topicController)
-);
-
-// 10. Hội đồng xét duyệt cập nhật trạng thái đề tài
-router.put(
-  "/:topicId/status",
-  authenticateToken,
-  checkRole(["admin", "academic_officer", "reivewer", "lecturer","mentor"]),
-  topicController.updateTopicStatus.bind(topicController)
 );
 
 export default router;
