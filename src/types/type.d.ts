@@ -26,7 +26,7 @@ interface RegisterDTO {
 interface TokenPayload {
   userId: string;
   email: string;
-  roles: string[];
+  roles: { roleId: string; semesterId: string; isActive: boolean }[]; 
 }
 
 interface GoogleLoginDTO {

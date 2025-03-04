@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { hashPassword } from '../utils/hash';
 
 const prisma = new PrismaClient();
+const SYSTEM_DEFAULT_SEMESTER_ID = 'system-default-id'; // Thay bằng ID thực tế từ seed
 
 interface CreateUserDTO {
   email: string;
@@ -9,23 +10,25 @@ interface CreateUserDTO {
   username: string;
   fullName?: string;
   roles: string[];
+  semesterId?: string; // Thêm semesterId tùy chọn
 }
 
 interface UpdateRolesDTO {
   userId: string;
   roles: string[];
+  semesterId?: string; // Thêm semesterId tùy chọn
 }
 
 export class AdminService {
-  //  Tạo user mới
   async createUser(data: CreateUserDTO) {
     const hashedPassword = await hashPassword(data.password);
 
-    // Lấy role IDs từ tên role
     const roleIds = await prisma.role.findMany({
       where: { name: { in: data.roles } },
       select: { id: true },
     });
+
+    const semesterId = data.semesterId || SYSTEM_DEFAULT_SEMESTER_ID; // Dùng SYSTEM_DEFAULT nếu không cung cấp
 
     return prisma.user.create({
       data: {
@@ -36,6 +39,7 @@ export class AdminService {
         roles: {
           create: roleIds.map((role) => ({
             roleId: role.id,
+            semesterId, // Thêm semesterId
             isActive: true,
           })),
         },
@@ -44,7 +48,6 @@ export class AdminService {
     });
   }
 
-  //  Cập nhật roles của user
   async updateUserRoles(data: UpdateRolesDTO) {
     console.log(`DEBUG: Checking user ID: ${data.userId}`);
 
@@ -62,14 +65,15 @@ export class AdminService {
 
     if (roleIds.length === 0) throw new Error('Không tìm thấy roles hợp lệ');
 
-    // Xóa tất cả roles cũ của user
+    const semesterId = data.semesterId || SYSTEM_DEFAULT_SEMESTER_ID;
+
     await prisma.userRole.deleteMany({ where: { userId: data.userId } });
 
-    // Thêm roles mới
     await prisma.userRole.createMany({
       data: roleIds.map((role) => ({
         roleId: role.id,
         userId: data.userId,
+        semesterId, // Thêm semesterId
         isActive: true,
       })),
     });
@@ -78,10 +82,8 @@ export class AdminService {
       where: { id: data.userId },
       include: { roles: { include: { role: true } } },
     });
-}
+  }
 
-
-  //  Cập nhật thông tin user
   async updateUser(userId: string, data: { email?: string; username?: string; fullName?: string }) {
     const existingUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!existingUser) throw new Error("User không tồn tại");
@@ -97,16 +99,14 @@ export class AdminService {
     });
   }
 
-  //  Xóa user
   async deleteUser(userId: string) {
     const existingUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!existingUser) throw new Error("User không tồn tại");
 
-    await prisma.userRole.deleteMany({ where: { userId } }); // Xóa roles trước
-    return prisma.user.delete({ where: { id: userId } }); // Xóa user
+    await prisma.userRole.deleteMany({ where: { userId } });
+    return prisma.user.delete({ where: { id: userId } });
   }
 
-  //  Lấy danh sách user
   async getUsers() {
     return prisma.user.findMany({
       select: {
@@ -119,7 +119,6 @@ export class AdminService {
     });
   }
 
-  //  Lấy user theo ID
   async getUserById(userId: string) {
     return prisma.user.findUnique({
       where: { id: userId },

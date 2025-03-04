@@ -55,6 +55,7 @@ model Role {
   id          String     @id @default(uuid())
   name        String     @unique
   description String?
+  isSystemWide Boolean   @default(false) // Đánh dấu vai trò toàn hệ thống
   permissions Json?
   isActive    Boolean    @default(true)
   createdAt   DateTime   @default(now())
@@ -64,12 +65,14 @@ model Role {
 model UserRole {
   userId     String
   roleId     String
+  semesterId String   @map("semester_id")
   assignedAt DateTime @default(now())
   isActive   Boolean  @default(true)
   user       User     @relation(fields: [userId], references: [id])
   role       Role     @relation(fields: [roleId], references: [id])
+  semester   Semester @relation(fields: [semesterId], references: [id], name: "UserRoleToSemester")
 
-  @@id([userId, roleId])
+  @@id([userId, roleId, semesterId])
 }
 
 model RefreshToken {
@@ -118,6 +121,7 @@ model Semester {
   yearId                String
   year                  Year                   @relation("YearSemesters", fields: [yearId], references: [id], onDelete: Cascade)
   SubmissionPeriod      SubmissionPeriod[]
+  userRoles             UserRole[]             @relation(name: "UserRoleToSemester") // Thêm quan hệ ngược lại
 
   @@map("semesters")
 }
@@ -369,6 +373,7 @@ model Group {
   topicAssignments TopicAssignment[]
   documents        Document[]        @relation("GroupDocuments")
   proposedTopics   Topic[]           @relation("ProposedGroup")
+
   @@map("groups")
 }
 

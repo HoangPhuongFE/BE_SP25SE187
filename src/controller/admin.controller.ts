@@ -3,10 +3,18 @@ import { AdminService } from '../service/admin.service';
 import { AuthenticatedRequest } from '../middleware/user.middleware';
 import { ADMIN_MESSAGE } from '../constants/message';
 
+// Interface cho dữ liệu user trả về
+interface UserResponse {
+  id: string;
+  email: string;
+  username: string;
+  fullName: string | null;
+  roles: string[]; // Chỉ lấy tên role
+}
+
 const adminService = new AdminService();
 
 export class AdminController {
-  //  Tạo user mới
   async createUser(req: AuthenticatedRequest, res: Response) {
     try {
       const user = await adminService.createUser(req.body);
@@ -17,15 +25,14 @@ export class AdminController {
           email: user.email,
           username: user.username,
           fullName: user.fullName || null,
-          roles: user.roles.map((ur) => ur.role.name),
-        },
+          roles: user.roles.map((ur) => ur.role.name), // ur đã được định nghĩa trong Prisma schema
+        } as UserResponse,
       });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
   }
 
-  //  Cập nhật roles của user
   async updateUserRoles(req: AuthenticatedRequest, res: Response) {
     try {
       const { userId, roles } = req.body;
@@ -42,14 +49,13 @@ export class AdminController {
           username: updatedUser.username,
           fullName: updatedUser.fullName || null,
           roles: updatedUser.roles.map((ur) => ur.role.name),
-        },
+        } as UserResponse,
       });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
   }
 
-  // Cập nhật thông tin user
   async updateUser(req: AuthenticatedRequest, res: Response) {
     try {
       const { userId } = req.params;
@@ -64,14 +70,13 @@ export class AdminController {
           username: updatedUser.username,
           fullName: updatedUser.fullName || null,
           roles: updatedUser.roles.map((ur) => ur.role.name),
-        },
+        } as UserResponse,
       });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
     }
   }
 
-  //  Xóa user
   async deleteUser(req: AuthenticatedRequest, res: Response) {
     try {
       const { userId } = req.params;
@@ -82,7 +87,6 @@ export class AdminController {
     }
   }
 
-  //  Lấy danh sách user
   async getUsers(req: AuthenticatedRequest, res: Response) {
     try {
       const users = await adminService.getUsers();
@@ -92,7 +96,6 @@ export class AdminController {
     }
   }
 
-  //  Lấy user theo ID
   async getUserById(req: AuthenticatedRequest, res: Response) {
     try {
       const { userId } = req.params;
