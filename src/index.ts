@@ -19,11 +19,11 @@ import importLecturer from './routers/imprortLecturer.router';
 import majorRouter from './routers/major.router';
 import systemConfigRoutes from './routers/system.config.routes';
 import councilRouter from './routers/council.router';
-import importCouncilRoutes from './routers/import-council.routes';
 import topicRoutes from './routers/topic.routes';
 import submissionPeriodRoutes from './routers/submissionPeriod.routes';
 import councilTopicRoutes from './routers/council.topic.routes';
 import uploadRoutes from './routers/upload.routes';
+import exportTopicRoutes from './routers/export-topic.routes';
 
 config();
 const app = express();
@@ -58,11 +58,11 @@ app.use('/api/import', importLecturer);
 app.use('/api/majors', majorRouter);
 app.use('/api/config', systemConfigRoutes);
 app.use('/api/councils', councilRouter);
-app.use('/api/import-councils', importCouncilRoutes);
 app.use('/api/topics', topicRoutes);
 app.use('/api/submission-periods', submissionPeriodRoutes);
 app.use('/api/council-topic', councilTopicRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api', exportTopicRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
