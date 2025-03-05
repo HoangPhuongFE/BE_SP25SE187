@@ -6,11 +6,18 @@ const prisma = new PrismaClient();
 
 export async function checkSemester(req: Request, res: Response, next: NextFunction) {
     try {
-        const { groupId } = req.body || req.params;
-        if (!groupId) return res.status(400).json({ message: "Có GroupId nhưng ko thích cho xóa :))))" });
+        const { groupId, groupCode } = req.body || req.params;
 
-        const group = await prisma.group.findUnique({
-            where: { id: groupId },
+        // Nếu cả groupId và groupCode đều không có, trả về lỗi
+        if (!groupId && !groupCode) {
+            return res.status(400).json({ message: "Cần cung cấp groupId hoặc groupCode." });
+        }
+
+        // Tìm nhóm dựa trên groupId hoặc groupCode
+        const group = await prisma.group.findFirst({
+            where: {
+                OR: [{ id: groupId }, { groupCode: groupCode }],
+            },
             include: { semester: true },
         });
 

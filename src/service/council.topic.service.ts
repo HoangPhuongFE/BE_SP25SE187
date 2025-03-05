@@ -82,13 +82,6 @@ export class CouncilTopicService {
     }
   }
 
-
-  
-  
-
-  
-
-
   // Lấy danh sách hội đồng topic
   async getTopicCouncils(filter: { semesterId?: string; submissionPeriodId?: string; round?: number }) {
     try {

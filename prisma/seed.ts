@@ -20,7 +20,6 @@ async function createRoles() {
     { name: 'student', description: 'Sinh viên (Student Groups/Students)' },
     { name: 'admin', description: 'Quản trị viên (Admin)' }
   ];
-  
 
   for (const role of roles) {
     const createdRole = await prisma.role.create({ data: role });
@@ -28,7 +27,7 @@ async function createRoles() {
   }
 }
 
-async function createDefaultUsers() {
+async function createDefaultUsers(defaultSemesterId: string, spring2025Id: string) {
   const defaultUsers = [
     {
       email: 'academicofficer@gmail.com',
@@ -36,6 +35,7 @@ async function createDefaultUsers() {
       password: await hashPassword('a123456'),
       fullName: 'Academic Officer User',
       roleName: 'academic_officer',
+      semesterId: defaultSemesterId, // Dùng SYSTEM_DEFAULT
     },
     {
       email: 'thesismanager@gmail.com',
@@ -43,6 +43,7 @@ async function createDefaultUsers() {
       password: await hashPassword('a123456'),
       fullName: 'Graduation Thesis Manager User',
       roleName: 'graduation_thesis_manager',
+      semesterId: defaultSemesterId, // Dùng SYSTEM_DEFAULT
     },
     {
       email: 'examinationofficer@gmail.com',
@@ -50,6 +51,7 @@ async function createDefaultUsers() {
       password: await hashPassword('a123456'),
       fullName: 'Examination Officer User',
       roleName: 'examination_officer',
+      semesterId: defaultSemesterId, // Dùng SYSTEM_DEFAULT
     },
     {
       email: 'lecturer@gmail.com',
@@ -57,6 +59,7 @@ async function createDefaultUsers() {
       password: await hashPassword('a123456'),
       fullName: 'Lecturer User',
       roleName: 'lecturer',
+      semesterId: spring2025Id, // Dùng SPRING2025
     },
     {
       email: 'admin@gmail.com',
@@ -64,6 +67,7 @@ async function createDefaultUsers() {
       password: await hashPassword('a123456'),
       fullName: 'Admin User',
       roleName: 'admin',
+      semesterId: defaultSemesterId, // Dùng SYSTEM_DEFAULT
     },
   ];
 
@@ -85,6 +89,7 @@ async function createDefaultUsers() {
         roles: {
           create: {
             roleId: role.id,
+            semesterId: user.semesterId, 
             isActive: true,
           },
         },
@@ -110,9 +115,10 @@ async function createYearsAndSemesters() {
   }
 
   const semesters = [
-    { code: 'SPRING2024', startDate: new Date('2025-01-01'), endDate: new Date('2024-04-30'), status: 'COMPLETE', yearId: createdYears[2024] },
-    { code: 'SUMMER2024', startDate: new Date('2025-05-01'), endDate: new Date('2024-08-31'), status: 'COMPLETE', yearId: createdYears[2024] },
-    { code: 'FALL2024', startDate: new Date('2025-09-01'), endDate: new Date('2024-12-31'), status: 'COMPLETE', yearId: createdYears[2024] },
+    { code: 'SYSTEM_DEFAULT', startDate: new Date('2000-01-01'), endDate: new Date('9999-12-31'), status: 'PERMANENT', yearId: createdYears[2024] },
+    { code: 'SPRING2024', startDate: new Date('2024-01-01'), endDate: new Date('2024-04-30'), status: 'COMPLETE', yearId: createdYears[2024] },
+    { code: 'SUMMER2024', startDate: new Date('2024-05-01'), endDate: new Date('2024-08-31'), status: 'COMPLETE', yearId: createdYears[2024] },
+    { code: 'FALL2024', startDate: new Date('2024-09-01'), endDate: new Date('2024-12-31'), status: 'COMPLETE', yearId: createdYears[2024] },
     { code: 'SPRING2025', startDate: new Date('2025-02-28'), endDate: new Date('2025-04-30'), status: 'ACTIVE', yearId: createdYears[2025] },
     { code: 'SUMMER2025', startDate: new Date('2025-05-01'), endDate: new Date('2025-08-31'), status: 'UPCOMING', yearId: createdYears[2025] },
     { code: 'FALL2025', startDate: new Date('2025-09-01'), endDate: new Date('2025-12-31'), status: 'UPCOMING', yearId: createdYears[2025] },
@@ -125,12 +131,13 @@ async function createYearsAndSemesters() {
     await prisma.semester.create({ data: semester });
     console.log(`Created semester: ${semester.code} for year ${semester.yearId}`);
   }
+
+  const defaultSemester = await prisma.semester.findFirst({ where: { code: 'SYSTEM_DEFAULT' } });
+  const spring2025 = await prisma.semester.findFirst({ where: { code: 'SPRING2025' } });
+  return { defaultSemesterId: defaultSemester?.id, spring2025Id: spring2025?.id };
 }
-async function createStudents() {
 
-  const semester = await prisma.semester.findFirst({ where: { code: 'SPRING2025' } });
-  if (!semester) throw new Error('SPRING2025 semester not found'); 
-
+async function createStudents(semesterId: string) {
   const studentsData = [
     // AI students
     { studentCode: 'SE168888', email: 'vanthinh1234vt@gmail.com', profession: 'Artificial Intelligence', specialty: 'CN1', programming_language: 'Back-end', status:'not qualified' },
@@ -181,25 +188,21 @@ async function createStudents() {
 
   ];
 
-
-
-
-
   for (const student of studentsData) {
     const major = await prisma.major.upsert({
       where: { name: student.profession },
       update: {},
       create: { name: student.profession },
     });
-  
+
     const specialization = await prisma.specialization.upsert({
       where: { id: `${student.specialty}_${major.id}` },
       update: {},
       create: { name: student.specialty, majorId: major.id },
     });
-  
+
     const hashedPassword = await hashPassword('a123456');
-  
+
     const user = await prisma.user.upsert({
       where: { email: student.email },
       update: {},
@@ -218,17 +221,17 @@ async function createStudents() {
               if (!role) throw new Error('Role "student" not found');
               return role.id;
             })()),
+            semesterId, // Dùng SPRING2025 cho sinh viên
             isActive: true,
           },
         },
       },
     });
-  
-    // Kiểm tra nếu sinh viên đã tồn tại
+
     let studentEntry = await prisma.student.findUnique({
       where: { userId: user.id },
     });
-  
+
     if (!studentEntry) {
       studentEntry = await prisma.student.create({
         data: {
@@ -240,33 +243,29 @@ async function createStudents() {
         },
       });
     }
-  
+
     const isEligible = student.status === 'qualified';
-  
+
     await prisma.semesterStudent.upsert({
-      where: { semesterId_studentId: { semesterId: semester.id, studentId: studentEntry.id } },
+      where: { semesterId_studentId: { semesterId: semesterId, studentId: studentEntry.id } },
       update: {},
       create: {
-        semesterId: semester.id,
+        semesterId: semesterId,
         studentId: studentEntry.id,
         isEligible,
         qualificationStatus: isEligible ? 'qualified' : 'not qualified',
       },
     });
   }
-  
-
-
-
-
 }
 
 async function main() {
   console.log('Seeding database...');
   await createRoles();
-  await createDefaultUsers();
-  await createYearsAndSemesters();
-  await createStudents();
+  const { defaultSemesterId, spring2025Id } = await createYearsAndSemesters();
+  if (!defaultSemesterId || !spring2025Id) throw new Error('Failed to get semester IDs');
+  await createDefaultUsers(defaultSemesterId, spring2025Id);
+  await createStudents(spring2025Id);
   console.log('Seeding completed successfully.');
 }
 

@@ -23,7 +23,7 @@ export class ImportStudentService {
 
     const errors: string[] = [];
     const dataToImport = [];
-    const seenStudents = new Set(); // Kiểm tra trùng MSSV + Email trong file Excel
+    const seenStudents = new Set();
     const DEFAULT_PASSWORD = '123456';
     const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
@@ -32,15 +32,14 @@ export class ImportStudentService {
       throw new Error('Vai trò "student" không tồn tại. Vui lòng tạo trước.');
     }
 
-    // Đọc dữ liệu từ file Excel
+    // Đọc dữ liệu từ file Excel (giữ nguyên phần này)
     for (let i = 2; i <= worksheet.actualRowCount; i++) {
       const row = worksheet.getRow(i);
-      const studentCode = extractCellValue(row.getCell(1).value); // MSSV
+      const studentCode = extractCellValue(row.getCell(1).value);
       const email = extractCellValue(row.getCell(2).value);
       const profession = extractCellValue(row.getCell(3).value);
       const specialty = extractCellValue(row.getCell(4).value);
 
-      // Kiểm tra nếu dòng trống thì bỏ qua
       if (!studentCode && !email && !profession && !specialty) {
         continue;
       }
@@ -83,7 +82,6 @@ export class ImportStudentService {
           }
         }
 
-        // Kiểm tra ngành học & chuyên ngành
         let major = await prisma.major.findUnique({ where: { name: profession } });
         if (!major) {
           major = await prisma.major.create({ data: { name: profession } });
@@ -98,7 +96,6 @@ export class ImportStudentService {
           });
         }
 
-        // Nếu user chưa tồn tại, tạo mới
         if (!existingUser) {
           existingUser = await prisma.user.create({
             data: {
@@ -110,12 +107,17 @@ export class ImportStudentService {
               specialty,
             },
           });
+          // Sửa phần gán vai trò: Thêm semesterId
           await prisma.userRole.create({
-            data: { userId: existingUser.id, roleId: studentRole.id, isActive: true },
+            data: {
+              userId: existingUser.id,
+              roleId: studentRole.id,
+              semesterId, // Thêm semesterId
+              isActive: true,
+            },
           });
         }
 
-        // Nếu sinh viên chưa có trong bảng `student`, tạo mới
         if (!existingStudent) {
           existingStudent = await prisma.student.create({
             data: {
@@ -127,7 +129,6 @@ export class ImportStudentService {
             },
           });
         } else {
-          // Nếu đã có, cập nhật ngành học hoặc chuyên ngành nếu cần
           await prisma.student.update({
             where: { id: existingStudent.id },
             data: {
@@ -137,7 +138,6 @@ export class ImportStudentService {
           });
         }
 
-        // Kiểm tra nếu sinh viên đã có trong học kỳ này chưa
         const existingSemesterStudent = await prisma.semesterStudent.findUnique({
           where: { semesterId_studentId: { semesterId, studentId: existingStudent.id } },
         });

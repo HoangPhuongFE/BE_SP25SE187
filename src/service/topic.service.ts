@@ -317,7 +317,7 @@ if (data.groupId || data.groupCode) {
 
 
 
-  // Cập nhật getTopicsBySemester
+// Cập nhật getTopicsBySemester
 async getTopicsBySemester(semesterId: string) {
   try {
     const topics = await prisma.topic.findMany({
@@ -766,12 +766,6 @@ async approveTopicByAcademic(
     }
   }
   
-
- 
-
- 
-
-
   // Xóa đề tài
   async deleteTopic(topicId: string, userRole: string) {
     try {

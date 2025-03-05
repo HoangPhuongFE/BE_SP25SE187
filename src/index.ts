@@ -16,7 +16,7 @@ import groupRoutes from './routers/group.routes';
 import meetingRouter from './routers/meeting.router';
 import emailRouter from './routers/email.router';
 import emailTemplateRouter from "./routers/emailTemplate.router";
-import importRole from './routers/importRole.router';
+import importLecturer from './routers/imprortLecturer.router';
 import majorRouter from './routers/major.router';
 import systemConfigRoutes from "./routers/system.config.routes";
 import councilRouter from './routers/council.router'
@@ -54,7 +54,7 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/meetings', meetingRouter);
 app.use('/api', emailRouter);
 app.use("/api/email-templates", emailTemplateRouter);
-app.use("/api/import", importRole);
+app.use("/api/import", importLecturer);
 app.use("/api/majors", majorRouter);
 app.use("/api/config", systemConfigRoutes);
 app.use('/api/councils', councilRouter);
