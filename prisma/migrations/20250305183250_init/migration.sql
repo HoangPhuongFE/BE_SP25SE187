@@ -439,7 +439,7 @@ CREATE TABLE `decisions` (
     `decision_id` VARCHAR(191) NOT NULL,
     `decision_number` VARCHAR(191) NOT NULL,
     `decision_title` VARCHAR(191) NOT NULL,
-    `group_id` VARCHAR(191) NOT NULL,
+    `group_id` VARCHAR(191) NULL,
     `topic_id` VARCHAR(191) NOT NULL,
     `draft_file_url` VARCHAR(191) NULL,
     `final_file_url` VARCHAR(191) NULL,
@@ -736,7 +736,7 @@ ALTER TABLE `decisions` ADD CONSTRAINT `decisions_topic_id_fkey` FOREIGN KEY (`t
 ALTER TABLE `decisions` ADD CONSTRAINT `decisions_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `decisions` ADD CONSTRAINT `decisions_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `decisions` ADD CONSTRAINT `decisions_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `review_councils` ADD CONSTRAINT `review_councils_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

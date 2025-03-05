@@ -1,7 +1,6 @@
 import express from 'express';
-import { startCronJobs } from "./utils/cron-job";
+import { startCronJobs } from './utils/cron-job';
 import morgan from 'morgan';
-
 import cors from 'cors';
 import { config } from 'dotenv';
 import userRouter from './routers/user.router';
@@ -15,21 +14,21 @@ import exportRouter from './routers/export.router';
 import groupRoutes from './routers/group.routes';
 import meetingRouter from './routers/meeting.router';
 import emailRouter from './routers/email.router';
-import emailTemplateRouter from "./routers/emailTemplate.router";
+import emailTemplateRouter from './routers/emailTemplate.router';
 import importLecturer from './routers/imprortLecturer.router';
 import majorRouter from './routers/major.router';
-import systemConfigRoutes from "./routers/system.config.routes";
-import councilRouter from './routers/council.router'
-import importCouncilRoutes from "./routers/import-council.routes";
-import topicRoutes from "./routers/topic.routes";
+import systemConfigRoutes from './routers/system.config.routes';
+import councilRouter from './routers/council.router';
+import importCouncilRoutes from './routers/import-council.routes';
+import topicRoutes from './routers/topic.routes';
 import submissionPeriodRoutes from './routers/submissionPeriod.routes';
 import councilTopicRoutes from './routers/council.topic.routes';
+import uploadRoutes from './routers/upload.routes';
 
-//
 config();
 const app = express();
 
-// Middleware CORS
+// Chỉ cần middleware cơ bản, không cần Multer toàn cục
 app.use(
   cors({
     origin: ['http://localhost:3000', 'http://localhost:5173'],
@@ -39,7 +38,8 @@ app.use(
   })
 );
 app.use(morgan('dev'));  
-app.use(express.json());
+app.use(express.json()); // Chỉ giữ nếu cần cho các route JSON
+app.use(express.urlencoded({ extended: true })); // Chỉ giữ nếu cần cho các route form-urlencoded
 
 // Routes
 app.use('/api/users', userRouter);
@@ -53,18 +53,16 @@ app.use('/api/export', exportRouter);
 app.use('/api/groups', groupRoutes);
 app.use('/api/meetings', meetingRouter);
 app.use('/api', emailRouter);
-app.use("/api/email-templates", emailTemplateRouter);
-app.use("/api/import", importLecturer);
-app.use("/api/majors", majorRouter);
-app.use("/api/config", systemConfigRoutes);
+app.use('/api/email-templates', emailTemplateRouter);
+app.use('/api/import', importLecturer);
+app.use('/api/majors', majorRouter);
+app.use('/api/config', systemConfigRoutes);
 app.use('/api/councils', councilRouter);
-app.use("/api/import-councils", importCouncilRoutes);
-app.use("/api/topics", topicRoutes);
-app.use("/api/submission-periods", submissionPeriodRoutes);
+app.use('/api/import-councils', importCouncilRoutes);
+app.use('/api/topics', topicRoutes);
+app.use('/api/submission-periods', submissionPeriodRoutes);
 app.use('/api/council-topic', councilTopicRoutes);
-
-
-
+app.use('/api/upload', uploadRoutes);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
@@ -72,4 +70,4 @@ app.listen(PORT, () => {
   startCronJobs();
 });
 
-
+export default app;
