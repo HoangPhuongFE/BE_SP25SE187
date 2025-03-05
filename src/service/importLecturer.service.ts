@@ -162,4 +162,124 @@ export class ImportLecturerService {
       errors,
     };
   }
+
+ 
+
+  async getAllLecturers(semesterId: string) {
+    try {
+      const lecturers = await prisma.user.findMany({
+        where: {
+          lecturerCode: {
+            not: null // Chỉ lấy những user có lecturerCode
+          },
+          roles: { // Sử dụng 'roles' thay vì 'userRoles'
+            some: {
+              role: {
+                name: 'lecturer'
+              },
+              semesterId: semesterId
+            }
+          }
+        },
+        include: { // Sử dụng include để lấy dữ liệu quan hệ
+          roles: {
+            where: {
+              semesterId: semesterId
+            },
+            include: {
+              role: true,
+              semester: true
+            }
+          }
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      const formattedLecturers = lecturers.map(lecturer => ({
+        id: lecturer.id,
+        email: lecturer.email,
+        username: lecturer.username,
+        lecturerCode: lecturer.lecturerCode || '',
+        fullName: lecturer.fullName || '',
+        isActive: lecturer.roles[0]?.isActive ?? false,
+        semesterId: lecturer.roles[0]?.semester?.id,
+        semesterCode: lecturer.roles[0]?.semester?.code,
+        role: lecturer.roles[0]?.role.name,
+        createdAt: lecturer.createdAt,
+        updatedAt: lecturer.updatedAt
+      }));
+
+      return {
+        status: 'success',
+        data: formattedLecturers,
+        total: formattedLecturers.length
+      };
+    } catch (error) {
+      console.error('Error fetching lecturers:', error);
+      throw new Error('Không thể lấy danh sách giảng viên');
+    }
+  }
+
+ 
+
+  async getLecturerById(userId: string, semesterId: string) {
+    try {
+      const lecturer = await prisma.user.findUnique({
+        where: {
+          id: userId,
+          lecturerCode: {
+            not: null // Đảm bảo là giảng viên
+          },
+          roles: {
+            some: {
+              role: {
+                name: 'lecturer'
+              },
+              semesterId: semesterId
+            }
+          }
+        },
+        include: {
+          roles: {
+            where: {
+              semesterId: semesterId
+            },
+            include: {
+              role: true,
+              semester: true
+            }
+          }
+        }
+      });
+
+      if (!lecturer) {
+        throw new Error('Không tìm thấy giảng viên với ID này hoặc không phải giảng viên trong học kỳ được chỉ định');
+      }
+
+      const formattedLecturer = {
+        id: lecturer.id,
+        email: lecturer.email,
+        username: lecturer.username,
+        lecturerCode: lecturer.lecturerCode || '',
+        fullName: lecturer.fullName || '',
+        isActive: lecturer.roles[0]?.isActive ?? false,
+        semesterId: lecturer.roles[0]?.semester?.id,
+        semesterName: lecturer.roles[0]?.semester?.code,
+        role: lecturer.roles[0]?.role.name,
+        createdAt: lecturer.createdAt,
+        updatedAt: lecturer.updatedAt
+      };
+
+      return {
+        status: 'success',
+        data: formattedLecturer
+      };
+    } catch (error) {
+      console.error('Error fetching lecturer by ID:', error);
+      throw new Error('Không thể lấy thông tin giảng viên');
+    }
+  }
+
 }

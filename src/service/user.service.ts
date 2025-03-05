@@ -43,7 +43,6 @@ export class UserService {
 
     return user;
   }
-
   async login({ email, password }: { email: string; password: string }) {
     const user = await prisma.user.findUnique({
       where: { email },
@@ -150,7 +149,6 @@ export class UserService {
 
     return { accessToken, refreshToken };
   }
-
 
   generateAccessToken(user: any) {
     return jwt.sign(
