@@ -15,4 +15,16 @@ router.post(
   importLecturerController.importLecturerHandler.bind(importLecturerController)
 );
 
+
+router.get(
+  '/lecturers',
+  authenticateToken,
+  importLecturerController.getAllLecturersHandler.bind(importLecturerController)
+);
+
+router.get(
+  '/lecturers/detail', 
+  authenticateToken,
+  importLecturerController.getLecturerByIdHandler.bind(importLecturerController)
+);
 export default router;
