@@ -95,13 +95,7 @@ router.delete(
   topicController.deleteTopic.bind(topicController)
 );
 
-// Xuất danh sách đề tài cần duyệt ra Excel
-router.get(
-  '/export',
-  authenticateToken,
-  checkRole(['admin', 'academic_officer', 'graduation_thesis_manager'], false),
-  topicController.exportTopicsForApproval.bind(topicController)
-);
+
 
 // Tải file từ Decision (draftFile hoặc finalFile)
 router.get(

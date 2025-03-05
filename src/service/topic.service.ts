@@ -635,38 +635,6 @@ export class TopicService {
     }
   }
 
-  async exportTopicsToExcel(topics: any[]) {
-    try {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Topics');
-      worksheet.columns = [
-        { header: 'Mã đề tài', key: 'topicCode', width: 15 },
-        { header: 'Tên (VN)', key: 'nameVi', width: 30 },
-        { header: 'Tên (EN)', key: 'nameEn', width: 30 },
-        { header: 'File nháp', key: 'draftFileUrl', width: 50 },
-      ];
-
-      topics.forEach(topic => {
-        worksheet.addRow({
-          topicCode: topic.topicCode,
-          nameVi: topic.nameVi,
-          nameEn: topic.nameEn,
-          draftFileUrl: topic.decisions[0]?.draftFileUrl || '',
-        });
-      });
-
-      const buffer = await workbook.xlsx.writeBuffer();
-      return {
-        success: true,
-        status: HTTP_STATUS.OK,
-        data: buffer,
-      };
-    } catch (error) {
-      console.error('Lỗi khi xuất Excel:', error);
-      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi xuất Excel!' };
-    }
-  }
-
   async getAvailableTopics(filter: { semesterId: string; status?: string }) {
     const { semesterId, status } = filter;
 

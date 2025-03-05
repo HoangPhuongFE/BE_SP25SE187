@@ -24,7 +24,7 @@ import submissionPeriodRoutes from './routers/submissionPeriod.routes';
 import councilTopicRoutes from './routers/council.topic.routes';
 import uploadRoutes from './routers/upload.routes';
 import exportTopicRoutes from './routers/export-topic.routes';
-
+import usersemesterroleRouter from './routers/user-semester-role.routes';
 config();
 const app = express();
 
@@ -63,7 +63,7 @@ app.use('/api/submission-periods', submissionPeriodRoutes);
 app.use('/api/council-topic', councilTopicRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api', exportTopicRoutes);
-
+app.use('/api/semester-role', usersemesterroleRouter);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
