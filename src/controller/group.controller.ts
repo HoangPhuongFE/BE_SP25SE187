@@ -27,21 +27,41 @@ export class GroupController {
 
 async inviteMember(req: Request, res: Response) {
   try {
-      const { groupId, email } = req.body;
+    const { groupId, groupCode, email, studentId } = req.body;
 
-      // Kiểm tra đầu vào
-      if (!groupId || !email) {
-          return res.status(HTTP_STATUS.BAD_REQUEST).json({
-              success: false,
-              message: GROUP_MESSAGE.INVALID_REQUEST
-          });
-      }
+    // Kiểm tra đầu vào: Phải có ít nhất 1 trong 2 (groupId hoặc groupCode) và (email hoặc studentId)
+    if ((!groupId && !groupCode) || (!email && !studentId)) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            message: "Cần cung cấp groupId hoặc groupCode, và email hoặc studentId."
+        });
+    }
 
-      // Gọi service để xử lý mời thành viên
-      const result = await groupService.inviteMember(groupId, email, req.user!.userId);
+    // Ưu tiên sử dụng groupId nếu có, nếu không có thì dùng groupCode
+    const selectedGroupId = groupId ?? null;
+    const selectedGroupCode = groupId ? null : groupCode ?? null;
 
-      // Trả về phản hồi với mã trạng thái từ service
-      return res.status(result.status).json(result);
+    // Ưu tiên studentId nếu có, nếu không có thì dùng email
+    const selectedStudentId = studentId ?? null;
+    const selectedEmail = studentId ? null : email ?? null;
+
+    // Log debug để kiểm tra dữ liệu truyền vào service
+  //  console.log("DEBUG: inviteMember - selectedGroupId:", selectedGroupId);
+   // console.log("DEBUG: inviteMember - selectedGroupCode:", selectedGroupCode);
+   // console.log("DEBUG: inviteMember - selectedStudentId:", selectedStudentId);
+   // console.log("DEBUG: inviteMember - selectedEmail:", selectedEmail);
+
+    // Gọi service với thông tin đã chọn
+    const result = await groupService.inviteMember(
+        selectedGroupId,
+        selectedGroupCode,
+        selectedEmail,
+        selectedStudentId,
+        req.user!.userId
+    );
+
+    return res.status(result.status).json(result);
+    
   } catch (error) {
       console.error("Lỗi khi gửi lời mời:", error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
@@ -50,6 +70,7 @@ async inviteMember(req: Request, res: Response) {
       });
   }
 }
+
 
 
 
@@ -160,10 +181,18 @@ async inviteMember(req: Request, res: Response) {
   }
 
   // Đổi Leader
- async changeLeader(req: AuthenticatedRequest, res: Response) {
+  async changeLeader(req: AuthenticatedRequest, res: Response) {
     try {
-        const { groupId, newLeaderId } = req.body; 
-        const result = await groupService.changeLeader(groupId, newLeaderId, req.user!.userId);
+        const { groupId, groupCode, newLeaderId, newLeaderEmail } = req.body;
+
+        if ((!groupId && !groupCode) || (!newLeaderId && !newLeaderEmail)) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: "Cần cung cấp groupId hoặc groupCode, và newLeaderId hoặc newLeaderEmail."
+            });
+        }
+
+        const result = await groupService.changeLeader(groupId, groupCode, newLeaderId, newLeaderEmail, req.user!.userId);
         return res.status(200).json(result);
     } catch (error) {
         return res.status(500).json({ message: (error as Error).message });
@@ -173,13 +202,21 @@ async inviteMember(req: Request, res: Response) {
   // Thêm Mentor
   async addMentorToGroup(req: Request, res: Response) {
     try {
-      const { groupId, mentorId } = req.body;
-      const result = await groupService.addMentorToGroup(groupId, mentorId, req.user!.userId);
-      return res.status(200).json(result);
+        const { groupId, groupCode, mentorId, mentorEmail } = req.body;
+
+        if ((!groupId && !groupCode) || (!mentorId && !mentorEmail)) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: "Cần cung cấp groupId hoặc groupCode, và mentorId hoặc mentorEmail."
+            });
+        }
+
+        const result = await groupService.addMentorToGroup(groupId, groupCode, mentorId, mentorEmail, req.user!.userId);
+        return res.status(200).json(result);
     } catch (error) {
-      return res.status(400).json({ message: (error as Error).message });
+        return res.status(400).json({ message: (error as Error).message });
     }
-  }
+}
 
   // Xóa thành viên
   async removeMemberFromGroup(req: Request, res: Response) {

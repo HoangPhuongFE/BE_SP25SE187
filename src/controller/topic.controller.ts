@@ -12,13 +12,19 @@ export class TopicController {
   async createTopic(req: Request, res: Response) {
     try {
       const createdBy = req.user?.userId;
-      const userRole = req.user?.role || "unknown";
       if (!createdBy) {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json({
           success: false,
           message: "Không xác định được thông tin người dùng!",
         });
       }
+
+      const userRoles = await prisma.userRole.findMany({
+        where: { userId: createdBy, isActive: true },
+        include: { role: true },
+      });
+      const userRoleNames = userRoles.map(ur => ur.role.name);
+      const userRole = userRoleNames[0]; // Lấy vai trò đầu tiên nếu cần
 
       const { nameVi, nameEn, description, semesterId, majorId, isBusiness, businessPartner, source, subSupervisor, subSupervisorEmail, name, documents, groupId, groupCode } = req.body;
       if (!semesterId) {
@@ -55,7 +61,6 @@ export class TopicController {
       });
     }
   }
-
   // Cập nhật đề tài
   async updateTopic(req: Request, res: Response) {
     try {
@@ -202,31 +207,21 @@ export class TopicController {
       const { topicId } = req.params;
       const { status } = req.body;
       
-      if (!topicId) {
+      if (!topicId || !status) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
-          message: "Thiếu ID đề tài!",
+          message: "Thiếu ID đề tài hoặc trạng thái!",
         });
       }
       
-      if (!status) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          success: false,
-          message: "Thiếu trạng thái để duyệt!",
-        });
-      }
-      
-      // Lấy thông tin vai trò từ User Role Names hoặc từ req.user
-      const userRoleNames = req.user!.roleNames || []; // Giả sử bạn đã xử lý và lưu vào req.user.roleNames
       const userId = req.user!.userId;
-      
-      const result = await topicService.approveTopicByAcademic(
-        topicId,
-        status as "APPROVED" | "REJECTED",
-        userId,
-        userRoleNames
-      );
-      
+      const userRoles = await prisma.userRole.findMany({
+        where: { userId, isActive: true },
+        include: { role: true },
+      });
+      const userRoleNames = userRoles.map(ur => ur.role.name);
+
+      const result = await topicService.approveTopicByAcademic(topicId, status, userId, userRoleNames[0]);
       return res.status(result.status).json(result);
     } catch (error) {
       console.error("Lỗi khi duyệt đề tài:", error);
