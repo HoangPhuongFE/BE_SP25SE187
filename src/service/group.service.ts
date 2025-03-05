@@ -857,7 +857,7 @@ export class GroupService {
             mentorUser = await prisma.user.findFirst({ where: { email: mentorEmail }, include: { roles: { include: { role: true } } } });
         }
     
-        if (!mentorUser || !mentorUser.roles.some(r => r.role.name === "mentor")) {
+        if (!mentorUser || !mentorUser.roles.some(r => r.role.name === "lecturer")) {
             throw new Error("Người dùng này không phải Mentor hoặc không tồn tại.");
         }
     
