@@ -229,9 +229,6 @@ export class CouncilService {
         }
     }
     
-    
-    
-
     async getCouncils(filter: { semesterId?: string; type?: string; submissionPeriodId?: string }) {
         try {
           const { semesterId, type, submissionPeriodId } = filter;

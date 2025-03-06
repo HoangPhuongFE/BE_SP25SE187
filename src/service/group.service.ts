@@ -848,7 +848,7 @@ export class GroupService {
     
         if (!isAuthorized) throw new Error("Bạn không có quyền thêm mentor vào nhóm.");
     
-        // 4️⃣ Tìm mentor (bằng mentorId hoặc email)
+        // 4️ Tìm mentor (bằng mentorId hoặc email)
         let mentorUser = mentorId
             ? await prisma.user.findUnique({ where: { id: mentorId }, include: { roles: { include: { role: true } } } })
             : null;
@@ -861,12 +861,12 @@ export class GroupService {
             throw new Error("Người dùng này không phải Mentor hoặc không tồn tại.");
         }
     
-        // 5️⃣ Kiểm tra mentor đã có trong nhóm chưa
+        // 5️ Kiểm tra mentor đã có trong nhóm chưa
         const existingMentor = await prisma.groupMentor.findFirst({ where: { groupId: group.id, mentorId: mentorUser.id } });
     
         if (existingMentor) throw new Error("Mentor đã có trong nhóm.");
     
-        // 6️⃣ Thêm mentor vào nhóm
+        // 6️ Thêm mentor vào nhóm
         await prisma.groupMentor.create({
             data: { groupId: group.id, mentorId: mentorUser.id, addedBy },
         });

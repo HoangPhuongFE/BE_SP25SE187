@@ -35,7 +35,7 @@ async function createDefaultUsers(defaultSemesterId: string, spring2025Id: strin
       password: await hashPassword('a123456'),
       fullName: 'Academic Officer User',
       roleName: 'academic_officer',
-      semesterId: defaultSemesterId, // Dùng SYSTEM_DEFAULT
+      semesterId: defaultSemesterId, 
     },
     {
       email: 'thesismanager@gmail.com',
@@ -43,7 +43,7 @@ async function createDefaultUsers(defaultSemesterId: string, spring2025Id: strin
       password: await hashPassword('a123456'),
       fullName: 'Graduation Thesis Manager User',
       roleName: 'graduation_thesis_manager',
-      semesterId: defaultSemesterId, // Dùng SYSTEM_DEFAULT
+      semesterId: defaultSemesterId, 
     },
     {
       email: 'examinationofficer@gmail.com',
@@ -51,7 +51,7 @@ async function createDefaultUsers(defaultSemesterId: string, spring2025Id: strin
       password: await hashPassword('a123456'),
       fullName: 'Examination Officer User',
       roleName: 'examination_officer',
-      semesterId: defaultSemesterId, // Dùng SYSTEM_DEFAULT
+      semesterId: defaultSemesterId, 
     },
     {
       email: 'lecturer@gmail.com',

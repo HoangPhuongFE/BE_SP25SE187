@@ -283,7 +283,7 @@ export class TopicService {
           subMentor: { select: { fullName: true, email: true } },
           group: { select: { id: true, groupCode: true } },
           topicAssignments: { include: { group: { select: { id: true, groupCode: true } } } },
-          documents: { select: { fileName: true, fileUrl: true, fileType: true } },
+          //documents: { select: { fileName: true, fileUrl: true, fileType: true } },
         },
       });
       if (!topic) {

@@ -35,7 +35,7 @@ router.post(
 router.get(
   "/info/:groupId",
   authenticateToken,
-  checkRole(["admin", "graduation_thesis_manager", "mentor", "examination_officer", "student"]),
+  checkRole(["admin", "graduation_thesis_manager", "mentor", "examination_officer", "student", 'lecturer']),
   groupController.getGroupInfo.bind(groupController)
 );
 
@@ -43,7 +43,7 @@ router.get(
 router.get(
   "/semester",
   authenticateToken,
-  checkRole(["leader", "admin", "mentor", "student", "graduation_thesis_manager", "academic_officer"]),
+  checkRole(["leader", "admin", "mentor", "student", "graduation_thesis_manager", "academic_officer",'lecturer']),
   groupController.getGroupsBySemester.bind(groupController)
 );
 
