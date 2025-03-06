@@ -573,7 +573,7 @@ model Document {
   fileType   String   @map("file_type") //  Định dạng file (pdf, docx, xlsx,...)
   uploadedAt DateTime @default(now()) @map("uploaded_at")
   uploadedBy String   @map("uploaded_by")
-
+  documentType  String?   @map("document_type") 
   //  Liên kết đến các bảng khác nhau
   topicId   String? @map("topic_id")
   councilId String? @map("council_id")

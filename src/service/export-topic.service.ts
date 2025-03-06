@@ -70,7 +70,7 @@ export class ExportTopicService {
         { header: 'Kinh doanh', key: 'isBusiness', width: 10 },
         { header: 'Đối tác kinh doanh', key: 'businessPartner', width: 20 },
         { header: 'Nguồn', key: 'source', width: 20 },
-        { header: 'Phụ trách phụ', key: 'subSupervisor', width: 20 },
+      //  { header: 'Phụ trách phụ', key: 'subSupervisor', width: 20 },
         { header: 'Email phụ trách', key: 'subSupervisorEmail', width: 30 },
         { header: 'Nhóm đề xuất', key: 'proposedGroupId', width: 20 },
         { header: 'File nháp', key: 'draftFileUrl', width: 50 },
@@ -93,7 +93,7 @@ export class ExportTopicService {
           businessPartner: topic.businessPartner,
           source: topic.source,
           // Ưu tiên thông tin từ quan hệ subMentor nếu có, nếu không dùng dữ liệu trực tiếp
-          subSupervisor: topic.subMentor ? topic.subMentor.fullName : topic.subSupervisor || '',
+      //    subSupervisor: topic.subMentor ? topic.subMentor.fullName : topic.subSupervisor || '',
           subSupervisorEmail: topic.subMentor ? topic.subMentor.email : topic.subSupervisorEmail || '',
           proposedGroupId: topic.proposedGroupId,
           draftFileUrl: topic.decisions && topic.decisions.length > 0 ? topic.decisions[0].draftFileUrl : '',

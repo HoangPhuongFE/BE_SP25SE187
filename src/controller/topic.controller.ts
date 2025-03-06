@@ -21,13 +21,11 @@ export class TopicController {
       name: string;
       groupId?: string;
       groupCode?: string;
-      draftFileUrl?: string; // URL file từ endpoint upload
+      draftFileUrl?: string;
     }> & { user?: { userId: string } },
     res: Response
   ) {
     try {
-     // console.log(' Dữ liệu nhận được:', req.body);
-
       const createdBy = req.user?.userId;
       if (!createdBy) {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json({
@@ -36,7 +34,7 @@ export class TopicController {
           status: HTTP_STATUS.UNAUTHORIZED,
         });
       }
-
+  
       const {
         nameVi,
         nameEn,
@@ -53,7 +51,7 @@ export class TopicController {
         groupCode,
         draftFileUrl,
       } = req.body;
-
+  
       const result = await topicService.createTopic({
         nameVi,
         nameEn,
@@ -67,11 +65,11 @@ export class TopicController {
         subSupervisorEmail,
         name,
         createdBy,
-        draftFileUrl, // Sử dụng URL file thay vì file object
+        draftFileUrl,
         groupId,
         groupCode,
       });
-
+  
       return res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi trong createTopic:', error);
@@ -160,11 +158,11 @@ export class TopicController {
       const { status } = req.body;
       const finalFile = req.file;
       const userId = req.user!.userId;
-
+  
       if (!topicId || !status) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Thiếu ID đề tài hoặc trạng thái!' });
       }
-
+  
       const result = await topicService.approveTopicByAcademic(topicId, status, userId, finalFile);
       return res.status(result.status).json(result);
     } catch (error) {

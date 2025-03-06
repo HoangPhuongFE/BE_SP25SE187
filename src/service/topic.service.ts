@@ -21,7 +21,7 @@ export class TopicService {
     subSupervisorEmail?: string;
     name: string;
     createdBy: string;
-    draftFileUrl?: string; 
+    draftFileUrl?: string;
     groupId?: string;
     groupCode?: string;
   }) {
@@ -33,17 +33,17 @@ export class TopicService {
           message: !data.semesterId ? 'Thiếu `semesterId`!' : 'Thiếu `createdBy`!',
         };
       }
-
+  
       const semester = await prisma.semester.findUnique({ where: { id: data.semesterId } });
       if (!semester) {
         return { success: false, status: HTTP_STATUS.NOT_FOUND, message: TOPIC_MESSAGE.SEMESTER_REQUIRED };
       }
-
+  
       const major = await prisma.major.findUnique({ where: { id: data.majorId } });
       if (!major) {
         return { success: false, status: HTTP_STATUS.NOT_FOUND, message: TOPIC_MESSAGE.INVALID_MAJOR };
       }
-
+  
       const submissionPeriod = await prisma.submissionPeriod.findFirst({
         where: { semesterId: data.semesterId, OR: [{ status: 'ACTIVE' }, { endDate: { gte: new Date() } }] },
         orderBy: { startDate: 'asc' },
@@ -52,7 +52,7 @@ export class TopicService {
       if (!submissionPeriod) {
         return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy đợt xét duyệt phù hợp!' };
       }
-
+  
       let subSupervisorId = data.subSupervisor;
       if (!subSupervisorId && data.subSupervisorEmail) {
         const mentor = await prisma.user.findUnique({ where: { email: data.subSupervisorEmail }, select: { id: true } });
@@ -61,14 +61,14 @@ export class TopicService {
         }
         subSupervisorId = mentor.id;
       }
-
+  
       const isBusiness = data.isBusiness !== undefined ? data.isBusiness === 'true' || data.isBusiness === true : true;
-
+  
       const currentYear = new Date().getFullYear().toString().slice(-2);
       const majorCode = major.name.slice(0, 2).toUpperCase();
       const topicCount = await prisma.topic.count({ where: { semesterId: data.semesterId } });
       const topicCode = `${majorCode}-${currentYear}-${(topicCount + 1).toString().padStart(3, '0')}`;
-
+  
       let groupIdToUse: string | undefined = data.groupId;
       if (!groupIdToUse && data.groupCode) {
         const group = await prisma.group.findUnique({
@@ -88,7 +88,7 @@ export class TopicService {
           return { success: false, status: HTTP_STATUS.NOT_FOUND, message: GROUP_MESSAGE.GROUP_NOT_FOUND };
         }
       }
-
+  
       const newTopic = await prisma.topic.create({
         data: {
           topicCode,
@@ -107,22 +107,20 @@ export class TopicService {
           proposedGroupId: groupIdToUse,
         },
       });
-
-      let decision;
+  
       if (data.draftFileUrl) {
-        decision = await prisma.decision.create({
+        await prisma.document.create({
           data: {
-            decisionNumber: `QD-DRAFT-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 4)}`,
-            decisionTitle: `Đề xuất đề tài ${newTopic.topicCode}`,
+            fileName: 'Draft File', // Có thể tùy chỉnh tên file
+            fileUrl: data.draftFileUrl,
+            fileType: '', // Giả sử là PDF, có thể thay đổi
+            uploadedBy: data.createdBy,
             topicId: newTopic.id,
-            draftFileUrl: data.draftFileUrl,
-            status: 'PENDING',
-            createdBy: data.createdBy,
-            groupId: groupIdToUse || null, 
+            documentType: 'draft',
           },
         });
       }
-
+  
       if (groupIdToUse) {
         await prisma.groupMentor.create({
           data: {
@@ -132,12 +130,12 @@ export class TopicService {
           },
         });
       }
-
+  
       return {
         success: true,
         status: HTTP_STATUS.CREATED,
         message: TOPIC_MESSAGE.TOPIC_CREATED,
-        data: { topic: newTopic, decision },
+        data: { topic: newTopic },
       };
     } catch (error) {
       console.error('Lỗi khi tạo đề tài:', error);
@@ -283,7 +281,7 @@ export class TopicService {
           subMentor: { select: { fullName: true, email: true } },
           group: { select: { id: true, groupCode: true } },
           topicAssignments: { include: { group: { select: { id: true, groupCode: true } } } },
-          //documents: { select: { fileName: true, fileUrl: true, fileType: true } },
+          documents: { select: { fileName: true, fileUrl: true, fileType: true } },
         },
       });
       if (!topic) {
@@ -306,7 +304,7 @@ export class TopicService {
       if (!['APPROVED', 'REJECTED'].includes(status)) {
         return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Trạng thái không hợp lệ!' };
       }
-
+  
       const topic = await prisma.topic.findUnique({
         where: { id: topicId },
         include: { topicRegistrations: true, group: true },
@@ -314,13 +312,12 @@ export class TopicService {
       if (!topic || topic.status !== 'PENDING') {
         return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Đề tài không hợp lệ hoặc đã được duyệt!' };
       }
-
+  
       const updatedTopic = await prisma.topic.update({
         where: { id: topicId },
         data: { status },
       });
-
-      let decision = await prisma.decision.findFirst({ where: { topicId } });
+  
       if (status === 'APPROVED') {
         let finalFileUrl;
         if (finalFile) {
@@ -330,27 +327,20 @@ export class TopicService {
             public_id: `final-${topic.topicCode}-${crypto.randomUUID().slice(0, 8)}`,
           });
           finalFileUrl = uploadResult.secure_url;
-        }
-
-        if (decision) {
-          decision = await prisma.decision.update({
-            where: { id: decision.id },
-            data: { status: 'APPROVED', finalFileUrl },
-          });
-        } else {
-          decision = await prisma.decision.create({
+  
+          // Lưu vào bảng Document thay vì Decision
+          await prisma.document.create({
             data: {
-              decisionNumber: `QD-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 4)}`,
-              decisionTitle: `Phê duyệt đề tài ${topic.topicCode}`,
-              topicId,
-              status: 'APPROVED',
-              createdBy: userId,
-              finalFileUrl,
-              groupId: topic.proposedGroupId || '', // groupId là bắt buộc trong schema
+              fileName: finalFile.originalname || 'Final File',
+              fileUrl: finalFileUrl,
+              fileType: finalFile.mimetype.split('/')[1] || '',
+              uploadedBy: userId,
+              topicId: topicId,
+              documentType: 'final',
             },
           });
         }
-
+  
         if (topic.proposedGroupId && topic.group) {
           await prisma.topicAssignment.create({
             data: {
@@ -368,23 +358,17 @@ export class TopicService {
           });
         }
       } else if (status === 'REJECTED') {
-        if (decision) {
-          await prisma.decision.update({
-            where: { id: decision.id },
-            data: { status: 'REJECTED' },
-          });
-        }
         await prisma.topic.update({
           where: { id: topicId },
           data: { proposedGroupId: null },
         });
       }
-
+  
       return {
         success: true,
         status: HTTP_STATUS.OK,
         message: `Đề tài đã được ${status === 'APPROVED' ? 'duyệt' : 'từ chối'}.`,
-        data: { topic: updatedTopic, decision },
+        data: { topic: updatedTopic },
       };
     } catch (error) {
       console.error('Lỗi khi duyệt đề tài:', error);

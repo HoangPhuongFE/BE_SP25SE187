@@ -77,17 +77,17 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
     const decoded = jwt.verify(token, process.env.JWT_SECRET_ACCESS_TOKEN!) as { userId: string };
     const userId = decoded.userId;
 
-    // Truy vấn UserRole để lấy đầy đủ thông tin vai trò
+    // Truy vấn UserRole, bao gồm thông tin role để biết isSystemWide
     const userRoles = await prisma.userRole.findMany({
       where: { userId, isActive: true },
-      select: { roleId: true, semesterId: true, isActive: true },
+      include: { role: true },
     });
 
     if (!userRoles.length) {
       return res.status(403).json({ message: 'Forbidden: No active roles found for user.' });
     }
 
-    // Fetch user email from the database
+    // Lấy email người dùng
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { email: true },
@@ -97,10 +97,16 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Gán tất cả vai trò hoạt động vào req.user, không lọc semesterId
     req.user = {
       userId,
       email: user.email,
-      roles: userRoles.filter(role => role.semesterId !== null) as { roleId: string; semesterId: string; isActive: boolean }[],
+      roles: userRoles.map(ur => ({
+        roleId: ur.roleId,
+        semesterId: ur.semesterId,
+        isActive: ur.isActive,
+        isSystemWide: ur.role.isSystemWide,
+      })),
     };
     console.log('Authenticated User:', req.user);
     next();
@@ -117,56 +123,40 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
     }
   }
 };
-
-
-
-
+/*
 export const checkRole = (allowedRoles: string[]) => {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    // Kiểm tra xác thực người dùng
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    // Lấy semesterId từ req.query hoặc req.body (nếu có)
     const semesterId = (req.query.semesterId as string) || (req.body.semesterId as string);
+    const userRoles = req.user.roles;
 
-    // Lấy danh sách vai trò của user từ UserRole
-    const userRoles = await prisma.userRole.findMany({
-      where: {
-        userId: req.user.userId,
-        isActive: true,
-      },
-      include: { role: true }, // Bao gồm thông tin role để kiểm tra isSystemWide
-    });
-
-    const userRoleNames = userRoles.map((ur) => ur.role.name);
-    console.log('User Role Names:', userRoleNames);
-
-    // Kiểm tra xem user có vai trò được phép không
-    const hasRequiredRole = userRoleNames.some((role) => allowedRoles.includes(role));
+    // Kiểm tra xem người dùng có vai trò được phép không
+    const hasRequiredRole = userRoles.some((role) => allowedRoles.includes(role.roleId));
     if (!hasRequiredRole) {
       return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
     }
 
     // Kiểm tra vai trò toàn hệ thống
-    const hasSystemWideRole = userRoles.some((ur) => ur.role.isSystemWide);
+    const hasSystemWideRole = userRoles.some((role) => role.isSystemWide);
     if (hasSystemWideRole) {
       console.log('User has system-wide role, granting full access');
-      return next(); // Cho phép truy cập ngay nếu có vai trò toàn hệ thống
+      return next();
     }
 
-    // Nếu không có vai trò toàn hệ thống, kiểm tra semesterId
+    // Nếu không có vai trò toàn hệ thống, yêu cầu semesterId
     if (!semesterId) {
       return res.status(400).json({ message: 'Missing semesterId for semester-specific action' });
     }
 
-    // Kiểm tra vai trò có hợp lệ trong semesterId được cung cấp
+    // Kiểm tra vai trò hợp lệ cho semesterId
     const hasValidSemesterRole = userRoles.some(
-      (ur) =>
-        allowedRoles.includes(ur.role.name) &&
-        ur.semesterId === semesterId &&
-        ur.semesterId !== null // Đảm bảo semesterId không null
+      (role) =>
+        allowedRoles.includes(role.roleId) &&
+        role.semesterId === semesterId &&
+        role.semesterId !== null
     );
 
     if (!hasValidSemesterRole) {
@@ -175,6 +165,47 @@ export const checkRole = (allowedRoles: string[]) => {
       });
     }
 
+    console.log(`Access granted for semester ${semesterId}`);
+    next();
+  };
+};
+*/
+
+
+export const checkRole = (allowedRoles: string[]) => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    
+    // Nếu user có bất kỳ vai trò nào là system-wide, cho phép truy cập ngay
+    const hasSystemWideRole = req.user.roles.some(role => role.isSystemWide);
+    if (hasSystemWideRole) {
+      console.log('User has system-wide role, granting full access');
+      return next();
+    }
+    
+    // Nếu không, kiểm tra vai trò dựa trên allowedRoles và semesterId
+    const hasRequiredRole = req.user.roles.some(role => allowedRoles.includes(role.roleId));
+    if (!hasRequiredRole) {
+      return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+    }
+    
+    const semesterId = (req.query.semesterId as string) || (req.body.semesterId as string);
+    if (!semesterId) {
+      return res.status(400).json({ message: 'Missing semesterId for semester-specific action' });
+    }
+    
+    const hasValidSemesterRole = req.user.roles.some(
+      role => allowedRoles.includes(role.roleId) && role.semesterId === semesterId && role.semesterId !== null
+    );
+    
+    if (!hasValidSemesterRole) {
+      return res.status(403).json({
+        message: `Forbidden: Role not valid for semester ${semesterId}`,
+      });
+    }
+    
     console.log(`Access granted for semester ${semesterId}`);
     next();
   };

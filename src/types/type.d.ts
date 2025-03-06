@@ -26,8 +26,15 @@ interface RegisterDTO {
 interface TokenPayload {
   userId: string;
   email: string;
-  roles: { roleId: string; semesterId: string; isActive: boolean }[]; 
+  roles: {
+    [x: string]: unknown;
+    roleId: string;
+    semesterId: string | null; // Cho phép null
+    isActive: boolean;
+    isSystemWide: boolean; // Thêm thuộc tính này nếu cần
+  }[];
 }
+
 
 interface GoogleLoginDTO {
   idToken: string;

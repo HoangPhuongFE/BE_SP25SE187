@@ -711,7 +711,7 @@ export class GroupService {
         newLeaderEmail: string | undefined,
         userId: string
     ) {
-        // 1️⃣ Kiểm tra nhóm có tồn tại không (tìm theo groupId hoặc groupCode)
+        // 1️ Kiểm tra nhóm có tồn tại không (tìm theo groupId hoặc groupCode)
         const whereClause = groupId
             ? { id: groupId }
             : groupCode
@@ -730,7 +730,7 @@ export class GroupService {
         if (!group) throw new Error("Nhóm không tồn tại.");
         if (group.isLocked) throw new Error("Nhóm đã bị khóa. Không thể thay đổi leader.");
     
-        // 2️⃣ Kiểm tra quyền của người thực hiện thay đổi
+        // 2️ Kiểm tra quyền của người thực hiện thay đổi
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: { roles: { include: { role: true } } },
@@ -756,7 +756,7 @@ export class GroupService {
     
         if (!isAuthorized) throw new Error("Bạn không có quyền đổi leader.");
     
-        // 3️⃣ Tìm leader mới (theo newLeaderId hoặc email)
+        // 3️ Tìm leader mới (theo newLeaderId hoặc email)
         let newLeader = newLeaderId
         ? group.members.find((m) => m.student?.id === newLeaderId)
         : null;
@@ -770,13 +770,13 @@ export class GroupService {
             throw new Error("Người dùng này không thuộc nhóm hoặc không hợp lệ.");
         }
     
-        // 4️⃣ Đổi tất cả thành viên thành "member"
+        // 4️ Đổi tất cả thành viên thành "member"
         await prisma.groupMember.updateMany({
             where: { groupId: group.id },
             data: { role: "member" },
         });
     
-        // 5️⃣ Cập nhật leader mới
+        // 5️ Cập nhật leader mới
         await prisma.groupMember.update({
             where: { id: newLeader.id },
             data: { role: "leader" },

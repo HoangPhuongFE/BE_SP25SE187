@@ -494,6 +494,7 @@ CREATE TABLE `documents` (
     `file_type` VARCHAR(191) NOT NULL,
     `uploaded_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `uploaded_by` VARCHAR(191) NOT NULL,
+    `document_type` VARCHAR(191) NULL,
     `topic_id` VARCHAR(191) NULL,
     `council_id` VARCHAR(191) NULL,
     `group_id` VARCHAR(191) NULL,

@@ -20,7 +20,7 @@ async function createRoles() {
   }
 }
 
-async function createDefaultUsers(defaultSemesterId: string) {
+async function createDefaultUsers() {
   // Xóa dữ liệu cũ trong bảng User và UserRole
   await prisma.userRole.deleteMany();
   await prisma.user.deleteMany();
@@ -70,7 +70,6 @@ async function createDefaultUsers(defaultSemesterId: string) {
         roles: {
           create: {
             roleId: role.id,
-            semesterId: null,
             isActive: true,
           },
         },
@@ -111,9 +110,8 @@ async function createYearsAndSemesters() {
     console.log(`Created semester: ${semester.code} for year ${semester.yearId}`);
   }
 
-  const defaultSemester = await prisma.semester.findFirst({ where: { code: 'SYSTEM_DEFAULT' } });
   const spring2025 = await prisma.semester.findFirst({ where: { code: 'SPRING2025' } });
-  return { defaultSemesterId: defaultSemester?.id, spring2025Id: spring2025?.id };
+  return {spring2025Id: spring2025?.id };
 }
 
 async function createStudents(semesterId: string) {
@@ -236,13 +234,12 @@ async function createStudents(semesterId: string) {
 async function main() {
   console.log('Seeding database...');
   await createRoles();
-  const { defaultSemesterId, spring2025Id } = await createYearsAndSemesters();
-  if (!defaultSemesterId || !spring2025Id) throw new Error('Failed to get semester IDs');
-  await createDefaultUsers(defaultSemesterId);
+  const { spring2025Id } = await createYearsAndSemesters();
+  if (!spring2025Id) throw new Error('Failed to get SPRING2025 semester ID');
+  await createDefaultUsers(); 
   await createStudents(spring2025Id);
   console.log('Seeding completed successfully.');
 }
-
 main()
   .catch((e) => {
     console.error('Error seeding database:', e);
