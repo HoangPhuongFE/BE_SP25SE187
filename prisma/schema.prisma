@@ -63,16 +63,17 @@ model Role {
 }
 
 model UserRole {
+  id         String   @id @default(uuid())
   userId     String
   roleId     String
-  semesterId String   @map("semester_id")
+  semesterId String?   @map("semester_id")
   assignedAt DateTime @default(now())
   isActive   Boolean  @default(true)
   user       User     @relation(fields: [userId], references: [id])
   role       Role     @relation(fields: [roleId], references: [id])
-  semester   Semester @relation(fields: [semesterId], references: [id], name: "UserRoleToSemester")
+  semester   Semester? @relation(fields: [semesterId], references: [id], name: "UserRoleToSemester", onDelete: SetNull)
 
-  @@id([userId, roleId, semesterId])
+  @@unique([userId, roleId, semesterId])
 }
 
 model RefreshToken {

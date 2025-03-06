@@ -41,13 +41,15 @@ CREATE TABLE `Role` (
 
 -- CreateTable
 CREATE TABLE `UserRole` (
+    `id` VARCHAR(191) NOT NULL,
     `userId` VARCHAR(191) NOT NULL,
     `roleId` VARCHAR(191) NOT NULL,
-    `semester_id` VARCHAR(191) NOT NULL,
+    `semester_id` VARCHAR(191) NULL,
     `assignedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `isActive` BOOLEAN NOT NULL DEFAULT true,
 
-    PRIMARY KEY (`userId`, `roleId`, `semester_id`)
+    UNIQUE INDEX `UserRole_userId_roleId_semester_id_key`(`userId`, `roleId`, `semester_id`),
+    PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -607,7 +609,7 @@ ALTER TABLE `UserRole` ADD CONSTRAINT `UserRole_userId_fkey` FOREIGN KEY (`userI
 ALTER TABLE `UserRole` ADD CONSTRAINT `UserRole_roleId_fkey` FOREIGN KEY (`roleId`) REFERENCES `Role`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `UserRole` ADD CONSTRAINT `UserRole_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `UserRole` ADD CONSTRAINT `UserRole_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `RefreshToken` ADD CONSTRAINT `RefreshToken_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

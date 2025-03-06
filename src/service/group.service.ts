@@ -796,7 +796,7 @@ export class GroupService {
         mentorEmail: string | undefined,
         addedBy: string
     ) {
-        // 1️⃣ Kiểm tra nhóm có tồn tại không (tìm theo groupId hoặc groupCode)
+        // 1️ Kiểm tra nhóm có tồn tại không (tìm theo groupId hoặc groupCode)
         const whereClause = groupId
             ? { id: groupId }
             : groupCode
@@ -815,7 +815,7 @@ export class GroupService {
         if (!group) throw new Error("Nhóm không tồn tại.");
         if (group.isLocked) throw new Error("Nhóm đã bị khóa. Không thể thêm mentor.");
     
-        // 2️⃣ Kiểm tra số lượng mentor trong nhóm
+        // 2️ Kiểm tra số lượng mentor trong nhóm
         const mentorCount = await prisma.groupMentor.count({ where: { groupId: group.id } });
     
         const maxMentors = await systemConfigService.getMaxGroupMentors();
@@ -823,7 +823,7 @@ export class GroupService {
             throw new Error(`Nhóm đã đủ mentor (tối đa ${maxMentors} mentor).`);
         }
     
-        // 3️⃣ Kiểm tra quyền của người thêm mentor
+        // 3️ Kiểm tra quyền của người thêm mentor
         const user = await prisma.user.findUnique({
             where: { id: addedBy },
             include: { roles: { include: { role: true } } },
@@ -893,7 +893,7 @@ export class GroupService {
 
         //  Kiểm tra quyền của người dùng
         const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
-        const isAdmin = userRoles.includes("admin");
+        const isAdmin = userRoles.includes("admin, graduation_thesis_manager, academic_officer");
 
         //  Nếu là Admin => Bỏ qua kiểm tra actingStudent
         let isLeader = false;
@@ -938,8 +938,8 @@ export class GroupService {
 
     // 11) deleteGroup
     async deleteGroup(groupId: string, userId: string) {
-        console.log("CHECKING USER PERMISSION:", userId);
-        console.log("DELETING GROUP ID:", groupId);
+       // console.log("CHECKING USER PERMISSION:", userId);
+      //  console.log("DELETING GROUP ID:", groupId);
 
         const user = await prisma.user.findUnique({
             where: { id: userId },
@@ -998,7 +998,7 @@ export class GroupService {
 
         await prisma.group.delete({ where: { id: groupId } });
 
-        console.log("GROUP DELETED SUCCESSFULLY");
+     //   console.log("GROUP DELETED SUCCESSFULLY");
         return { message: "Nhóm đã được xoá thành công." };
     }
 
@@ -1007,16 +1007,16 @@ export class GroupService {
 
     // 12) leaveGroup
     async leaveGroup(groupId: string, userId: string) {
-        // 1️⃣ Kiểm tra nhóm có bị khóa không
+        // 1️ Kiểm tra nhóm có bị khóa không
         const group = await prisma.group.findUnique({ where: { id: groupId } });
         if (!group) throw new Error("Nhóm không tồn tại.");
         if (group.isLocked) throw new Error("Nhóm đã bị khóa. Không thể rời nhóm.");
 
-        // 2️⃣ Kiểm tra người dùng có tồn tại không
+        // 2️ Kiểm tra người dùng có tồn tại không
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (!user) throw new Error("Người dùng không tồn tại.");
 
-        // 3️⃣ Tìm membership trong nhóm
+        // 3️ Tìm membership trong nhóm
         const student = await prisma.student.findUnique({ where: { userId } });
         let member = null;
 
@@ -1036,12 +1036,12 @@ export class GroupService {
             throw new Error("Bạn không thuộc nhóm này.");
         }
 
-        // 4️⃣ Không cho phép leader rời nhóm
+        // 4️ Không cho phép leader rời nhóm
         if (member && member.role === "leader") {
             throw new Error("Leader không thể tự rời nhóm. Hãy đổi leader trước.");
         }
 
-        // 5️⃣ Nếu user là mentor, kiểm tra số lượng mentor trong nhóm
+        // 5️ Nếu user là mentor, kiểm tra số lượng mentor trong nhóm
         if (isMentor) {
             const mentorCount = await prisma.groupMentor.count({ where: { groupId } });
             if (mentorCount <= 1) {
@@ -1049,12 +1049,12 @@ export class GroupService {
             }
         }
 
-        // 6️⃣ Xoá record groupMember nếu user là thành viên
+        // 6️ Xoá record groupMember nếu user là thành viên
         if (member) {
             await prisma.groupMember.delete({ where: { id: member.id } });
         }
 
-        // 7️⃣ Xoá record groupMentor nếu user là mentor
+        // 7️ Xoá record groupMentor nếu user là mentor
         if (isMentor) {
             await prisma.groupMentor.delete({ where: { id: isMentor.id } });
         }
@@ -1175,7 +1175,7 @@ export class GroupService {
 
     // 15) lockGroup
     async lockGroup(groupId: string, userId: string) {
-        // 1️⃣ Kiểm tra thông tin user
+        // 1️ Kiểm tra thông tin user
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: { roles: { include: { role: true } } },
@@ -1186,7 +1186,7 @@ export class GroupService {
         const userRoles = user.roles.map(r => r.role.name.toLowerCase());
         const isAdmin = userRoles.includes("admin");
 
-        // 2️⃣ Kiểm tra xem user có phải leader của nhóm không
+        // 2️ Kiểm tra xem user có phải leader của nhóm không
         const student = await prisma.student.findUnique({ where: { userId } });
         let isLeader = false;
         if (student) {
@@ -1196,29 +1196,29 @@ export class GroupService {
             if (leader) isLeader = true;
         }
 
-        // 3️⃣ Kiểm tra user có phải mentor trong nhóm không
+        // 3️ Kiểm tra user có phải mentor trong nhóm không
         const isMentor = await prisma.groupMentor.findFirst({
             where: { groupId, mentorId: userId },
         });
 
-        // 4️⃣ Chỉ cho phép admin, leader hoặc mentor khóa nhóm
+        // 4️ Chỉ cho phép admin, leader hoặc mentor khóa nhóm
         if (!isAdmin && !isLeader && !isMentor) {
             throw new Error("Bạn không có quyền khóa nhóm (chỉ admin, leader hoặc mentor).");
         }
 
-        // 5️⃣ Tìm group
+        // 5️ Tìm group
         const group = await prisma.group.findUnique({
             where: { id: groupId },
         });
 
         if (!group) throw new Error("Nhóm không tồn tại.");
 
-        // 6️⃣ Nếu nhóm đã bị khóa, không cần cập nhật lại
+        // 6️ Nếu nhóm đã bị khóa, không cần cập nhật lại
         if (group.isLocked) {
             return { message: "Nhóm đã được khóa trước đó." };
         }
 
-        // 7️⃣ Cập nhật trạng thái khóa nhóm
+        // 7️ Cập nhật trạng thái khóa nhóm
         await prisma.group.update({
             where: { id: groupId },
             data: { isLocked: true },
@@ -1238,16 +1238,16 @@ export class GroupService {
         newMentorId: string,
         userId: string
     ) {
-        // 1️⃣ Kiểm tra nhóm có tồn tại không
+        // 1️ Kiểm tra nhóm có tồn tại không
         const group = await prisma.group.findUnique({ where: { id: groupId } });
         if (!group) throw new Error("Nhóm không tồn tại.");
 
-        // 2️⃣ Kiểm tra nhóm có bị khóa không
+        // 2️ Kiểm tra nhóm có bị khóa không
         if (group.isLocked) {
             throw new Error("Nhóm đã bị khóa, không thể thay đổi mentor.");
         }
 
-        // 3️⃣ Kiểm tra quyền của user thực hiện thay đổi mentor
+        // 3️ Kiểm tra quyền của user thực hiện thay đổi mentor
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: { roles: { include: { role: true } } },
@@ -1267,7 +1267,7 @@ export class GroupService {
             throw new Error("Bạn không có quyền thay đổi mentor.");
         }
 
-        // 4️⃣ Kiểm tra mentor cũ có trong nhóm không
+        // 4️ Kiểm tra mentor cũ có trong nhóm không
         const oldMentor = await prisma.groupMentor.findFirst({
             where: { groupId, mentorId: oldMentorId },
         });
@@ -1276,14 +1276,14 @@ export class GroupService {
             throw new Error("Mentor cũ không thuộc nhóm.");
         }
 
-        // 5️⃣ Kiểm tra số lượng mentor hiện tại trong nhóm
+        // 5️ Kiểm tra số lượng mentor hiện tại trong nhóm
         const mentorCount = await prisma.groupMentor.count({ where: { groupId } });
 
         if (mentorCount <= 1) {
             throw new Error("Mentor cũ là mentor duy nhất trong nhóm. Hãy thêm mentor mới trước khi xóa mentor cũ.");
         }
 
-        // 6️⃣ Kiểm tra mentor mới có hợp lệ không
+        // 6️ Kiểm tra mentor mới có hợp lệ không
         const newMentor = await prisma.user.findUnique({
             where: { id: newMentorId },
             include: { roles: { include: { role: true } } },
@@ -1293,7 +1293,7 @@ export class GroupService {
             throw new Error("Người dùng này không phải Mentor.");
         }
 
-        // 7️⃣ Kiểm tra mentor mới đã có trong nhóm chưa
+        // 7️ Kiểm tra mentor mới đã có trong nhóm chưa
         const existingMentor = await prisma.groupMentor.findFirst({
             where: { groupId, mentorId: newMentorId },
         });
@@ -1302,10 +1302,10 @@ export class GroupService {
             throw new Error("Mentor mới đã có trong nhóm.");
         }
 
-        // 8️⃣ Xóa mentor cũ
+        // 8️ Xóa mentor cũ
         await prisma.groupMentor.delete({ where: { id: oldMentor.id } });
 
-        // 9️⃣ Thêm mentor mới
+        // 9️ Thêm mentor mới
         await prisma.groupMentor.create({
             data: {
                 groupId,
@@ -1381,7 +1381,7 @@ export class GroupService {
     // 20) unlockGroup
 
     async unlockGroup(groupId: string, userId: string) {
-        // 1️⃣ Lấy thông tin user + vai trò
+        // 1️ Lấy thông tin user + vai trò
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: { roles: { include: { role: true } } },
@@ -1393,12 +1393,12 @@ export class GroupService {
         const isAdmin = userRoles.includes("admin");
         const isAcademicOfficer = userRoles.includes("academic_officer");
 
-        // 2️⃣ Kiểm tra quyền mở khóa (chỉ admin hoặc academic_officer)
+        // 2️ Kiểm tra quyền mở khóa (chỉ admin hoặc academic_officer)
         if (!isAdmin && !isAcademicOfficer) {
             throw new Error("Bạn không có quyền mở khóa nhóm.");
         }
 
-        // 3️⃣ Kiểm tra xem nhóm có bị khóa không
+        // 3️ Kiểm tra xem nhóm có bị khóa không
         const group = await prisma.group.findUnique({
             where: { id: groupId },
         });
@@ -1408,7 +1408,7 @@ export class GroupService {
             return { message: "Nhóm hiện không bị khóa." };
         }
 
-        // 4️⃣ Mở khóa nhóm
+        // 4️Mở khóa nhóm
         await prisma.group.update({
             where: { id: groupId },
             data: { isLocked: false },

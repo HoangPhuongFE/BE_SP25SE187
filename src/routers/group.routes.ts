@@ -18,7 +18,7 @@ router.post(
 router.post(
   "/invite",
   authenticateToken,
-  checkRole(["student", "admin"]),
+  checkRole(["student", "admin","leader", "mentor"]),
   checkSemester, 
   groupController.inviteMember.bind(groupController)
 );
@@ -36,6 +36,7 @@ router.get(
   "/info/:groupId",
   authenticateToken,
   checkRole(["admin", "graduation_thesis_manager", "mentor", "examination_officer", "student", 'lecturer']),
+  checkSemester,
   groupController.getGroupInfo.bind(groupController)
 );
 
@@ -61,7 +62,6 @@ router.post(
   "/add-mentor",
   authenticateToken,
   checkRole(["admin", "graduation_thesis_manager", "academic_officer"]),
-  checkSemester,
   groupController.addMentorToGroup.bind(groupController)
 );
 
@@ -69,7 +69,7 @@ router.post(
 router.post(
   "/remove-member",
   authenticateToken,
-  checkRole(["leader", "mentor", "admin", "student"]),
+  checkRole([ "mentor", "admin", "student", "academic_officer"]),
   checkSemester,
   groupController.removeMemberFromGroup.bind(groupController)
 );
@@ -105,7 +105,7 @@ router.post(
 router.post(
   "/lock",
   authenticateToken,
-  checkRole(["mentor", "admin"]),
+  checkRole(["mentor", "admin", "graduation_thesis_manager", "academic_officer"]),
   groupController.lockGroup.bind(groupController)
 );
 
@@ -122,6 +122,7 @@ router.get(
   "/members/:groupId",
   authenticateToken,
   checkRole(["leader", "admin", "mentor", "student", "graduation_thesis_manager", "academic_officer"]),
+  checkSemester,
   groupController.getGroupMembers.bind(groupController)
 );
 
@@ -130,6 +131,7 @@ router.get(
   "/mentors/:groupId",
   authenticateToken,
   checkRole(["leader", "admin", "mentor", "student", "graduation_thesis_manager", "academic_officer"]),
+  
   groupController.getGroupMentors.bind(groupController)
 );
 
@@ -137,7 +139,8 @@ router.get(
 router.get(
   "/students-without-group/:semesterId",
   authenticateToken,
-  checkRole(["admin", "graduation_thesis_manager", "academic_officer", "mentor","lecturer"]),
+  checkRole(["admin", "graduation_thesis_manager", "academic_officer", "mentor","lecturer",'student']),
+  checkSemester,
   groupController.getStudentsWithoutGroup.bind(groupController)
 );
 
