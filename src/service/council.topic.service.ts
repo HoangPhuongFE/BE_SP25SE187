@@ -314,7 +314,7 @@ export class CouncilTopicService {
           role: data.role,
           assignedAt: new Date(),
           status: "ACTIVE",
-          semesterId: council.semesterId || '', // Add the missing semesterId property
+          semesterId: council.semesterId || '', 
         },
       });
 

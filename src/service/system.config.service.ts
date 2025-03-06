@@ -53,7 +53,7 @@ export class SystemConfigService {
 
   // Cấu hình số lượng thành viên hội đồng xét duyệt đề tài
   async getMaxCouncilMembers(): Promise<number> {
-    return this.getSystemConfigValue("MAX_COUNCIL_MEMBERS", 3) as Promise<number>;
+    return this.getSystemConfigValue("MAX_COUNCIL_MEMBERS", 2) as Promise<number>;
   }
 
   // Cấu hình số lượng hội đồng tối đa trong mỗi học kỳ
