@@ -248,7 +248,13 @@ export class TopicService {
           topicCode: true,
           nameVi: true,
           nameEn: true,
+          name: true,
           description: true,
+          isBusiness: true,
+          businessPartner: true,
+          source: true,
+          subSupervisor: true,
+          createdBy : true,
           status: true,
           createdAt: true,
           submissionPeriodId: true,
@@ -268,7 +274,6 @@ export class TopicService {
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi khi lấy danh sách đề tài.' };
     }
   }
-
   async getTopicById(topicId: string) {
     try {
       const topic = await prisma.topic.findUnique({
@@ -295,7 +300,7 @@ export class TopicService {
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi khi lấy thông tin đề tài.' };
     }
   }
-
+  
   async approveTopicByAcademic(topicId: string, status: 'APPROVED' | 'REJECTED', userId: string, finalFile?: Express.Multer.File) {
     try {
       if (!['APPROVED', 'REJECTED'].includes(status)) {
@@ -465,7 +470,6 @@ export class TopicService {
       data: registration,
     };
   }
-
   async approveTopicRegistrationByMentor(registrationId: string, data: { status: 'APPROVED' | 'REJECTED'; reason?: string }, userId: string) {
     try {
       if (!['APPROVED', 'REJECTED'].includes(data.status)) {
@@ -560,7 +564,6 @@ export class TopicService {
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi duyệt đăng ký đề tài.' };
     }
   }
-
   async deleteTopic(topicId: string) {
     try {
       const topic = await prisma.topic.findUnique({
@@ -634,7 +637,6 @@ export class TopicService {
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống!' };
     }
   }
-
   async getAvailableTopics(filter: { semesterId: string; status?: string }) {
     const { semesterId, status } = filter;
 
