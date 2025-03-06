@@ -406,7 +406,7 @@ export class TopicService {
     });
 
     if (!leader) {
-      console.log(`❌ User ${leaderId} không phải leader của bất kỳ nhóm nào`);
+      console.log(` User ${leaderId} không phải leader của bất kỳ nhóm nào`);
       return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Bạn không phải là trưởng nhóm!' };
     }
 

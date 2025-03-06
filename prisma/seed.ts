@@ -5,7 +5,7 @@ const prisma = new PrismaClient();
 
 async function createRoles() {
   await prisma.role.deleteMany();
-  console.log('Deleted all existing roles.');
+ // console.log('Deleted all existing roles.');
 
   const roles = [
     { name: 'academic_officer', description: 'Academic Officer/Cán bộ học vụ' },
@@ -103,7 +103,7 @@ async function createDefaultUsers(defaultSemesterId: string, spring2025Id: strin
 async function createYearsAndSemesters() {
   await prisma.semester.deleteMany();
   await prisma.year.deleteMany();
-  console.log('Deleted all existing years and semesters.');
+ // console.log('Deleted all existing years and semesters.');
 
   const years = [{ year: 2024 }, { year: 2025 }, { year: 2026 }];
   const createdYears: { [key: number]: string } = {};
@@ -221,7 +221,7 @@ async function createStudents(semesterId: string) {
               if (!role) throw new Error('Role "student" not found');
               return role.id;
             })()),
-            semesterId, // Dùng SPRING2025 cho sinh viên
+            semesterId,
             isActive: true,
           },
         },

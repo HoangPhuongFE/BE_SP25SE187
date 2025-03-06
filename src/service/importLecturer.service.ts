@@ -24,7 +24,7 @@ export class ImportLecturerService {
     const errors: string[] = [];
     const dataToImport = [];
     const seenLecturers = new Set();
-    const DEFAULT_PASSWORD = '123456';
+    const DEFAULT_PASSWORD = 'a123456';
     const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
     const lecturerRole = await prisma.role.findUnique({ where: { name: 'lecturer' } });
