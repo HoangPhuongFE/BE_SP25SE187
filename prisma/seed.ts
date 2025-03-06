@@ -5,20 +5,19 @@ const prisma = new PrismaClient();
 
 async function createRoles() {
   await prisma.role.deleteMany();
- // console.log('Deleted all existing roles.');
 
   const roles = [
-    { name: 'academic_officer', description: 'Academic Officer/Cán bộ học vụ' },
-    { name: 'graduation_thesis_manager', description: 'Graduation Thesis Manager/Người quản lý luận văn tốt nghiệp' },
-    { name: 'examination_officer', description: 'Examination Officer/Cán bộ kiểm tra' },
-    { name: 'reviewer', description: 'Người phản biện' },
-    { name: 'chairman', description: 'Chủ tịch hội đồng' },
-    { name: 'secretary', description: 'Thư ký hội đồng' },
-    { name: 'lecturer', description: 'Giảng viên' },
-    { name: 'mentor', description: 'Người hướng dẫn (Mentor)' },
-    { name: 'leader', description: 'Trưởng nhóm' },
-    { name: 'student', description: 'Sinh viên (Student Groups/Students)' },
-    { name: 'admin', description: 'Quản trị viên (Admin)' }
+    { name: 'academic_officer', description: 'Academic Officer/Cán bộ học vụ', isSystemWide: true },
+    { name: 'graduation_thesis_manager', description: 'Graduation Thesis Manager/Người quản lý luận văn tốt nghiệp', isSystemWide: true },
+    { name: 'examination_officer', description: 'Examination Officer/Cán bộ kiểm tra', isSystemWide: true },
+    { name: 'reviewer', description: 'Người phản biện', isSystemWide: false },
+    { name: 'chairman', description: 'Chủ tịch hội đồng', isSystemWide: false },
+    { name: 'secretary', description: 'Thư ký hội đồng', isSystemWide: false },
+    { name: 'lecturer', description: 'Giảng viên', isSystemWide: false },
+    { name: 'mentor', description: 'Người hướng dẫn (Mentor)', isSystemWide: false },
+    { name: 'leader', description: 'Trưởng nhóm', isSystemWide: false },
+    { name: 'student', description: 'Sinh viên (Student Groups/Students)', isSystemWide: false },
+    { name: 'admin', description: 'Quản trị viên (Admin)', isSystemWide: true }
   ];
 
   for (const role of roles) {

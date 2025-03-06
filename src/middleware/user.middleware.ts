@@ -121,9 +121,7 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
 
 
 
-const SYSTEM_DEFAULT_SEMESTER_ID = 'system-default-id'; // Thay bằng ID thực tế sau seed
-
-export const checkRole = (allowedRoles: string[], requireSemester: boolean = false) => {
+export const checkRole = (allowedRoles: string[]) => {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user || !req.user.userId) {
       return res.status(401).json({ message: 'Unauthorized' });
@@ -131,7 +129,7 @@ export const checkRole = (allowedRoles: string[], requireSemester: boolean = fal
 
     const semesterId = (req.body.semesterId || req.query.semesterId) as string;
 
-    // Lấy danh sách role từ UserRole dựa trên roles trong req.user
+    // Lấy danh sách vai trò của user từ UserRole
     const userRoles = await prisma.userRole.findMany({
       where: {
         userId: req.user.userId,
@@ -142,38 +140,39 @@ export const checkRole = (allowedRoles: string[], requireSemester: boolean = fal
     });
 
     const userRoleNames = userRoles.map(ur => ur.role.name);
- //   console.log('User Role Names:', userRoleNames);
-  //  console.log('User Roles with Semester:', userRoles.map(ur => ({ role: ur.role.name, semesterId: ur.semesterId })));
+    console.log('User Role Names:', userRoleNames);
 
-    // Kiểm tra xem user có vai trò cần thiết không
+    // Kiểm tra xem user có vai trò được phép không
     const hasRequiredRole = userRoleNames.some(role => allowedRoles.includes(role));
     if (!hasRequiredRole) {
       return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
     }
 
-    // Kiểm tra quyền toàn hệ thống hoặc theo học kỳ
-    const hasSystemWideRole = userRoles.some(ur => 
-      ur.role.isSystemWide || ur.semesterId === SYSTEM_DEFAULT_SEMESTER_ID
-    );
-    const hasSemesterSpecificRole = semesterId && userRoles.some(ur => 
-      allowedRoles.includes(ur.role.name) && ur.semesterId === semesterId
-    );
-
+    // Kiểm tra xem user có vai trò toàn hệ thống không
+    const hasSystemWideRole = userRoles.some(ur => ur.role.isSystemWide);
     if (hasSystemWideRole) {
       console.log('User has system-wide role, granting full access');
-      return next();
-    } else if (requireSemester) {
-      if (!semesterId) {
-        return res.status(400).json({ message: 'Missing semesterId for semester-specific action' });
-      }
-      if (!hasSemesterSpecificRole) {
-        return res.status(403).json({ message: `Forbidden: Role not valid for semester ${semesterId}` });
-      }
-      console.log(`Access granted for semester ${semesterId}`);
-      return next();
+      return next(); // Các vai trò như admin, academic_officer, v.v. luôn được phép
     }
 
-    console.log('Access granted (no semester check required)');
+    // Nếu không có vai trò toàn hệ thống, yêu cầu semesterId và kiểm tra
+    if (!semesterId) {
+      return res.status(400).json({ message: 'Missing semesterId for semester-specific action' });
+    }
+
+    // Kiểm tra xem vai trò có hợp lệ với semesterId không
+    const hasValidSemesterRole = userRoles.some(ur => 
+      allowedRoles.includes(ur.role.name) && 
+      ur.semesterId === semesterId
+    );
+
+    if (!hasValidSemesterRole) {
+      return res.status(403).json({ 
+        message: `Forbidden: Role not valid for semester ${semesterId}` 
+      });
+    }
+
+    console.log(`Access granted for semester ${semesterId}`);
     next();
   };
 };

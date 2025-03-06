@@ -8,7 +8,7 @@ const exportTopicController = new ExportTopicController();
 router.get(
   '/export-topic',
   authenticateToken,
-  checkRole(['admin', 'academic_officer', 'graduation_thesis_manager'], false),
+  checkRole(['admin', 'academic_officer', 'graduation_thesis_manager']),
   exportTopicController.exportTopicsForApproval.bind(exportTopicController)
 );
 

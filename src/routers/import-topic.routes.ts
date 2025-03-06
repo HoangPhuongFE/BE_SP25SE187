@@ -14,7 +14,7 @@ const importTopicController = new ImportTopicController();
 router.post(
   '/import-topic',
   authenticateToken,
-  checkRole(['admin', 'academic_officer', 'graduation_thesis_manager'], false),
+  checkRole(['admin', 'academic_officer', 'graduation_thesis_manager']),
   upload.single('file'), // file được gửi với key "file"
   importTopicController.importTopics.bind(importTopicController)
 );

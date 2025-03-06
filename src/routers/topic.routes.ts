@@ -10,7 +10,7 @@ const topicController = new TopicController();
 router.post(
   '/',
   authenticateToken,
-  checkRole(['academic_officer', 'admin', 'mentor', 'lecturer', 'graduation_thesis_manager'], false),
+  checkRole(['academic_officer', 'admin', 'mentor', 'lecturer', 'graduation_thesis_manager']),
   topicController.createTopic.bind(topicController)
 );
 
@@ -18,7 +18,7 @@ router.post(
 router.put(
   '/:topicId',
   authenticateToken,
-  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager'], false),
+  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager']),
   topicController.updateTopic.bind(topicController)
 );
 
@@ -26,7 +26,7 @@ router.put(
 router.get(
   '/approval',
   authenticateToken,
-  checkRole(['admin', 'review', 'lecturer', 'academic_officer', 'graduation_thesis_manager'], false),
+  checkRole(['admin', 'review', 'lecturer', 'academic_officer', 'graduation_thesis_manager']),
   topicController.getTopicsForApprovalBySubmission.bind(topicController)
 );
 
@@ -34,7 +34,7 @@ router.get(
 router.get(
   '/semester/:semesterId',
   authenticateToken,
-  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager', 'student', 'leader', 'review', 'lecturer'], false),
+  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager', 'student', 'leader', 'review', 'lecturer']),
   topicController.getTopicsBySemester.bind(topicController)
 );
 
@@ -42,7 +42,7 @@ router.get(
 router.get(
   '/available-topics',
   authenticateToken,
-  checkRole(['leader', 'student', 'admin', 'review', 'lecturer', 'academic_officer', 'graduation_thesis_manager'], false),
+  checkRole(['leader', 'student', 'admin', 'review', 'lecturer', 'academic_officer', 'graduation_thesis_manager']),
   topicController.getAvailableTopics.bind(topicController)
 );
 
@@ -50,7 +50,7 @@ router.get(
 router.get(
   '/registered-topics',
   authenticateToken,
-  checkRole(['mentor','academic_officer', 'graduation_thesis_manager'], false),
+  checkRole(['mentor','academic_officer', 'graduation_thesis_manager']),
   topicController.getRegisteredTopicsByMentor.bind(topicController)
 );
 
@@ -58,7 +58,7 @@ router.get(
 router.get(
   '/:topicId',
   authenticateToken,
-  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager', 'student', 'leader', 'review', 'lecturer'], false),
+  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager', 'student', 'leader', 'review', 'lecturer']),
   topicController.getTopicById.bind(topicController)
 );
 
@@ -66,7 +66,7 @@ router.get(
 router.post(
   '/topic-registrations',
   authenticateToken,
-  checkRole(['leader', 'student'], false),
+  checkRole(['leader', 'student']),
   topicController.registerTopic.bind(topicController)
 );
 
@@ -74,7 +74,7 @@ router.post(
 router.put(
   '/topic-registrations/:registrationId/approve',
   authenticateToken,
-  checkRole(['mentor'], false),
+  checkRole(['mentor']),
   topicController.approveTopicRegistrationByMentor.bind(topicController)
 );
 
@@ -82,7 +82,7 @@ router.put(
 router.post(
   '/:topicId/status',
   authenticateToken,
-  checkRole(['academic_officer', 'admin', 'graduation_thesis_manager'], false),
+  checkRole(['academic_officer', 'admin', 'graduation_thesis_manager']),
   upload.single('finalFile'),
   topicController.approveTopicByAcademic.bind(topicController)
 );
@@ -91,7 +91,7 @@ router.post(
 router.delete(
   '/:topicId',
   authenticateToken,
-  checkRole(['admin', 'graduation_thesis_manager','academic_officer'], false),
+  checkRole(['admin', 'graduation_thesis_manager','academic_officer']),
   topicController.deleteTopic.bind(topicController)
 );
 
@@ -101,7 +101,7 @@ router.delete(
 router.get(
   '/decisions/download',
   authenticateToken,
-  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager'], false),
+  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager']),
   topicController.downloadDecisionFile.bind(topicController)
 );
 
