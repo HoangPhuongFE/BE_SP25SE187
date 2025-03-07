@@ -1,123 +1,233 @@
-// services/import-topic.service.ts
 import ExcelJS from 'exceljs';
 import { PrismaClient } from '@prisma/client';
 import HTTP_STATUS from '../constants/httpStatus';
 
 const prisma = new PrismaClient();
 
+// Định nghĩa interface cho kết quả kiểm tra dữ liệu
+interface ValidationResult {
+  valid: boolean;
+  data?: {
+    topicCode: string;
+    nameVi: string;
+    nameEn: string;
+    name: string;
+    description: string;
+    semesterId: string;
+    isBusiness: boolean;
+    businessPartner: string;
+    source: string;
+    subSupervisorId: string | null;
+    proposedGroupId: string | null;
+    draftFileUrl: string;
+    finalFileUrl: string;
+    reviewReason: string;
+    createdAt: Date;
+    status: string;
+    majorId?: string;
+  };
+  errors?: string[];
+}
+
 export class ImportTopicService {
-  /**
-   * Đọc file Excel và chuyển đổi thành mảng dữ liệu đề tài.
-   * Giả sử file Excel có worksheet tên là "Topics" và các cột được sắp xếp theo thứ tự:
-   * 1. Mã đề tài, 2. Tên đề tài (VN), 3. Tên đề tài (EN), 4. Tên rút gọn,
-   * 5. Mô tả, 6. Học kỳ, 7. Ngành, 8. Kinh doanh, 9. Đối tác kinh doanh,
-   * 10. Nguồn, 11. Phụ trách phụ, 12. Email phụ trách, 13. Nhóm đề xuất,
-   * 14. File nháp, 15. File chính, 16. Lí do, 17. Ngày tạo.
-   */
-  async parseExcelFile(filePath: string): Promise<any[]> {
-    try {
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.readFile(filePath);
-      const worksheet = workbook.getWorksheet('Topics');
-      if (!worksheet) {
-        throw new Error("Không tìm thấy worksheet 'Topics'");
+  // Hàm đọc dữ liệu từ file Excel
+  async readExcelFile(filePath: string, sheetName: string = 'Topics') {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    let worksheet = workbook.getWorksheet(sheetName);
+    if (!worksheet) {
+      worksheet = workbook.worksheets[0]; // Lấy sheet đầu tiên nếu không tìm thấy sheetName
+      if (!worksheet) throw new Error('Không tìm thấy worksheet nào trong file Excel');
+    }
+    const rows: any[] = [];
+
+    worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+      if (rowNumber > 1) { // Bỏ qua hàng tiêu đề
+        rows.push({
+          topicCode: row.getCell(1).value?.toString(),
+          nameVi: row.getCell(2).value?.toString(),
+          nameEn: row.getCell(3).value?.toString(),
+          name: row.getCell(4).value?.toString(),
+          description: row.getCell(5).value?.toString(),
+          semesterCode: row.getCell(6).value?.toString(),
+          majorName: row.getCell(7).value?.toString(),
+          isBusiness: row.getCell(8).value?.toString(),
+          businessPartner: row.getCell(9).value?.toString(),
+          source: row.getCell(10).value?.toString(),
+          subSupervisorEmail: row.getCell(11).value?.toString(),
+          groupCode: row.getCell(12).value?.toString(),
+          draftFileUrl: row.getCell(13).value?.toString(),
+          finalFileUrl: row.getCell(14).value?.toString(),
+          reviewReason: row.getCell(15).value?.toString(),
+          createdAt: row.getCell(16).value?.toString(),
+        });
       }
-      const topicsData: any[] = [];
-      worksheet.eachRow((row, rowNumber) => {
-        // Bỏ qua hàng header (rowNumber = 1)
-        if (rowNumber === 1) return;
-        const rowValues = row.values as any[];
-        // Các chỉ số bắt đầu từ 1 theo ExcelJS
-        const topic = {
-          topicCode: rowValues[1],
-          nameVi: rowValues[2],
-          nameEn: rowValues[3],
-          name: rowValues[4],
-          description: rowValues[5],
-          semesterId: rowValues[6],
-          majorId: rowValues[7],
-          isBusiness: rowValues[8] === 'Có' ? true : false,
-          businessPartner: rowValues[9],
-          source: rowValues[10],
-          subSupervisor: rowValues[11],
-          subSupervisorEmail: rowValues[12],
-          proposedGroupId: rowValues[13],
-          draftFileUrl: rowValues[14],
-          finalFileUrl: rowValues[15],
-          reviewReason: rowValues[16],
-          createdAt: rowValues[17] ? new Date(rowValues[17]) : new Date(),
-        };
-        topicsData.push(topic);
+    });
+
+    return rows;
+  }
+
+  // Hàm kiểm tra và chuẩn hóa dữ liệu
+  async validateAndNormalizeRow(row: any): Promise<ValidationResult> {
+    const errors: string[] = [];
+
+    // Kiểm tra các trường bắt buộc
+    if (!row.topicCode) errors.push('Thiếu mã đề tài');
+    if (!row.nameVi) errors.push('Thiếu tên đề tài tiếng Việt');
+    if (!row.semesterCode) errors.push('Thiếu mã học kỳ');
+    if (!row.majorName) errors.push('Thiếu tên chuyên ngành');
+
+    if (errors.length > 0) {
+      return { valid: false, errors };
+    }
+
+    // Chuẩn hóa dữ liệu
+    const semester = await prisma.semester.findFirst({ where: { code: row.semesterCode } });
+    const major = await prisma.major.findFirst({ where: { name: row.majorName } });
+    const group = row.groupCode ? await prisma.group.findFirst({ where: { groupCode: row.groupCode } }) : null;
+    const subMentor = row.subSupervisorEmail ? await prisma.user.findFirst({ where: { email: row.subSupervisorEmail } }) : null;
+
+    if (!semester) errors.push(`Học kỳ không tồn tại: ${row.semesterCode}`);
+    if (!major) errors.push(`Chuyên ngành không tồn tại: ${row.majorName}`);
+    if (row.groupCode && !group) errors.push(`Nhóm không tồn tại: ${row.groupCode}`);
+    if (row.subSupervisorEmail && !subMentor) errors.push(`Người hướng dẫn phụ không tồn tại: ${row.subSupervisorEmail}`);
+
+    if (errors.length > 0) {
+      return { valid: false, errors };
+    }
+
+    return {
+      valid: true,
+      data: {
+        topicCode: row.topicCode,
+        nameVi: row.nameVi,
+        nameEn: row.nameEn || '',
+        name: row.name || '',
+        description: row.description || '',
+        semesterId: semester!.id,
+        isBusiness: ['Có', 'Yes', 'true'].includes(String(row.isBusiness).toLowerCase()),
+        businessPartner: row.businessPartner || '',
+        source: row.source || '',
+        subSupervisorId: subMentor?.id || null,
+        proposedGroupId: group?.id || null,
+        draftFileUrl: row.draftFileUrl || '',
+        finalFileUrl: row.finalFileUrl || '',
+        reviewReason: row.reviewReason || '',
+        createdAt: row.createdAt ? new Date(row.createdAt) : new Date(),
+        status: 'PENDING',
+        majorId: major!.id,
+      },
+    };
+  }
+
+  // Hàm tạo hoặc cập nhật đề tài
+  async importTopic(data: any, createdBy: string) {
+    // Upsert đề tài
+    const topic = await prisma.topic.upsert({
+      where: { topicCode: data.topicCode },
+      create: {
+        topicCode: data.topicCode,
+        nameVi: data.nameVi,
+        nameEn: data.nameEn,
+        name: data.name,
+        description: data.description,
+        semesterId: data.semesterId,
+        isBusiness: data.isBusiness,
+        businessPartner: data.businessPartner,
+        source: data.source,
+        subSupervisor: data.subSupervisorId,
+        proposedGroupId: data.proposedGroupId,
+        reviewReason: data.reviewReason,
+        createdAt: data.createdAt || new Date(),
+        createdBy,
+        status: data.status || 'PENDING',
+      },
+      update: {
+        nameVi: data.nameVi,
+        nameEn: data.nameEn,
+        name: data.name,
+        description: data.description,
+        semesterId: data.semesterId,
+        isBusiness: data.isBusiness,
+        businessPartner: data.businessPartner,
+        source: data.source,
+        ...(data.subSupervisorId && { subSupervisor: data.subSupervisorId }),
+        ...(data.proposedGroupId && { proposedGroupId: data.proposedGroupId }),
+        reviewReason: data.reviewReason,
+        status: data.status,
+      },
+    });
+
+    // Liên kết với major thông qua bảng trung gian SemesterTopicMajor
+    if (data.majorId) {
+      await prisma.semesterTopicMajor.create({
+        data: {
+          semesterId: data.semesterId,
+          topicId: topic.id,
+          majorId: data.majorId,
+          status: 'ACTIVE',
+        },
       });
-      return topicsData;
-    } catch (error) {
-      console.error('Lỗi khi đọc file Excel:', error);
-      throw error;
+    }
+
+    return topic;
+  }
+
+  // Hàm xử lý tài liệu
+  async importDocuments(topicId: string, draftFileUrl: string, finalFileUrl: string,fileType: string, uploadedBy: string) {
+    if (draftFileUrl) {
+      await prisma.document.create({
+        data: {
+          fileName: 'Tệp nháp',
+          fileUrl: draftFileUrl,
+          fileType: fileType, // Giả định là PDF
+          documentType: 'draft',
+          topicId: topicId,
+          uploadedBy,
+        },
+      });
+    }
+    if (finalFileUrl) {
+      await prisma.document.create({
+        data: {
+          fileName: 'Tệp chính',
+          fileUrl: finalFileUrl,
+          fileType: fileType, // Giả định là PDF
+          documentType: 'final',
+          topicId: topicId,
+          uploadedBy,
+        },
+      });
     }
   }
 
-  
-  async importTopicsFromExcel(filePath: string, createdBy: string): Promise<{ success: boolean; status: number; message: string; data?: any }> {
+  // Hàm chính để import dữ liệu từ file Excel
+  async importTopicsFromExcel(filePath: string, createdBy: string) {
     try {
-      const topicsData = await this.parseExcelFile(filePath);
-      const importedTopics = [];
+      const rows = await this.readExcelFile(filePath);
+      const results: any[] = [];
 
-      for (const data of topicsData) {
-        try {
-          // Kiểm tra bắt buộc: semesterId, majorId, nameVi, nameEn,... (theo nghiệp vụ của bạn)
-          if (!data.semesterId || !data.majorId || !data.nameVi || !data.nameEn || !data.name) {
-            // Bỏ qua hoặc ghi log nếu dữ liệu không đầy đủ.
-            console.warn('Dữ liệu không đầy đủ:', data);
-            continue;
-          }
-
-          // Ví dụ: tạo topic với các trường cơ bản (lưu ý: các trường như submissionPeriodId, status sẽ được thiết lập mặc định)
-          const newTopic = await prisma.topic.create({
-            data: {
-              topicCode: data.topicCode, // Nếu topicCode đã tồn tại, sẽ báo lỗi; bạn có thể thêm logic kiểm tra trùng lặp.
-              nameVi: data.nameVi,
-              nameEn: data.nameEn,
-              name: data.name,
-              description: data.description,
-              semesterId: data.semesterId,
-              isBusiness: data.isBusiness,
-              businessPartner: data.businessPartner,
-              source: data.source,
-              subSupervisor: data.subSupervisor,
-              createdBy: createdBy, // Lấy từ người import
-              status: 'PENDING', // Hoặc tùy nghiệp vụ
-              // Bạn có thể bổ sung thêm các trường khác nếu cần
-              // Nếu muốn lưu submissionPeriodId thì cần xác định logic của bạn.
-            },
-          });
-
-          // Nếu dữ liệu file từ Excel có chứa thông tin Decision, tạo luôn Decision cho topic này.
-          if (data.draftFileUrl || data.finalFileUrl) {
-            await prisma.decision.create({
-              data: {
-                decisionNumber: data.topicCode
-                  ? `QD-DRAFT-${new Date().getFullYear()}-${data.topicCode}`
-                  : `QD-DRAFT-${new Date().getFullYear()}-${Math.random().toString(36).substr(2, 4)}`,
-                decisionTitle: `Đề xuất đề tài ${newTopic.topicCode}`,
-                topicId: newTopic.id,
-                draftFileUrl: data.draftFileUrl || null,
-                finalFileUrl: data.finalFileUrl || null,
-                status: 'PENDING',
-                createdBy: createdBy,
-                // Nếu đề tài có group đề xuất, bạn có thể thêm logic ở đây
-              },
-            });
-          }
-          importedTopics.push(newTopic);
-        } catch (innerError) {
-          console.error('Lỗi khi tạo đề tài:', innerError);
-          // Bạn có thể lưu lại thông tin lỗi hoặc tiếp tục với bản ghi khác
+      for (const row of rows) {
+        const validation = await this.validateAndNormalizeRow(row);
+        if (!validation.valid) {
+          results.push({ row, success: false, errors: validation.errors });
+          continue;
         }
+
+        const data = validation.data!;
+        const topic = await this.importTopic(data, createdBy);
+        
+        if (data.draftFileUrl || data.finalFileUrl) {
+          await this.importDocuments(topic.id, data.draftFileUrl, data.finalFileUrl, 'application/pdf', createdBy);
+        }
+
+        results.push({ row, success: true, topicId: topic.id });
       }
-      return { success: true, status: HTTP_STATUS.OK, message: 'Nhập đề tài thành công!', data: importedTopics };
+
+      return { success: true, status: HTTP_STATUS.OK, data: results };
     } catch (error) {
-      console.error('Lỗi khi import Excel:', error);
-      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi import Excel!' };
+      console.error('Lỗi khi import dữ liệu:', error);
+      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi import dữ liệu!' };
     }
   }
 }

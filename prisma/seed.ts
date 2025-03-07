@@ -12,6 +12,8 @@ async function createRoles() {
     { name: 'examination_officer', description: 'Examination Officer/Cán bộ kiểm tra', isSystemWide: true },
     { name: 'student', description: 'Sinh viên (Student Groups/Students)', isSystemWide: false },
     { name: 'admin', description: 'Quản trị viên (Admin)', isSystemWide: true },
+    { name: 'lecturer', description: 'Giảng Viên', isSystemWide: false },
+
   ];
 
   for (const role of roles) {
