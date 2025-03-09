@@ -211,6 +211,7 @@ model MeetingSchedule {
   agenda       String
   status       String
   meetingNotes String?    @map("meeting_notes") @db.Text
+  url          String?    @map("meeting_url")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
   feedback     Feedback[]

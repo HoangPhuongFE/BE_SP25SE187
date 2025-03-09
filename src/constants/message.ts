@@ -243,6 +243,7 @@ export const MEETING_MESSAGE = {
   MEETING_NOT_FOUND: "Meeting not found",
   UNAUTHORIZED_MENTOR: "You are not the mentor of this group",
   INVALID_MEETING_TIME: "Invalid meeting time",
+  INVALID_MEETING_URL: "Invalid meeting URL",
   GROUP_NOT_FOUND: "Group not found",
   DELETE_TIME_EXPIRED: "Cannot delete meeting before 1 day of the meeting",
   UPDATE_TIME_EXPIRED: "Cannot update meeting before 1 day of the meeting",

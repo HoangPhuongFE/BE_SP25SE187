@@ -167,6 +167,7 @@ CREATE TABLE `meeting_schedules` (
     `agenda` VARCHAR(191) NOT NULL,
     `status` VARCHAR(191) NOT NULL,
     `meeting_notes` TEXT NULL,
+    `meeting_url` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updated_at` DATETIME(3) NOT NULL,
 
