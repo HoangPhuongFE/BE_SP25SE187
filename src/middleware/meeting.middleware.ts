@@ -7,7 +7,7 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 export const validateCreateMeeting = [
-  body('groupId').notEmpty().withMessage('Group ID là bắt buộc'),
+  body('groupId').notEmpty().withMessage('Group ID hoặc Group Code là bắt buộc'),
   body('meetingTime').isISO8601().withMessage(MEETING_MESSAGE.INVALID_MEETING_TIME),
   body('location').notEmpty().withMessage('Địa điểm là bắt buộc'),
   body('agenda').notEmpty().withMessage('Nội dung họp là bắt buộc'),
@@ -23,10 +23,33 @@ export const validateCreateMeeting = [
     const mentorId = req.user!.userId;
 
     try {
+      // Kiểm tra xem groupId là id hay code
+      let group;
+      
+      // Nếu là UUID thì tìm theo id, nếu không thì tìm theo code
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(groupId);
+      
+      if (isUUID) {
+        group = await prisma.group.findUnique({
+          where: { id: groupId },
+        });
+      } else {
+        group = await prisma.group.findUnique({
+          where: { groupCode: groupId },
+        });
+      }
+
+      if (!group) {
+        return res.status(404).json({ message: MEETING_MESSAGE.GROUP_NOT_FOUND });
+      }
+
+      // Lưu group.id vào req.body để sử dụng sau này
+      req.body.groupId = group.id;
+
       // Kiểm tra xem user có phải là mentor của group không
       const isMentor = await prisma.groupMentor.findFirst({
         where: {
-          groupId,
+          groupId: group.id,
           mentorId
         }
       });

@@ -113,10 +113,21 @@ export class MeetingController {
     try {
       const { groupId } = req.params;
 
-      //  Kiểm tra group có tồn tại không
-      const group = await prisma.group.findUnique({
-        where: { id: groupId },
-      });
+      // Kiểm tra xem groupId là id hay code
+      let group;
+      
+      // Nếu là UUID thì tìm theo id, nếu không thì tìm theo code
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(groupId);
+      
+      if (isUUID) {
+        group = await prisma.group.findUnique({
+          where: { id: groupId },
+        });
+      } else {
+        group = await prisma.group.findUnique({
+          where: { groupCode: groupId },
+        });
+      }
 
       if (!group) {
         return res.status(HTTP_STATUS.NOT_FOUND).json({
@@ -125,7 +136,7 @@ export class MeetingController {
       }
 
       //  Lấy danh sách meetings
-      const meetings = await this.meetingService.getMeetingsByGroup(groupId);
+      const meetings = await this.meetingService.getMeetingsByGroup(group.id);
 
       res.status(HTTP_STATUS.OK).json({
         data: meetings,
@@ -165,6 +176,7 @@ export class MeetingController {
   async getMeetingsByMentor(req: AuthenticatedRequest, res: Response) {
     try {
       const mentorId = req.user!.userId;
+      const { semesterId } = req.query; // Lấy semesterId từ query params
 
       // Kiểm tra xem người dùng có vai trò mentor không
       const hasRoleMentor = req.user!.roles.some(role => role.roleId === 'mentor');
@@ -176,7 +188,10 @@ export class MeetingController {
       }
 
       // Lấy danh sách meeting
-      const meetings = await this.meetingService.getMeetingsByMentor(mentorId);
+      const meetings = await this.meetingService.getMeetingsByMentor(
+        mentorId, 
+        semesterId as string | undefined
+      );
 
       res.status(HTTP_STATUS.OK).json({
         data: meetings,

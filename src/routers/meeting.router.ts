@@ -10,7 +10,7 @@ const meetingController = new MeetingController();
 router.post(
   "/create",
   authenticateToken,
-  checkRole(["mentor"]),
+  checkRole(["mentor_main"]),
   validateCreateMeeting,
   meetingController.createMeeting.bind(meetingController)
 );
@@ -19,7 +19,7 @@ router.post(
 router.put(
   "/:id",
   authenticateToken,
-  checkRole(["mentor"]),
+  checkRole(["mentor_main"]),
   validateUpdateMeeting,
   meetingController.updateMeeting.bind(meetingController)
 );
@@ -28,11 +28,11 @@ router.put(
 router.delete(
   "/:id",
   authenticateToken,
-  checkRole(["mentor"]),
+  checkRole(["mentor_main"]),
   meetingController.deleteMeeting.bind(meetingController)
 );
 
-// Lấy danh sách meetings theo groupId
+// Lấy danh sách meetings theo groupId hoặc groupCode
 router.get(
   "/group/:groupId",
   authenticateToken,
@@ -43,7 +43,7 @@ router.get(
 router.get(
   "/mentor",
   authenticateToken,
-  checkRole(["mentor"]),
+  checkRole(["mentor_main", "mentor_sub"]),
   meetingController.getMeetingsByMentor.bind(meetingController)
 );
 

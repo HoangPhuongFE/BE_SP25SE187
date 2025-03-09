@@ -230,11 +230,30 @@ export class MeetingService {
   /**
    * Lấy tất cả meeting của một mentor (cả mentor chính và mentor phụ)
    */
-  async getMeetingsByMentor(mentorId: string): Promise<any[]> {
+  async getMeetingsByMentor(mentorId: string, semesterId?: string): Promise<any[]> {
+    // Lấy học kỳ hiện tại nếu không có semesterId được cung cấp
+    if (!semesterId) {
+      const currentSemester = await prisma.semester.findFirst({
+        where: {
+          status: 'ACTIVE'
+        },
+        orderBy: {
+          startDate: 'desc'
+        }
+      });
+      
+      if (currentSemester) {
+        semesterId = currentSemester.id;
+      }
+    }
+
     // Lấy danh sách các nhóm mà mentor là mentor chính hoặc mentor phụ
     const mentorGroups = await prisma.groupMentor.findMany({
       where: {
-        mentorId
+        mentorId,
+        group: semesterId ? {
+          semesterId: semesterId
+        } : undefined
       },
       select: {
         groupId: true
@@ -279,7 +298,8 @@ export class MeetingService {
           where: { id: String(meeting.groupId) },
           select: {
             id: true,
-            groupCode: true
+            groupCode: true,
+            semesterId: true
           }
         });
 
