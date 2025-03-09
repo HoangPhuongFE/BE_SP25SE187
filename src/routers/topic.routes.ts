@@ -10,7 +10,7 @@ const topicController = new TopicController();
 router.post(
   '/',
   authenticateToken,
-  checkRole(['academic_officer', 'admin', 'mentor', 'lecturer', 'graduation_thesis_manager','student']),
+  checkRole(['academic_officer', 'admin', 'lecturer', 'graduation_thesis_manager',]),
 
   topicController.createTopic.bind(topicController)
 );
