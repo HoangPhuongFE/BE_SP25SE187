@@ -30,6 +30,7 @@ interface TokenPayload {
     [x: string]: unknown;
     roleId: string;
     semesterId: string | null; // Cho phép null
+    name: string;
     isActive: boolean;
     isSystemWide: boolean; // Thêm thuộc tính này nếu cần
   }[];

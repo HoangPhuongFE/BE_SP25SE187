@@ -24,7 +24,7 @@ export const GROUP_MESSAGE = {
   NO_PERMISSION_INVITE: "Bạn không có quyền mời thành viên vào nhóm.",
   GROUP_LOCKED: "Nhóm đã bị khóa. Không thể gửi lời mời.",
   GROUP_MAJOR_MISMATCH: "Sinh viên thuộc ngành khác, không thể tham gia nhóm.",
-
+  GROUP_ALREADY_CREATED: "Nhóm đã được tạo trước đó.",
 
 
 
