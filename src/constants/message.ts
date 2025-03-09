@@ -297,6 +297,22 @@ export const DATABASE_MESSAGE = {
   DATABASE_ERROR: "Lỗi hệ thống cơ sở dữ liệu.",
 } as const;
 
+export const PROGRESS_REPORT_MESSAGE = {
+  REPORT_CREATED: "Tạo báo cáo tiến độ thành công",
+  REPORT_UPDATED: "Cập nhật báo cáo tiến độ thành công",
+  REPORT_DELETED: "Xóa báo cáo tiến độ thành công",
+  REPORT_NOT_FOUND: "Không tìm thấy báo cáo tiến độ",
+  FEEDBACK_ADDED: "Thêm phản hồi thành công",
+  FEEDBACK_UPDATED: "Cập nhật phản hồi thành công",
+  UNAUTHORIZED: "Bạn không có quyền thực hiện thao tác này",
+  INVALID_REQUEST: "Yêu cầu không hợp lệ",
+  GROUP_NOT_FOUND: "Không tìm thấy nhóm",
+  MENTOR_NOT_FOUND: "Không tìm thấy mentor",
+  WEEK_REPORT_EXISTS: "Báo cáo tiến độ cho tuần này đã tồn tại",
+  CANNOT_UPDATE_REVIEWED: "Không thể cập nhật báo cáo đã được đánh giá",
+  REPORTS_FETCHED: "Lấy danh sách báo cáo tiến độ thành công",
+  REPORT_FETCHED: "Lấy thông tin báo cáo tiến độ thành công",
+} as const;
 
 // Cập nhật vào danh sách MESSAGES chung
 export const MESSAGES = {
@@ -319,4 +335,5 @@ export const MESSAGES = {
   MSGV: MSGV_MESSAGE, 
   IMPORT: IMPORT_MESSAGE, 
   DATABASE: DATABASE_MESSAGE,
+  PROGRESS_REPORT: PROGRESS_REPORT_MESSAGE,
 } as const;

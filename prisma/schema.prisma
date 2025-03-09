@@ -47,6 +47,7 @@ model User {
   addedMentors           GroupMentor[]           @relation(name: "AddedByUserRelation")
   CouncilMember          CouncilMember[]
   SubmissionPeriod       SubmissionPeriod[]
+  progressReportMentors  ProgressReportMentor[]    @relation("MentorProgressReports")
 
   @@map("users")
 }
@@ -409,6 +410,18 @@ model GroupInvitation {
   student     Student   @relation(fields: [studentId], references: [id])
 }
 
+model ProgressReportMentor {
+  id             String         @id @default(uuid())
+  progressReport ProgressReport @relation(fields: [reportId], references: [id])
+  reportId       String
+  mentor         User           @relation("MentorProgressReports", fields: [mentorId], references: [id])
+  mentorId       String
+  isRead         Boolean        @default(false)
+  readAt         DateTime?
+
+  @@unique([reportId, mentorId])
+}
+
 model ProgressReport {
   id                   String    @id @default(uuid())
   groupId              String    @map("group_id")
@@ -422,6 +435,7 @@ model ProgressReport {
   reviewedAt           DateTime? @map("reviewed_at")
   url                  String?
   group                Group     @relation(fields: [groupId], references: [id])
+  mentors              ProgressReportMentor[]
 
   @@map("progress_reports")
 }
@@ -521,7 +535,7 @@ model Notification {
 }
 
 model Decision {
-  id             String   @id @default(uuid()) @map("decision_id")
+  id             String   @id @default(uuid())
   decisionNumber String   @map("decision_number")
   decisionTitle  String   @map("decision_title")
   groupId        String?  @map("group_id")
