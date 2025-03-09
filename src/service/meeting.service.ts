@@ -40,15 +40,36 @@ export class MeetingService {
     if (!isMentor) {
       throw new Error(MEETING_MESSAGE.UNAUTHORIZED_MENTOR);
     }
-    
+
+    // Tính toán thời gian kết thúc
+    const meetingStartTime = new Date(data.meetingTime);
+    const meetingEndTime = new Date(meetingStartTime.getTime() + 45 * 60 * 1000); // 45 phút sau
+
+    // Kiểm tra xem có cuộc họp nào khác trong khoảng thời gian này không
+    const overlappingMeetings = await prisma.meetingSchedule.findMany({
+      where: {
+        groupId: data.groupId,
+        meetingTime: {
+          gte: meetingStartTime,
+          lt: meetingEndTime
+        }
+      }
+    });
+
+    if (overlappingMeetings.length > 0) {
+      throw new Error("Cuộc họp đã tồn tại trong khoảng thời gian này.");
+    }
+
     // Tạo meeting mới với các trường cơ bản
     const meetingData: any = {
       mentorId: data.mentorId,
-      groupId: parseInt(data.groupId),
-      meetingTime: new Date(data.meetingTime),
+      groupId: data.groupId, // Sử dụng UUID trực tiếp
+      meetingTime: meetingStartTime,
       location: data.location,
       agenda: data.agenda,
-      status: 'SCHEDULED'
+      status: 'SCHEDULED',
+      // Thêm thời gian kết thúc
+      endTime: meetingEndTime // Nếu bạn có trường endTime trong schema
     };
     
     // Thêm url nếu có
@@ -56,9 +77,14 @@ export class MeetingService {
       meetingData.url = data.url;
     }
 
-    return await prisma.meetingSchedule.create({
-      data: meetingData
-    });
+    try {
+      return await prisma.meetingSchedule.create({
+        data: meetingData
+      });
+    } catch (error) {
+      console.error("Error creating meeting:", error);
+      throw new Error(`Không thể tạo cuộc họp: ${error as Error}.message`);
+    }
   }
 
   async updateMeeting(id: string, mentorId: string, data: UpdateMeetingDto): Promise<MeetingSchedule> {
@@ -145,7 +171,7 @@ export class MeetingService {
     // Lấy danh sách meeting của group
     const meetings = await prisma.meetingSchedule.findMany({
       where: { 
-        groupId: Number(groupId)  
+        groupId: groupId
       },
       orderBy: {
         meetingTime: 'desc'
@@ -199,7 +225,7 @@ export class MeetingService {
     // Lấy thông tin các mentor khác của group
     const groupMentors = await prisma.groupMentor.findMany({
       where: { 
-        groupId: String(meeting.groupId),
+        groupId: meeting.groupId,
         mentorId: { not: meeting.mentorId }
       }
     });
@@ -271,7 +297,7 @@ export class MeetingService {
     const meetings = await prisma.meetingSchedule.findMany({
       where: {
         groupId: {
-          in: groupIds.map(id => Number(id))
+          in: groupIds
         }
       },
       orderBy: {
@@ -295,7 +321,7 @@ export class MeetingService {
 
         // Lấy thông tin nhóm
         const group = await prisma.group.findUnique({
-          where: { id: String(meeting.groupId) },
+          where: { id: meeting.groupId },
           select: {
             id: true,
             groupCode: true,
@@ -306,7 +332,7 @@ export class MeetingService {
         // Lấy thông tin các mentor khác của group
         const groupMentors = await prisma.groupMentor.findMany({
           where: { 
-            groupId: String(meeting.groupId),
+            groupId: meeting.groupId,
             mentorId: { not: meeting.mentorId }
           }
         });

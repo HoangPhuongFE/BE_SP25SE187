@@ -176,10 +176,22 @@ export class MeetingController {
   async getMeetingsByMentor(req: AuthenticatedRequest, res: Response) {
     try {
       const mentorId = req.user!.userId;
-      const { semesterId } = req.query; // Lấy semesterId từ query params
+      
+      // Lấy semesterId từ query hoặc từ role của người dùng nếu không có trong query
+      let semesterId = req.query.semesterId as string;
+      
+      // Nếu không có semesterId trong query, lấy từ role của người dùng
+      if (!semesterId && req.user && req.user.roles && req.user.roles.length > 0) {
+        // Lấy semesterId từ role đầu tiên của người dùng
+        semesterId = req.user.roles[0].semesterId as string;
+        
+        // Thêm semesterId vào query để middleware checkRole có thể sử dụng
+        req.query.semesterId = semesterId;
+      }
 
       // Kiểm tra xem người dùng có vai trò mentor không
-      const hasRoleMentor = req.user!.roles.some(role => role.roleId === 'mentor');
+      const hasRoleMentor = req.user!.roles.some(role => 
+        role.name === 'mentor_main' || role.name === 'mentor_sub');
       
       if (!hasRoleMentor) {
         return res.status(HTTP_STATUS.FORBIDDEN).json({
@@ -190,7 +202,7 @@ export class MeetingController {
       // Lấy danh sách meeting
       const meetings = await this.meetingService.getMeetingsByMentor(
         mentorId, 
-        semesterId as string | undefined
+        semesterId
       );
 
       res.status(HTTP_STATUS.OK).json({
