@@ -3,7 +3,6 @@ import { body, param, validationResult } from 'express-validator';
 import { MESSAGES } from '../constants/message';
 
 export const validateCreateProgressReport = [
-  body('groupId').isString().notEmpty().withMessage('ID nhóm là bắt buộc'),
   body('weekNumber').isInt({ min: 1 }).withMessage('Số tuần phải là số nguyên dương'),
   body('content').isString().notEmpty().withMessage('Nội dung báo cáo là bắt buộc'),
   body('completionPercentage').isFloat({ min: 0, max: 100 }).withMessage('Phần trăm hoàn thành phải từ 0-100'),

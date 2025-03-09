@@ -12,11 +12,18 @@ export class ProgressReportController {
   // Tạo báo cáo tiến độ mới
   async createProgressReport(req: Request, res: Response) {
     try {
-      const { groupId, mentorId, weekNumber, content, completionPercentage } = req.body;
+      const { weekNumber, content, completionPercentage } = req.body;
+      const studentId = req.user?.id; // Lấy studentId từ token hoặc session
+      
+      if (!studentId) {
+        return res.status(401).json({
+          success: false,
+          message: MESSAGES.USER.UNAUTHORIZED,
+        });
+      }
       
       const progressReport = await this.progressReportService.createProgressReport({
-        groupId,
-        mentorId,
+        studentId,
         weekNumber,
         content,
         completionPercentage,
@@ -41,6 +48,14 @@ export class ProgressReportController {
     try {
       const { id } = req.params;
       const { mentorFeedback } = req.body;
+      const mentorId = req.user?.id;
+
+      if (!mentorId) {
+        return res.status(401).json({
+          success: false,
+          message: MESSAGES.USER.UNAUTHORIZED,
+        });
+      }
 
       if (!mentorFeedback) {
         return res.status(400).json({
@@ -49,7 +64,7 @@ export class ProgressReportController {
         });
       }
 
-      const updatedReport = await this.progressReportService.addMentorFeedback(id, mentorFeedback);
+      const updatedReport = await this.progressReportService.addMentorFeedback(id, mentorId, mentorFeedback);
 
       return res.status(200).json({
         success: true,
@@ -69,8 +84,16 @@ export class ProgressReportController {
     try {
       const { id } = req.params;
       const { content, completionPercentage } = req.body;
+      const studentId = req.user?.id;
 
-      const updatedReport = await this.progressReportService.updateProgressReport(id, {
+      if (!studentId) {
+        return res.status(401).json({
+          success: false,
+          message: MESSAGES.USER.UNAUTHORIZED,
+        });
+      }
+
+      const updatedReport = await this.progressReportService.updateProgressReport(id, studentId, {
         content,
         completionPercentage,
       });
@@ -92,8 +115,16 @@ export class ProgressReportController {
   async deleteProgressReport(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      const userId = req.user?.id;
 
-      await this.progressReportService.deleteProgressReport(id);
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: MESSAGES.USER.UNAUTHORIZED,
+        });
+      }
+
+      await this.progressReportService.deleteProgressReport(id, userId);
 
       return res.status(200).json({
         success: true,
@@ -196,4 +227,4 @@ export class ProgressReportController {
       });
     }
   }
-} 
+}
