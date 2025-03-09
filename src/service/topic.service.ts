@@ -33,17 +33,17 @@ export class TopicService {
           message: !data.semesterId ? 'Thiếu `semesterId`!' : 'Thiếu `createdBy`!',
         };
       }
-  
+
       const semester = await prisma.semester.findUnique({ where: { id: data.semesterId } });
       if (!semester) {
         return { success: false, status: HTTP_STATUS.NOT_FOUND, message: TOPIC_MESSAGE.SEMESTER_REQUIRED };
       }
-  
+
       const major = await prisma.major.findUnique({ where: { id: data.majorId } });
       if (!major) {
         return { success: false, status: HTTP_STATUS.NOT_FOUND, message: TOPIC_MESSAGE.INVALID_MAJOR };
       }
-  
+
       const submissionPeriod = await prisma.submissionPeriod.findFirst({
         where: { semesterId: data.semesterId, OR: [{ status: 'ACTIVE' }, { endDate: { gte: new Date() } }] },
         orderBy: { startDate: 'asc' },
@@ -52,7 +52,7 @@ export class TopicService {
       if (!submissionPeriod) {
         return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy đợt xét duyệt phù hợp!' };
       }
-  
+
       let subSupervisorId = data.subSupervisor;
       if (!subSupervisorId && data.subSupervisorEmail) {
         const mentor = await prisma.user.findUnique({ where: { email: data.subSupervisorEmail }, select: { id: true } });
@@ -61,14 +61,14 @@ export class TopicService {
         }
         subSupervisorId = mentor.id;
       }
-  
+
       const isBusiness = data.isBusiness !== undefined ? data.isBusiness === 'true' || data.isBusiness === true : true;
-  
+
       const currentYear = new Date().getFullYear().toString().slice(-2);
       const majorCode = major.name.slice(0, 2).toUpperCase();
       const topicCount = await prisma.topic.count({ where: { semesterId: data.semesterId } });
       const topicCode = `${majorCode}-${currentYear}-${(topicCount + 1).toString().padStart(3, '0')}`;
-  
+
       let groupIdToUse: string | undefined = data.groupId;
       if (!groupIdToUse && data.groupCode) {
         const group = await prisma.group.findUnique({
@@ -88,7 +88,7 @@ export class TopicService {
           return { success: false, status: HTTP_STATUS.NOT_FOUND, message: GROUP_MESSAGE.GROUP_NOT_FOUND };
         }
       }
-  
+
       const newTopic = await prisma.topic.create({
         data: {
           topicCode,
@@ -107,7 +107,7 @@ export class TopicService {
           proposedGroupId: groupIdToUse,
         },
       });
-  
+
       if (data.draftFileUrl) {
         await prisma.document.create({
           data: {
@@ -120,17 +120,21 @@ export class TopicService {
           },
         });
       }
-  
+
       if (groupIdToUse) {
+        const mentorRole = await prisma.role.findUnique({ where: { name: "mentor_main" } });
+        if (!mentorRole) throw new Error("Vai trò mentor không tồn tại.");
+
         await prisma.groupMentor.create({
           data: {
             groupId: groupIdToUse,
             mentorId: data.createdBy,
+            roleId: mentorRole.id, // Thêm roleId
             addedBy: data.createdBy,
           },
         });
       }
-  
+
       return {
         success: true,
         status: HTTP_STATUS.CREATED,
@@ -252,7 +256,7 @@ export class TopicService {
           businessPartner: true,
           source: true,
           subSupervisor: true,
-          createdBy : true,
+          createdBy: true,
           status: true,
           createdAt: true,
           submissionPeriodId: true,
@@ -298,13 +302,13 @@ export class TopicService {
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi khi lấy thông tin đề tài.' };
     }
   }
-  
+
   async approveTopicByAcademic(topicId: string, status: 'APPROVED' | 'REJECTED', userId: string, finalFile?: Express.Multer.File) {
     try {
       if (!['APPROVED', 'REJECTED'].includes(status)) {
         return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Trạng thái không hợp lệ!' };
       }
-  
+
       const topic = await prisma.topic.findUnique({
         where: { id: topicId },
         include: { topicRegistrations: true, group: true },
@@ -312,12 +316,12 @@ export class TopicService {
       if (!topic || topic.status !== 'PENDING') {
         return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Đề tài không hợp lệ hoặc đã được duyệt!' };
       }
-  
+
       const updatedTopic = await prisma.topic.update({
         where: { id: topicId },
         data: { status },
       });
-  
+
       if (status === 'APPROVED') {
         let finalFileUrl;
         if (finalFile) {
@@ -327,7 +331,7 @@ export class TopicService {
             public_id: `final-${topic.topicCode}-${crypto.randomUUID().slice(0, 8)}`,
           });
           finalFileUrl = uploadResult.secure_url;
-  
+
           // Lưu vào bảng Document thay vì Decision
           await prisma.document.create({
             data: {
@@ -340,7 +344,7 @@ export class TopicService {
             },
           });
         }
-  
+
         if (topic.proposedGroupId && topic.group) {
           await prisma.topicAssignment.create({
             data: {
@@ -363,7 +367,7 @@ export class TopicService {
           data: { proposedGroupId: null },
         });
       }
-  
+
       return {
         success: true,
         status: HTTP_STATUS.OK,
@@ -383,13 +387,16 @@ export class TopicService {
       return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Thiếu topicId hoặc topicCode để đăng ký!' };
     }
 
+    const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
+    if (!leaderRole) throw new Error("Vai trò 'leader' không tồn tại.");
+
     const leader = await prisma.groupMember.findFirst({
       where: {
         OR: [
           { userId: leaderId },
           { studentId: (await prisma.student.findUnique({ where: { userId: leaderId } }))?.id },
         ],
-        role: 'leader',
+        roleId: leaderRole.id, // Thay role: 'leader' bằng roleId
       },
       select: { groupId: true },
     });
@@ -500,8 +507,14 @@ export class TopicService {
         select: { id: true },
       });
 
+      const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
+      if (!leaderRole) throw new Error("Vai trò 'leader' không tồn tại.");
+
       const leaderGroup = await prisma.groupMember.findFirst({
-        where: { OR: [{ studentId: student?.id }, { userId: registration.userId }], role: 'leader' },
+        where: {
+          OR: [{ studentId: student?.id }, { userId: registration.userId }],
+          roleId: leaderRole.id, // Thay role: 'leader' bằng roleId
+        },
         select: { groupId: true },
       });
 
@@ -524,11 +537,17 @@ export class TopicService {
             status: 'ASSIGNED',
           },
         });
-
+        const mentorRole = await prisma.role.findUnique({ where: { name: "mentor_main" } });
+        if (!mentorRole) throw new Error("Vai trò mentor không tồn tại.");
         await prisma.groupMentor.upsert({
           where: { groupId_mentorId: { groupId: leaderGroup.groupId, mentorId: userId } },
           update: {},
-          create: { groupId: leaderGroup.groupId, mentorId: userId, addedBy: userId },
+          create: {
+            groupId: leaderGroup.groupId,
+            mentorId: userId,
+            roleId: mentorRole.id, // Thêm roleId
+            addedBy: userId,
+          },
         });
       }
 
@@ -680,19 +699,19 @@ export class TopicService {
           },
         },
       });
-  
+
       const userIds = [...new Set(registeredTopics.flatMap(topic => topic.topicRegistrations.map(reg => reg.userId)))];
       const users = await prisma.user.findMany({
         where: { id: { in: userIds } },
         select: { id: true, fullName: true, email: true },
       });
-  
+
       const topicIds = registeredTopics.map(topic => topic.id);
       const groupAssignments = await prisma.topicAssignment.findMany({
         where: { topicId: { in: topicIds } },
         select: { topicId: true, group: { select: { id: true, groupCode: true } } },
       });
-  
+
       const topicsWithUsers = registeredTopics.map(topic => ({
         ...topic,
         topicRegistrations: topic.topicRegistrations.map(reg => ({
@@ -701,7 +720,7 @@ export class TopicService {
           group: groupAssignments.find(group => group.topicId === topic.id)?.group || null,
         })),
       }));
-  
+
       return {
         success: true,
         status: HTTP_STATUS.OK,

@@ -52,28 +52,31 @@ model User {
 }
 
 model Role {
-  id          String     @id @default(uuid())
-  name        String     @unique
-  description String?
-  isSystemWide Boolean   @default(false) // Đánh dấu vai trò toàn hệ thống
-  permissions Json?
-  isActive    Boolean    @default(true)
-  createdAt   DateTime   @default(now())
-  users       UserRole[]
+  id             String          @id @default(uuid())
+  name           String          @unique
+  description    String?
+  isSystemWide   Boolean         @default(false)
+  permissions    Json?
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  users          UserRole[]
+  groupMentors   GroupMentor[] // Quan hệ với GroupMentor
+  groupMembers   GroupMember[] // Quan hệ với GroupMember
+  councilMembers CouncilMember[] // Quan hệ với CouncilMember
 }
 
 model UserRole {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   userId     String
   roleId     String
   semesterId String?   @map("semester_id")
-  assignedAt DateTime @default(now())
-  isActive   Boolean  @default(true)
-  user       User     @relation(fields: [userId], references: [id])
-  role       Role     @relation(fields: [roleId], references: [id])
+  assignedAt DateTime  @default(now())
+  isActive   Boolean   @default(true)
+  user       User      @relation(fields: [userId], references: [id])
+  role       Role      @relation(fields: [roleId], references: [id])
   semester   Semester? @relation(fields: [semesterId], references: [id], name: "UserRoleToSemester", onDelete: SetNull)
 
-  @@unique([userId, roleId, semesterId])
+  @@index([userId, semesterId, roleId]) // Index thay cho @@unique
 }
 
 model RefreshToken {
@@ -132,7 +135,7 @@ model Year {
   year      Int
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
-  semesters Semester[] @relation("YearSemesters") // Thêm "YearSemesters" vào đây
+  semesters Semester[] @relation("YearSemesters")
 }
 
 model SemesterStudent {
@@ -379,15 +382,16 @@ model Group {
 }
 
 model GroupMentor {
-  id       String   @id @default(uuid())
-  groupId  String   @map("group_id")
-  mentorId String   @map("mentor_id")
-  addedBy  String   @map("added_by")
-  addedAt  DateTime @default(now()) @map("added_at")
-
-  group       Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  mentor      User  @relation(name: "MentorGroupRelation", fields: [mentorId], references: [id])
-  addedByUser User? @relation(name: "AddedByUserRelation", fields: [addedBy], references: [id])
+  id          String   @id @default(uuid())
+  groupId     String   @map("group_id")
+  mentorId    String   @map("mentor_id")
+  roleId      String   @map("role_id") // Thay role bằng roleId
+  addedBy     String   @map("added_by")
+  addedAt     DateTime @default(now()) @map("added_at")
+  group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  mentor      User     @relation(name: "MentorGroupRelation", fields: [mentorId], references: [id])
+  addedByUser User?    @relation(name: "AddedByUserRelation", fields: [addedBy], references: [id])
+  role        Role     @relation(fields: [roleId], references: [id]) // Quan hệ với Role
 
   @@unique([groupId, mentorId])
 }
@@ -441,7 +445,7 @@ model GroupMember {
   groupId     String    @map("group_id")
   studentId   String?   @map("student_id")
   userId      String?   @map("user_id")
-  role        String
+  roleId      String    @map("role_id") // Thay role bằng roleId
   joinedAt    DateTime  @default(now()) @map("joined_at")
   leaveAt     DateTime? @map("leave_at")
   leaveReason String?   @map("leave_reason")
@@ -450,6 +454,7 @@ model GroupMember {
   group       Group     @relation(fields: [groupId], references: [id])
   student     Student?  @relation(fields: [studentId], references: [id])
   user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade, name: "UserGroupMembers")
+  role        Role      @relation(fields: [roleId], references: [id]) // Quan hệ với Role
 
   @@map("group_members")
 }
@@ -518,7 +523,7 @@ model Decision {
   id             String   @id @default(uuid()) @map("decision_id")
   decisionNumber String   @map("decision_number")
   decisionTitle  String   @map("decision_title")
-  groupId        String?   @map("group_id")
+  groupId        String?  @map("group_id")
   topicId        String   @map("topic_id")
   draftFileUrl   String?  @map("draft_file_url")
   finalFileUrl   String?  @map("final_file_url")
@@ -527,7 +532,7 @@ model Decision {
   createdAt      DateTime @default(now()) @map("created_at")
   topic          Topic    @relation(fields: [topicId], references: [id])
   creator        User     @relation("DecisionCreator", fields: [createdBy], references: [id])
-  group          Group?    @relation(fields: [groupId], references: [id])
+  group          Group?   @relation(fields: [groupId], references: [id])
 
   @@map("decisions")
 }
@@ -567,17 +572,17 @@ model ReviewAssignment {
 }
 
 model Document {
-  id         String   @id @default(uuid())
-  fileName   String   @map("file_name") //  Tên file
-  fileUrl    String   @map("file_url") //  URL file trên Cloudinary/S3
-  fileType   String   @map("file_type") //  Định dạng file (pdf, docx, xlsx,...)
-  uploadedAt DateTime @default(now()) @map("uploaded_at")
-  uploadedBy String   @map("uploaded_by")
-  documentType  String?   @map("document_type") 
+  id           String   @id @default(uuid())
+  fileName     String   @map("file_name") //  Tên file
+  fileUrl      String   @map("file_url") //  URL file trên Cloudinary/S3
+  fileType     String   @map("file_type") //  Định dạng file (pdf, docx, xlsx,...)
+  uploadedAt   DateTime @default(now()) @map("uploaded_at")
+  uploadedBy   String   @map("uploaded_by")
+  documentType String?  @map("document_type")
   //  Liên kết đến các bảng khác nhau
-  topicId   String? @map("topic_id")
-  councilId String? @map("council_id")
-  groupId   String? @map("group_id")
+  topicId      String?  @map("topic_id")
+  councilId    String?  @map("council_id")
+  groupId      String?  @map("group_id")
 
   // Quan hệ với User (người upload)
   uploader User @relation(fields: [uploadedBy], references: [id])
@@ -594,13 +599,14 @@ model CouncilMember {
   id                String   @id @default(uuid())
   councilId         String   @map("council_id")
   defenseCouncilsId String?  @map("defensecouncils_id")
-  role              String
+  roleId            String   @map("role_id") // Thay role bằng roleId
   assignedAt        DateTime @default(now()) @map("assigned_at")
   status            String
   council           Council  @relation(fields: [councilId], references: [id])
   userId            String   @map("user_id")
   semesterId        String   @map("semester_id")
   user              User     @relation(fields: [userId], references: [id])
+  role              Role     @relation(fields: [roleId], references: [id]) // Quan hệ với Role
 
   @@map("council_members")
 }

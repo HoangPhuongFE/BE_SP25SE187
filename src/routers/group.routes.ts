@@ -11,6 +11,7 @@ router.post(
   "/create",
   authenticateToken,
   checkRole(["leader", "admin", "mentor", "student"]),
+  checkSemester, 
   groupController.createGroup.bind(groupController)
 );
 

@@ -14,7 +14,7 @@ export interface FlexibleRoleIdentifier {
 }
 
 export class SemesterRoleService {
- 
+
   async createSemesterRole(data: FlexibleRoleIdentifier & { isActive?: boolean }) {
     try {
       // Resolve user
@@ -90,13 +90,11 @@ export class SemesterRoleService {
       }
 
       // Kiểm tra xem phân công đã tồn tại hay chưa
-      const exists = await prisma.userRole.findUnique({
+      const exists = await prisma.userRole.findFirst({
         where: {
-          userId_roleId_semesterId: {
-            userId: finalUserId,
-            roleId: finalRoleId,
-            semesterId: finalSemesterId,
-          },
+          userId: finalUserId,
+          roleId: finalRoleId,
+          semesterId: finalSemesterId,
         },
       });
       if (exists) {
@@ -106,6 +104,7 @@ export class SemesterRoleService {
           message: 'Phân công vai trò cho học kỳ này đã tồn tại!',
         };
       }
+
 
       const newAssignment = await prisma.userRole.create({
         data: {
@@ -126,7 +125,7 @@ export class SemesterRoleService {
     }
   }
 
-  
+
   private async resolveIdentifiers(input: FlexibleRoleIdentifier): Promise<{ userId: string; roleId: string; semesterId: string } | { error: string }> {
     let finalUserId = input.userId;
     if (!finalUserId) {
@@ -172,10 +171,26 @@ export class SemesterRoleService {
         return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: resolved.error };
       }
       const { userId, roleId, semesterId } = resolved;
-      const updatedAssignment = await prisma.userRole.update({
-        where: { userId_roleId_semesterId: { userId, roleId, semesterId } },
+
+      // Cập nhật tất cả bản ghi khớp với điều kiện
+      await prisma.userRole.updateMany({
+        where: {
+          userId,
+          roleId,
+          semesterId,
+        },
         data: data,
       });
+
+      // Lấy bản ghi đã cập nhật (nếu cần)
+      const updatedAssignment = await prisma.userRole.findFirst({
+        where: {
+          userId,
+          roleId,
+          semesterId,
+        },
+      });
+
       return { success: true, status: HTTP_STATUS.OK, data: updatedAssignment };
     } catch (error) {
       console.error("Error in updateSemesterRoleFlexible:", error);
@@ -191,8 +206,12 @@ export class SemesterRoleService {
         return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: resolved.error };
       }
       const { userId, roleId, semesterId } = resolved;
-      await prisma.userRole.delete({
-        where: { userId_roleId_semesterId: { userId, roleId, semesterId } },
+      await prisma.userRole.deleteMany({
+        where: {
+          userId,
+          roleId,
+          semesterId,
+        },
       });
       return { success: true, status: HTTP_STATUS.OK, message: "Xóa vai trò học kỳ thành công!" };
     } catch (error) {
@@ -201,7 +220,7 @@ export class SemesterRoleService {
     }
   }
 
- 
+
   async getRolesBySemester(semesterId: string) {
     try {
       const roles = await prisma.userRole.findMany({

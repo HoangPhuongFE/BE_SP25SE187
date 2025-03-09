@@ -251,7 +251,7 @@ export class CouncilTopicService {
           message: "Không tìm thấy hội đồng!",
         };
       }
-
+  
       // Kiểm tra user có tồn tại không qua email
       const user = await prisma.user.findUnique({
         where: { email: data.email },
@@ -265,14 +265,13 @@ export class CouncilTopicService {
           message: `Không tìm thấy người dùng với email: ${data.email}`,
         };
       }
-      
-
-      // Kiểm tra vai trò của user có phải là lecturer không
+  
+      // Kiểm tra vai trò của user có phải là giảng viên không
       const userRole = await prisma.userRole.findFirst({
-        where: { userId: user.id},
+        where: { userId: user.id },
         include: { role: true },
       });
-
+  
       if (!userRole) {
         return {
           success: false,
@@ -280,11 +279,11 @@ export class CouncilTopicService {
           message: "Người này không phải là giảng viên!",
         };
       }
-
+  
       // Kiểm tra số lượng thành viên tối đa trong hội đồng
       const maxCouncilMembers = await systemConfigService.getMaxCouncilMembers();
       const currentMemberCount = await prisma.councilMember.count({ where: { councilId } });
-
+  
       if (currentMemberCount >= maxCouncilMembers) {
         return {
           success: false,
@@ -292,12 +291,12 @@ export class CouncilTopicService {
           message: `Số lượng thành viên hội đồng đã đạt tối đa (${maxCouncilMembers})!`,
         };
       }
-
+  
       // Kiểm tra xem thành viên đã có trong hội đồng chưa
       const existingMember = await prisma.councilMember.findFirst({
         where: { councilId, userId: user.id },
       });
-
+  
       if (existingMember) {
         return {
           success: false,
@@ -305,19 +304,32 @@ export class CouncilTopicService {
           message: "Người dùng đã là thành viên của hội đồng này!",
         };
       }
-
-      // Thêm thành viên vào hội đồng
+  
+      // Lấy roleId từ bảng Role dựa trên name
+      const role = await prisma.role.findUnique({
+        where: { name: data.role },
+      });
+  
+      if (!role) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: `Vai trò ${data.role} không tồn tại!`,
+        };
+      }
+  
+      // Thêm thành viên vào hội đồng với roleId
       const newMember = await prisma.councilMember.create({
         data: {
           councilId,
           userId: user.id,
-          role: data.role,
+          roleId: role.id, // Sử dụng roleId thay vì role
           assignedAt: new Date(),
           status: "ACTIVE",
-          semesterId: council.semesterId || '', 
+          semesterId: council.semesterId || '',
         },
       });
-
+  
       return {
         success: true,
         status: HTTP_STATUS.CREATED,
