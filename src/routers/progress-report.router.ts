@@ -1,7 +1,11 @@
 import { Router } from "express";
 import { ProgressReportController } from "../controller/progress-report.controller";
 import { authenticateToken, checkRole } from "../middleware/user.middleware";
-import { validateCreateProgressReport, validateUpdateProgressReport } from "../middleware/progress-report.middleware";
+import { 
+  validateCreateProgressReport, 
+  validateUpdateProgressReport,
+  validateMentorFeedback 
+} from "../middleware/progress-report.middleware";
 
 const router = Router();
 const progressReportController = new ProgressReportController();
@@ -20,7 +24,16 @@ router.post(
   "/:id/feedback",
   authenticateToken,
   checkRole(["mentor_main", "mentor_sub"]),
+  validateMentorFeedback,
   progressReportController.addMentorFeedback.bind(progressReportController)
+);
+
+// Đánh dấu báo cáo đã đọc
+router.post(
+  "/:id/mark-read",
+  authenticateToken,
+  checkRole(["mentor_main", "mentor_sub"]),
+  progressReportController.markReportAsRead.bind(progressReportController)
 );
 
 // Cập nhật báo cáo tiến độ

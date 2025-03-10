@@ -13,9 +13,9 @@ export class ProgressReportController {
   async createProgressReport(req: Request, res: Response) {
     try {
       const { weekNumber, content, completionPercentage } = req.body;
-      const studentId = req.user?.id; // Lấy studentId từ token hoặc session
+      const userId = req.user?.id; // Lấy userId từ token hoặc session
       
-      if (!studentId) {
+      if (!userId) {
         return res.status(401).json({
           success: false,
           message: MESSAGES.USER.UNAUTHORIZED,
@@ -23,7 +23,7 @@ export class ProgressReportController {
       }
       
       const progressReport = await this.progressReportService.createProgressReport({
-        studentId,
+        userId,
         weekNumber,
         content,
         completionPercentage,
@@ -84,16 +84,16 @@ export class ProgressReportController {
     try {
       const { id } = req.params;
       const { content, completionPercentage } = req.body;
-      const studentId = req.user?.id;
+      const userId = req.user?.id;
 
-      if (!studentId) {
+      if (!userId) {
         return res.status(401).json({
           success: false,
           message: MESSAGES.USER.UNAUTHORIZED,
         });
       }
 
-      const updatedReport = await this.progressReportService.updateProgressReport(id, studentId, {
+      const updatedReport = await this.progressReportService.updateProgressReport(id, userId, {
         content,
         completionPercentage,
       });
@@ -219,6 +219,33 @@ export class ProgressReportController {
         success: true,
         message: MESSAGES.PROGRESS_REPORT.REPORT_FETCHED,
         data: report,
+      });
+    } catch (error: any) {
+      return res.status(400).json({
+        success: false,
+        message: error.message || MESSAGES.GENERAL.ACTION_FAILED,
+      });
+    }
+  }
+
+  // Đánh dấu báo cáo đã đọc
+  async markReportAsRead(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const mentorId = req.user?.id;
+
+      if (!mentorId) {
+        return res.status(401).json({
+          success: false,
+          message: MESSAGES.USER.UNAUTHORIZED,
+        });
+      }
+
+      await this.progressReportService.markReportAsRead(id, mentorId);
+
+      return res.status(200).json({
+        success: true,
+        message: "Đã đánh dấu báo cáo là đã đọc",
       });
     } catch (error: any) {
       return res.status(400).json({
