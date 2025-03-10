@@ -551,7 +551,7 @@ export class GroupService {
         }
 
         // Lecturer/Mentor => xem nhóm do họ hướng dẫn
-        if (userRoles.includes("lecturer") || userRoles.includes("mentor")) {
+        if (userRoles.includes("lecturer") || userRoles.includes("mentor_main") || userRoles.includes("mentor_sub")) {
             return prisma.group.findMany({
                 where: {
                     semesterId,
