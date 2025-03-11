@@ -65,7 +65,7 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api', exportTopicRoutes);
 app.use('/api/semester-role', usersemesterroleRouter);
 app.use('/api', importTopicRoutes);
-app.use('/api/progress-reports', progressReportRouter);
+app.use('/api/progress-report', progressReportRouter);
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

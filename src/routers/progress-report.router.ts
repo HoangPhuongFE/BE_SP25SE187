@@ -14,7 +14,7 @@ const progressReportController = new ProgressReportController();
 router.post(
   "/create",
   authenticateToken,
-  checkRole(["student", "group_leader"]),
+  checkRole(["student", "leader"]),
   validateCreateProgressReport,
   progressReportController.createProgressReport.bind(progressReportController)
 );
@@ -32,7 +32,7 @@ router.post(
 router.post(
   "/:id/mark-read",
   authenticateToken,
-  checkRole(["mentor_main", "mentor_sub"]),
+  checkRole(["student", "leader"]),
   progressReportController.markReportAsRead.bind(progressReportController)
 );
 
@@ -40,7 +40,7 @@ router.post(
 router.put(
   "/:id",
   authenticateToken,
-  checkRole(["student", "group_leader"]),
+  checkRole(["student", "leader"]),
   validateUpdateProgressReport,
   progressReportController.updateProgressReport.bind(progressReportController)
 );
@@ -49,14 +49,23 @@ router.put(
 router.delete(
   "/:id",
   authenticateToken,
-  checkRole(["group_leader", "mentor_main"]),
+  checkRole(["student", "leader"]),
   progressReportController.deleteProgressReport.bind(progressReportController)
+);
+
+// Lấy danh sách báo cáo tiến độ của sinh viên hiện tại
+router.get(
+  "/my-reports",
+  authenticateToken,
+  checkRole(["student", "leader"]),
+  progressReportController.getMyProgressReports.bind(progressReportController)
 );
 
 // Lấy danh sách báo cáo tiến độ theo groupId
 router.get(
   "/group/:groupId",
   authenticateToken,
+  checkRole(["student", "leader"]),
   progressReportController.getProgressReportsByGroup.bind(progressReportController)
 );
 
@@ -68,18 +77,20 @@ router.get(
   progressReportController.getProgressReportsByMentor.bind(progressReportController)
 );
 
-// Lấy thông tin chi tiết của một báo cáo tiến độ
-router.get(
-  "/:id",
-  authenticateToken,
-  progressReportController.getProgressReportById.bind(progressReportController)
-);
-
 // Lấy báo cáo tiến độ theo tuần và nhóm
 router.get(
   "/group/:groupId/week/:weekNumber",
   authenticateToken,
+  checkRole(["student", "leader"]),
   progressReportController.getProgressReportByWeek.bind(progressReportController)
+);
+
+// Lấy thông tin chi tiết của một báo cáo tiến độ
+router.get(
+  "/:id",
+  authenticateToken,
+  checkRole(["student", "leader"]),
+  progressReportController.getProgressReportById.bind(progressReportController)
 );
 
 export default router; 

@@ -10,11 +10,15 @@ export const validateCreateProgressReport = [
     .isString()
     .notEmpty()
     .withMessage('Nội dung báo cáo là bắt buộc')
-    .isLength({ min: 10, max: 10000 })
-    .withMessage('Nội dung báo cáo phải từ 10 đến 10000 ký tự'),
+    .isLength({ min: 5, max: 10000 })
+    .withMessage('Nội dung báo cáo phải từ 5 đến 10000 ký tự'),
   body('completionPercentage')
     .isFloat({ min: 0, max: 100 })
     .withMessage('Phần trăm hoàn thành phải từ 0-100'),
+  body('groupId')
+    .optional()
+    .isString()
+    .withMessage('ID nhóm phải là chuỗi'),
   (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -38,8 +42,8 @@ export const validateUpdateProgressReport = [
     .isString()
     .notEmpty()
     .withMessage('Nội dung báo cáo không được để trống nếu cung cấp')
-    .isLength({ min: 10, max: 10000 })
-    .withMessage('Nội dung báo cáo phải từ 10 đến 10000 ký tự'),
+    .isLength({ min: 5, max: 10000 })
+    .withMessage('Nội dung báo cáo phải từ 5 đến 10000 ký tự'),
   body('completionPercentage')
     .optional()
     .isFloat({ min: 0, max: 100 })
