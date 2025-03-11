@@ -32,7 +32,7 @@ router.post(
 router.post(
   "/:id/mark-read",
   authenticateToken,
-  checkRole(["student", "leader"]),
+  checkRole(["lecturer"]),
   progressReportController.markReportAsRead.bind(progressReportController)
 );
 
@@ -49,7 +49,7 @@ router.put(
 router.delete(
   "/:id",
   authenticateToken,
-  checkRole(["student", "leader"]),
+  checkRole(["lecturer", "student"]),
   progressReportController.deleteProgressReport.bind(progressReportController)
 );
 
@@ -65,7 +65,7 @@ router.get(
 router.get(
   "/group/:groupId",
   authenticateToken,
-  checkRole(["student", "leader"]),
+  checkRole(["lecturer"]),
   progressReportController.getProgressReportsByGroup.bind(progressReportController)
 );
 
