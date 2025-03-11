@@ -107,6 +107,31 @@ export class ImportConditionService {
         }
 
         successCount++;
+
+        // Kiểm tra xem sinh viên đã có vai trò 'student' trong học kỳ chưa
+        const studentRole = await prisma.role.findUnique({ where: { name: 'student' } });
+
+        if (studentRole) {
+          const existingUserRole = await prisma.userRole.findFirst({
+            where: {
+              userId: student.userId!,
+              roleId: studentRole.id,
+              semesterId,
+            },
+          });
+
+          if (!existingUserRole) {
+            await prisma.userRole.create({
+              data: {
+                userId: student.userId!,
+                roleId: studentRole.id,
+                semesterId,
+                isActive: true,
+              },
+            });
+          }
+        }
+        
       }
     } catch (error) {
       console.error(`Lỗi khi xử lý dữ liệu:`, error);

@@ -206,7 +206,7 @@ export const checkRole = (allowedRoles: string[], requireSemester: boolean = tru
     }
 
     // Kiểm tra semesterId nếu requireSemester = true
-    const semesterId = req.params.semesterId || req.body.semesterId;
+    const semesterId = req.params.semesterId || req.body.semesterId || req.query.semesterId;
     if (!semesterId) {
       return res.status(400).json({ message: 'Missing semesterId for semester-specific action' });
     }
