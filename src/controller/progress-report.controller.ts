@@ -201,10 +201,27 @@ export class ProgressReportController {
       
       const reports = await this.progressReportService.getProgressReportsByGroup(groupId);
 
+      // Định dạng lại dữ liệu để hiển thị phản hồi của tất cả mentor
+      const formattedReports = reports.map(report => {
+        const mentorFeedbacks = report.mentors.map(mr => ({
+          mentorId: mr.mentor.id,
+          mentorName: mr.mentor.fullName,
+          mentorEmail: mr.mentor.email,
+          feedback: mr.feedback,
+          isRead: mr.isRead,
+          readAt: mr.readAt
+        })).filter(mf => mf.feedback); // Chỉ lấy những mentor có feedback
+        
+        return {
+          ...report,
+          mentorFeedbacks,
+        };
+      });
+
       return res.status(200).json({
         success: true,
         message: MESSAGES.PROGRESS_REPORT.REPORTS_FETCHED,
-        data: reports,
+        data: formattedReports,
       });
     } catch (error: any) {
       console.error("Error fetching group progress reports:", error);
@@ -262,10 +279,25 @@ export class ProgressReportController {
       
       const report = await this.progressReportService.getProgressReportById(id);
 
+      // Định dạng lại dữ liệu để hiển thị phản hồi của tất cả mentor
+      const mentorFeedbacks = report.mentors.map(mr => ({
+        mentorId: mr.mentor.id,
+        mentorName: mr.mentor.fullName,
+        mentorEmail: mr.mentor.email,
+        feedback: mr.feedback,
+        isRead: mr.isRead,
+        readAt: mr.readAt
+      })).filter(mf => mf.feedback); // Chỉ lấy những mentor có feedback
+      
+      const formattedReport = {
+        ...report,
+        mentorFeedbacks,
+      };
+
       return res.status(200).json({
         success: true,
         message: MESSAGES.PROGRESS_REPORT.REPORT_FETCHED,
-        data: report,
+        data: formattedReport,
       });
     } catch (error: any) {
       console.error("Error fetching progress report by ID:", error);
@@ -288,10 +320,25 @@ export class ProgressReportController {
         parseInt(weekNumber)
       );
 
+      // Định dạng lại dữ liệu để hiển thị phản hồi của tất cả mentor
+      const mentorFeedbacks = report.mentors.map(mr => ({
+        mentorId: mr.mentor.id,
+        mentorName: mr.mentor.fullName,
+        mentorEmail: mr.mentor.email,
+        feedback: mr.feedback,
+        isRead: mr.isRead,
+        readAt: mr.readAt
+      })).filter(mf => mf.feedback); // Chỉ lấy những mentor có feedback
+      
+      const formattedReport = {
+        ...report,
+        mentorFeedbacks,
+      };
+
       return res.status(200).json({
         success: true,
         message: MESSAGES.PROGRESS_REPORT.REPORT_FETCHED,
-        data: report,
+        data: formattedReport,
       });
     } catch (error: any) {
       console.error("Error fetching progress report by week:", error);
@@ -365,10 +412,27 @@ export class ProgressReportController {
       
       const reports = await this.progressReportService.getMyProgressReports(userId);
 
+      // Định dạng lại dữ liệu để hiển thị phản hồi của tất cả mentor
+      const formattedReports = reports.map(report => {
+        const mentorFeedbacks = report.mentors.map(mr => ({
+          mentorId: mr.mentor.id,
+          mentorName: mr.mentor.fullName,
+          mentorEmail: mr.mentor.email,
+          feedback: mr.feedback,
+          isRead: mr.isRead,
+          readAt: mr.readAt
+        })).filter(mf => mf.feedback); // Chỉ lấy những mentor có feedback
+        
+        return {
+          ...report,
+          mentorFeedbacks,
+        };
+      });
+
       return res.status(200).json({
         success: true,
         message: MESSAGES.PROGRESS_REPORT.REPORTS_FETCHED,
-        data: reports,
+        data: formattedReports,
       });
     } catch (error: any) {
       console.error("Error fetching student progress reports:", error);

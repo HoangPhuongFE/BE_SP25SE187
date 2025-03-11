@@ -23,7 +23,7 @@ router.post(
 router.post(
   "/:id/feedback",
   authenticateToken,
-  checkRole(["mentor_main", "mentor_sub"]),
+  checkRole(["lecturer"]),
   validateMentorFeedback,
   progressReportController.addMentorFeedback.bind(progressReportController)
 );
@@ -73,7 +73,7 @@ router.get(
 router.get(
   "/mentor",
   authenticateToken,
-  checkRole(["mentor_main", "mentor_sub"]),
+  checkRole(["lecturer"]),
   progressReportController.getProgressReportsByMentor.bind(progressReportController)
 );
 

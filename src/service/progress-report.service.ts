@@ -135,6 +135,9 @@ export class ProgressReportService {
       
       const report = await prisma.progressReport.findUnique({
         where: { id: reportId },
+        include: {
+          mentors: true
+        }
       });
 
       if (!report) {
@@ -158,6 +161,9 @@ export class ProgressReportService {
           where: {
             groupId: report.groupId,
             mentorId
+          },
+          include: {
+            role: true
           }
         });
         
@@ -172,11 +178,14 @@ export class ProgressReportService {
             reportId,
             mentorId,
             isRead: true,
-            readAt: new Date()
+            readAt: new Date(),
+            feedback: mentorFeedback // Lưu feedback của mentor phụ
           }
         });
+        
+        console.log(`Đã tạo liên kết và lưu feedback cho mentor ${mentorId}`);
       } else {
-        // Cập nhật trạng thái đã đọc cho mentor này
+        // Cập nhật trạng thái đã đọc và feedback cho mentor này
         await prisma.progressReportMentor.update({
           where: {
             reportId_mentorId: {
@@ -187,23 +196,56 @@ export class ProgressReportService {
           data: {
             isRead: true,
             readAt: new Date(),
+            feedback: mentorFeedback // Lưu feedback của mentor
           },
         });
+        
+        console.log(`Đã cập nhật trạng thái đã đọc và feedback cho mentor ${mentorId}`);
+      }
+
+      // Kiểm tra xem mentor hiện tại có phải là mentor chính không
+      const groupMentor = await prisma.groupMentor.findFirst({
+        where: {
+          groupId: report.groupId,
+          mentorId,
+        },
+        include: {
+          role: true
+        }
+      });
+
+      // Nếu là mentor chính hoặc là mentor được gán trong báo cáo, cập nhật feedback vào báo cáo chính
+      if (groupMentor?.role.name === "mentor_main" || groupMentor?.role.name === "lecturer" || report.mentorId === mentorId) {
+        // Cập nhật phản hồi vào báo cáo chính
+        await prisma.progressReport.update({
+          where: { id: reportId },
+          data: {
+            mentorFeedback,
+            status: "REVIEWED",
+            reviewedAt: new Date(),
+          },
+        });
+        
+        console.log(`Đã cập nhật phản hồi chính cho báo cáo ${reportId}`);
       }
       
-      console.log(`Đã cập nhật trạng thái đã đọc cho mentor ${mentorId}`);
-
-      // Cập nhật phản hồi vào báo cáo
-      const updatedReport = await prisma.progressReport.update({
+      // Lấy báo cáo đã cập nhật với tất cả feedback
+      const updatedReport = await prisma.progressReport.findUnique({
         where: { id: reportId },
-        data: {
-          mentorFeedback,
-          status: "REVIEWED",
-          reviewedAt: new Date(),
+        include: {
+          mentors: {
+            include: {
+              mentor: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                },
+              },
+            },
+          },
         },
       });
-      
-      console.log(`Đã cập nhật phản hồi cho báo cáo ${reportId}`);
       
       return updatedReport;
     } catch (error: any) {
@@ -466,6 +508,7 @@ export class ProgressReportService {
         ...mr.progressReport,
         isRead: mr.isRead,
         readAt: mr.readAt,
+        mentorFeedback: mr.feedback || mr.progressReport.mentorFeedback // Ưu tiên feedback của mentor hiện tại nếu có
       }));
     } catch (error: any) {
       console.error(`Lỗi khi lấy danh sách báo cáo theo mentor:`, error);

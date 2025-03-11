@@ -418,6 +418,7 @@ model ProgressReportMentor {
   mentorId       String
   isRead         Boolean        @default(false)
   readAt         DateTime?
+  feedback       String?        @db.Text
 
   @@unique([reportId, mentorId])
 }

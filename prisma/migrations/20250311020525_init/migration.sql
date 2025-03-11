@@ -161,7 +161,7 @@ CREATE TABLE `import_logs` (
 CREATE TABLE `meeting_schedules` (
     `id` VARCHAR(191) NOT NULL,
     `mentor_id` VARCHAR(191) NOT NULL,
-    `group_id` INTEGER NOT NULL,
+    `group_id` VARCHAR(191) NOT NULL,
     `meeting_time` DATETIME(3) NOT NULL,
     `location` VARCHAR(191) NOT NULL,
     `agenda` VARCHAR(191) NOT NULL,
@@ -334,6 +334,19 @@ CREATE TABLE `GroupInvitation` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `ProgressReportMentor` (
+    `id` VARCHAR(191) NOT NULL,
+    `reportId` VARCHAR(191) NOT NULL,
+    `mentorId` VARCHAR(191) NOT NULL,
+    `isRead` BOOLEAN NOT NULL DEFAULT false,
+    `readAt` DATETIME(3) NULL,
+    `feedback` TEXT NULL,
+
+    UNIQUE INDEX `ProgressReportMentor_reportId_mentorId_key`(`reportId`, `mentorId`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `progress_reports` (
     `id` VARCHAR(191) NOT NULL,
     `group_id` VARCHAR(191) NOT NULL,
@@ -440,7 +453,7 @@ CREATE TABLE `notifications` (
 
 -- CreateTable
 CREATE TABLE `decisions` (
-    `decision_id` VARCHAR(191) NOT NULL,
+    `id` VARCHAR(191) NOT NULL,
     `decision_number` VARCHAR(191) NOT NULL,
     `decision_title` VARCHAR(191) NOT NULL,
     `group_id` VARCHAR(191) NULL,
@@ -451,7 +464,7 @@ CREATE TABLE `decisions` (
     `created_by` VARCHAR(191) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
-    PRIMARY KEY (`decision_id`)
+    PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -706,6 +719,12 @@ ALTER TABLE `GroupInvitation` ADD CONSTRAINT `GroupInvitation_group_id_fkey` FOR
 
 -- AddForeignKey
 ALTER TABLE `GroupInvitation` ADD CONSTRAINT `GroupInvitation_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `Student`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ProgressReportMentor` ADD CONSTRAINT `ProgressReportMentor_reportId_fkey` FOREIGN KEY (`reportId`) REFERENCES `progress_reports`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `ProgressReportMentor` ADD CONSTRAINT `ProgressReportMentor_mentorId_fkey` FOREIGN KEY (`mentorId`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `progress_reports` ADD CONSTRAINT `progress_reports_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
