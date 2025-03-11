@@ -147,7 +147,6 @@ export class TopicService {
     }
   }
 
-
   async updateTopic(
     topicId: string,
     data: {
@@ -732,8 +731,6 @@ export class TopicService {
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống!' };
     }
   }
-
-
 
   async downloadDecisionFile(decisionId: string, fileType: string) {
     try {

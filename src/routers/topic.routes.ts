@@ -19,7 +19,7 @@ router.post(
 router.put(
   '/:topicId',
   authenticateToken,
-  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager']),
+  checkRole([ 'academic_officer', 'admin', 'graduation_thesis_manager', 'lecturer']),
   topicController.updateTopic.bind(topicController)
 );
 
@@ -75,7 +75,7 @@ router.post(
 router.put(
   '/topic-registrations/:registrationId/approve',
   authenticateToken,
-  checkRole(['mentor']),
+  checkRole(['lecturer']),
   topicController.approveTopicRegistrationByMentor.bind(topicController)
 );
 

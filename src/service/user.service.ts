@@ -178,6 +178,7 @@ export class UserService {
       where: { token: refreshToken },
     });
   }
+  
   async getUserProfile(userId: string) {
     try {
       // Truy vấn dữ liệu người dùng từ cơ sở dữ liệu (Lấy thông tin người dùng với tất cả các mối quan hệ)

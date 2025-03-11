@@ -125,55 +125,9 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
     }
   }
 };
+
+
 /*
-export const checkRole = (allowedRoles: string[]) => {
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (!req.user || !req.user.userId) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
-
-    const semesterId = (req.query.semesterId as string) || (req.body.semesterId as string);
-    const userRoles = req.user.roles;
-
-    // Kiểm tra xem người dùng có vai trò được phép không
-    const hasRequiredRole = userRoles.some((role) => allowedRoles.includes(role.roleId));
-    if (!hasRequiredRole) {
-      return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-    }
-
-    // Kiểm tra vai trò toàn hệ thống
-    const hasSystemWideRole = userRoles.some((role) => role.isSystemWide);
-    if (hasSystemWideRole) {
-      console.log('User has system-wide role, granting full access');
-      return next();
-    }
-
-    // Nếu không có vai trò toàn hệ thống, yêu cầu semesterId
-    if (!semesterId) {
-      return res.status(400).json({ message: 'Missing semesterId for semester-specific action' });
-    }
-
-    // Kiểm tra vai trò hợp lệ cho semesterId
-    const hasValidSemesterRole = userRoles.some(
-      (role) =>
-        allowedRoles.includes(role.roleId) &&
-        role.semesterId === semesterId &&
-        role.semesterId !== null
-    );
-
-    if (!hasValidSemesterRole) {
-      return res.status(403).json({
-        message: `Forbidden: Role not valid for semester ${semesterId}`,
-      });
-    }
-
-    console.log(`Access granted for semester ${semesterId}`);
-    next();
-  };
-};
-*/
-
-
 export const checkRole = (allowedRoles: string[]) => {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // Kiểm tra xem người dùng đã được xác thực hay chưa
@@ -197,7 +151,7 @@ export const checkRole = (allowedRoles: string[]) => {
     }
     // Lấy semesterId từ query hoặc body
     const semesterId =
-      (req.query.semesterId as string) || (req.body.semesterId as string);
+      (req.params.semesterId as string) || (req.body.semesterId as string);
     if (!semesterId) {
       return res
         .status(400)
@@ -219,3 +173,58 @@ export const checkRole = (allowedRoles: string[]) => {
     next();
   }
 }
+*/
+
+
+
+export const checkRole = (allowedRoles: string[], requireSemester: boolean = true) => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    // Kiểm tra xác thực người dùng
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    // Kiểm tra vai trò toàn hệ thống
+    const hasSystemWideRole = req.user.roles.some((role) => role.isSystemWide);
+    if (hasSystemWideRole) {
+      console.log('User has system-wide role, granting full access');
+      return next();
+    }
+
+    // Kiểm tra vai trò cần thiết
+    const hasRequiredRole = req.user.roles.some((role) =>
+      allowedRoles.includes(role.name)
+    );
+    if (!hasRequiredRole) {
+      return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+    }
+
+    // Nếu không yêu cầu semesterId, cho phép truy cập
+    if (!requireSemester) {
+      console.log('Access granted without semester check');
+      return next();
+    }
+
+    // Kiểm tra semesterId nếu requireSemester = true
+    const semesterId = req.params.semesterId || req.body.semesterId;
+    if (!semesterId) {
+      return res.status(400).json({ message: 'Missing semesterId for semester-specific action' });
+    }
+
+    // Kiểm tra vai trò hợp lệ cho học kỳ
+    const hasValidSemesterRole = req.user.roles.some(
+      (role) =>
+        allowedRoles.includes(role.name) &&
+        role.semesterId === semesterId &&
+        role.semesterId !== null
+    );
+    if (!hasValidSemesterRole) {
+      return res.status(403).json({
+        message: `Forbidden: Role not valid for semester ${semesterId}`,
+      });
+    }
+
+    console.log(`Access granted for semester ${semesterId}`);
+    next();
+  };
+};
