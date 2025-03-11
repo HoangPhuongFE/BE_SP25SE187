@@ -40,7 +40,7 @@ router.get(
 
 // 5️ Lấy DS nhóm theo kỳ
 router.get(
-  "/semester",
+  "/semester/:semesterId",
   authenticateToken,
   checkRole(["leader", "admin",  "student", "graduation_thesis_manager", "academic_officer",'lecturer']),
   groupController.getGroupsBySemester.bind(groupController)
