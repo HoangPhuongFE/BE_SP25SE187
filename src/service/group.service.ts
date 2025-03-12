@@ -15,7 +15,7 @@ export class GroupService {
             where: { id: semesterId },
             select: { id: true, status: true },
         });
-    
+
         if (!semester) {
             return {
                 success: false,
@@ -23,7 +23,7 @@ export class GroupService {
                 message: "Học kỳ không tồn tại.",
             };
         }
-    
+
         if (semester.status === "ACTIVE" || semester.status === "COMPLETE") {
             return {
                 success: false,
@@ -31,7 +31,7 @@ export class GroupService {
                 message: "Không thể tạo nhóm trong học kỳ đang hoạt động.",
             };
         }
-    
+
         if (semester.status !== "UPCOMING") {
             return {
                 success: false,
@@ -39,13 +39,13 @@ export class GroupService {
                 message: "Chỉ có thể tạo nhóm trước khi học kỳ bắt đầu.",
             };
         }
-    
+
         // 2. Kiểm tra sinh viên có tồn tại và có chuyên ngành không
         const leader = await prisma.student.findUnique({
             where: { userId: leaderId },
             include: { major: true },
         });
-    
+
         if (!leader) {
             return {
                 success: false,
@@ -53,12 +53,12 @@ export class GroupService {
                 message: GROUP_MESSAGE.STUDENT_NOT_FOUND,
             };
         }
-    
+
         // 3. Kiểm tra sinh viên có thuộc học kỳ không
         const studentSemester = await prisma.semesterStudent.findFirst({
             where: { studentId: leader.id, semesterId },
         });
-    
+
         if (!studentSemester) {
             return {
                 success: false,
@@ -66,7 +66,7 @@ export class GroupService {
                 message: GROUP_MESSAGE.STUDENT_NOT_IN_SEMESTER,
             };
         }
-    
+
         if (studentSemester.qualificationStatus.trim().toLowerCase() !== "qualified") {
             return {
                 success: false,
@@ -74,12 +74,12 @@ export class GroupService {
                 message: `${GROUP_MESSAGE.STUDENT_NOT_QUALIFIED} Trạng thái hiện tại: ${studentSemester.qualificationStatus}`,
             };
         }
-    
+
         // 4. Kiểm tra sinh viên đã tạo nhóm trong học kỳ chưa
         const existingGroup = await prisma.group.findFirst({
             where: { semesterId, createdBy: leaderId },
         });
-    
+
         if (existingGroup) {
             return {
                 success: false,
@@ -87,29 +87,29 @@ export class GroupService {
                 message: GROUP_MESSAGE.GROUP_ALREADY_CREATED,
             };
         }
-    
+
         // 5. Tạo mã nhóm dựa trên năm hiện tại và chuyên ngành
         const currentYear = new Date().getFullYear();
         const lastTwoDigits = currentYear.toString().slice(-2);
         const majorName = (leader.major?.name || "").trim();
         const majorCode = majorName.split(" ").map(word => word[0]).join("").toUpperCase();
         const groupCodePrefix = `G${lastTwoDigits}${majorCode}`;
-    
+
         const count = await prisma.group.count({
             where: { semesterId, groupCode: { startsWith: groupCodePrefix } },
         });
-    
+
         const sequenceNumber = (count + 1).toString().padStart(3, "0");
         const groupCode = groupCodePrefix + sequenceNumber;
-    
+
         const maxMembers = await systemConfigService.getMaxGroupMembers();
-    
+
         // 6. Lấy thông tin role "leader"
         const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
         if (!leaderRole) {
             throw new Error("Vai trò 'leader' không tồn tại trong bảng Role.");
         }
-    
+
         // 7. Tạo nhóm và thêm thành viên leader
         const newGroup = await prisma.group.create({
             data: {
@@ -136,7 +136,7 @@ export class GroupService {
                 },
             },
         });
-    
+
         // 8. Format lại dữ liệu trả về
         const formattedGroup = {
             ...newGroup,
@@ -146,7 +146,7 @@ export class GroupService {
                 status: member.status,
             })),
         };
-    
+
         return {
             success: true,
             status: HTTP_STATUS.CREATED,
@@ -154,7 +154,7 @@ export class GroupService {
             data: formattedGroup,
         };
     }
-    
+
 
 
 
@@ -470,7 +470,7 @@ export class GroupService {
                         student: {
                             include: { user: true },
                         },
-                        role: true ,
+                        role: true,
                     },
                 },
             },
@@ -541,10 +541,11 @@ export class GroupService {
                 where: { semesterId },
                 include: {
                     members: {
-                        include: { student: { include: { user: true } } ,
-                        role: true,
-                    },
-                          
+                        include: {
+                            student: { include: { user: true } },
+                            role: true,
+                        },
+
                     },
                 },
             });
@@ -564,11 +565,13 @@ export class GroupService {
                     members: { some: { studentId: student.id } },
                 },
                 include: {
-                    members: { include: { student: { include: { user: true } } ,
-                    role: true,
-                } ,
-                    
-                },
+                    members: {
+                        include: {
+                            student: { include: { user: true } },
+                            role: true,
+                        },
+
+                    },
                 },
             });
         }
@@ -588,9 +591,12 @@ export class GroupService {
                     },
                 },
                 include: {
-                    members: { include: { student: { include: { user: true } } ,
-                    role: true 
-                } },
+                    members: {
+                        include: {
+                            student: { include: { user: true } },
+                            role: true
+                        }
+                    },
                 },
             });
         }
@@ -616,202 +622,210 @@ export class GroupService {
         });
     }
 
-    
-      private async generateUniqueGroupCode(
+
+    private async generateUniqueGroupCode(
         professionName: string,
         semesterId: string
-      ): Promise<string> {
-        const yearSuffix = new Date().getFullYear().toString().slice(-2);
-        let majorCode = professionName.slice(0, 2).toUpperCase();
-        if (professionName === "Software Engineering") majorCode = "SE";
-        else if (professionName === "Artificial Intelligence") majorCode = "AI";
-    
+    ): Promise<string> {
+        // Lấy thông tin học kỳ từ semesterId
+        const semester = await prisma.semester.findUnique({
+            where: { id: semesterId },
+            select: { startDate: true },
+        });
+        if (!semester) {
+            throw new Error(`Học kỳ với id ${semesterId} không tồn tại`);
+        }
+        // Lấy 2 chữ số cuối của năm từ startDate
+        const yearSuffix = new Date(semester.startDate).getFullYear().toString().slice(-2);
+
+        // Tạo mã nhóm
+        let majorCode;
+        if (professionName === "Software Engineering") {
+            majorCode = "SE";
+        } else if (professionName === "Artificial Intelligence") {
+            majorCode = "AI";
+        } else {
+            majorCode = professionName.slice(0, 2).toUpperCase();
+        }
+
         let seq = 1;
         let groupCode = "";
         while (true) {
-          const seqStr = String(seq).padStart(2, "0");
-          groupCode = `G${yearSuffix}${majorCode}${seqStr}`;
-          // Kiểm tra xem groupCode đã tồn tại chưa
-          const existingGroup = await prisma.group.findUnique({
-            where: { groupCode },
-          });
-          if (!existingGroup) break;
-          seq++;
+            const seqStr = String(seq).padStart(2, "0");
+            groupCode = `G${yearSuffix}${majorCode}${seqStr}`;
+            const existingGroup = await prisma.group.findUnique({
+                where: { groupCode },
+            });
+            if (!existingGroup) break;
+            seq++;
         }
         return groupCode;
-      }
-    
+    }
     // 7) randomizeGroups
     async randomizeGroups(semesterId: string, createdBy: string): Promise<any> {
         // 1. Kiểm tra quyền của người tạo
         const user = await prisma.user.findUnique({
-          where: { id: createdBy },
-          include: { roles: { include: { role: true } } },
+            where: { id: createdBy },
+            include: { roles: { include: { role: true } } },
         });
         if (!user) {
-          console.error(`ERROR: Không tìm thấy user - createdBy=${createdBy}`);
-          throw new Error("Người dùng không tồn tại.");
+            console.error(`ERROR: Không tìm thấy user - createdBy=${createdBy}`);
+            throw new Error("Người dùng không tồn tại.");
         }
         const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
         const isAuthorized =
-          userRoles.includes("admin") ||
-          userRoles.includes("graduation_thesis_manager") ||
-          userRoles.includes("academic_officer");
+            userRoles.includes("admin") ||
+            userRoles.includes("graduation_thesis_manager") ||
+            userRoles.includes("academic_officer");
         if (!isAuthorized) {
-          console.error(`Người dùng không có quyền random nhóm - createdBy=${createdBy}`);
-          throw new Error("Bạn không có quyền thực hiện random nhóm.");
+            console.error(`Người dùng không có quyền random nhóm - createdBy=${createdBy}`);
+            throw new Error("Bạn không có quyền thực hiện random nhóm.");
         }
-    
+
         // 2. Lấy danh sách sinh viên đủ điều kiện nhưng chưa có nhóm
         const students = await prisma.student.findMany({
-          where: {
-            semesterStudents: { some: { semesterId, qualificationStatus: "qualified" } },
-            groupMembers: { none: {} },
-          },
-          include: {
-            user: { select: { programming_language: true, id: true } },
-            major: true,
-          },
+            where: {
+                semesterStudents: { some: { semesterId, qualificationStatus: "qualified" } },
+                groupMembers: { none: { group: { semesterId } } },
+            },
+            include: {
+                user: { select: { programming_language: true, id: true } },
+                major: true,
+            },
         });
         if (students.length === 0) {
-          return { message: "Không có sinh viên nào đủ điều kiện để tạo nhóm." };
+            return { message: "Không có sinh viên nào đủ điều kiện để tạo nhóm." };
         }
-    
+
         // 3. Gom sinh viên theo ngành (dựa theo major.name)
         const groupedByProfession: { [profName: string]: typeof students } = {};
         for (const st of students) {
-          const profName = st.major?.name || "Unknown";
-          if (!groupedByProfession[profName]) {
-            groupedByProfession[profName] = [];
-          }
-          groupedByProfession[profName].push(st);
+            const profName = st.major?.name || "Unknown";
+            if (!groupedByProfession[profName]) {
+                groupedByProfession[profName] = [];
+            }
+            groupedByProfession[profName].push(st);
         }
-    
+
         const createdGroups = [];
         const groupSize = 5,
-          minGroupSize = 4;
-    
+            minGroupSize = 4;
+
         // Hàm tiện ích: pop phần tử cuối mảng
         const popOne = (arr: any[]) => (arr.length === 0 ? null : arr.pop());
-    
+
         // 4. Random nhóm theo từng ngành
         for (const professionName in groupedByProfession) {
-          const studentsInThisProf = groupedByProfession[professionName];
-    
-          let feStudents = studentsInThisProf.filter(
-            (s) => s.user?.programming_language === "Front-end"
-          );
-          let beStudents = studentsInThisProf.filter(
-            (s) => s.user?.programming_language === "Back-end"
-          );
-          let fsStudents = studentsInThisProf.filter(
-            (s) => s.user?.programming_language === "Full-stack"
-          );
-    
-          while (feStudents.length > 0 || beStudents.length > 0 || fsStudents.length > 0) {
-            const groupMembers: typeof studentsInThisProf = [];
-    
-            // Lấy 1 BE và 1 FE nếu có
-            const pickBE = popOne(beStudents);
-            if (pickBE) groupMembers.push(pickBE);
-            const pickFE = popOne(feStudents);
-            if (pickFE) groupMembers.push(pickFE);
-            // Lấy 1 FS nếu có
-            const pickFS = popOne(fsStudents);
-            if (pickFS) groupMembers.push(pickFS);
-    
-            // Thêm thành viên cho đến khi đủ groupSize (5)
-            while (groupMembers.length < groupSize) {
-              if (
-                feStudents.length === 0 &&
-                beStudents.length === 0 &&
-                fsStudents.length === 0
-              ) {
-                break;
-              }
-              const bucketsLeft = [];
-              if (feStudents.length > 0) bucketsLeft.push("FE");
-              if (beStudents.length > 0) bucketsLeft.push("BE");
-              if (fsStudents.length > 0) bucketsLeft.push("FS");
-              if (bucketsLeft.length === 0) break;
-              const chosen = bucketsLeft[Math.floor(Math.random() * bucketsLeft.length)];
-              let candidate;
-              if (chosen === "FE") candidate = popOne(feStudents);
-              else if (chosen === "BE") candidate = popOne(beStudents);
-              else candidate = popOne(fsStudents);
-              if (!candidate) break;
-              groupMembers.push(candidate);
-            }
-    
-            // Nếu nhóm có số thành viên nhỏ hơn minGroupSize, bỏ qua
-            if (groupMembers.length < minGroupSize) break;
-    
-            // Random chọn leader: hoán đổi phần tử đầu tiên với phần tử được chọn ngẫu nhiên
-            const leaderIndex = Math.floor(Math.random() * groupMembers.length);
-            const leaderInGroup = groupMembers[leaderIndex];
-            groupMembers[leaderIndex] = groupMembers[0];
-            groupMembers[0] = leaderInGroup;
-    
-            // 5. Tạo groupCode duy nhất cho nhóm này
-            const groupCode = await this.generateUniqueGroupCode(professionName, semesterId);
-    
-            // Lấy thông tin role cho "leader" và "member"
-            const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
-            const memberRole = await prisma.role.findUnique({ where: { name: "member" } });
-            if (!leaderRole || !memberRole)
-              throw new Error("Vai trò 'leader' hoặc 'member' không tồn tại.");
-    
-            // 6. Tạo nhóm mới trong database
-            const newGroup = await prisma.group.create({
-              data: {
-                groupCode,
-                semesterId,
-                status: "ACTIVE",
-                createdBy,
-                maxMembers: groupSize,
-                isAutoCreated: true,
-                members: {
-                  create: groupMembers.map((member, idx) => ({
-                    student: { connect: { id: member.id } },
-                    role: { connect: { id: idx === 0 ? leaderRole.id : memberRole.id } },
-                    status: "ACTIVE",
-                    // Loại bỏ trường user để tránh lỗi unique constraint
-                  })),
-                },
-              },
-              include: {
-                members: {
-                  include: {
-                    role: true,
-                  },
-                },
-              },
-            });
-    
-            // 7. Format lại dữ liệu trả về: chỉ trả về studentId, role (role.name) và status cho mỗi thành viên
-            const formattedGroup = {
-              ...newGroup,
-              members: newGroup.members.map((member) => ({
-                studentId: member.studentId,
-                role: member.role.name,
-                status: member.status,
-              })),
-            };
-    
-            createdGroups.push(formattedGroup);
-          }
-        }
-    
-        return {
-          message: "Random nhóm thành công!",
-          totalGroups: createdGroups.length,
-          data: createdGroups,
-        };
-      }
-    
+            const studentsInThisProf = groupedByProfession[professionName];
 
-    
-      
+            let feStudents = studentsInThisProf.filter(
+                (s) => s.user?.programming_language === "Front-end"
+            );
+            let beStudents = studentsInThisProf.filter(
+                (s) => s.user?.programming_language === "Back-end"
+            );
+            let fsStudents = studentsInThisProf.filter(
+                (s) => s.user?.programming_language === "Full-stack"
+            );
+
+            while (feStudents.length > 0 || beStudents.length > 0 || fsStudents.length > 0) {
+                const groupMembers: typeof studentsInThisProf = [];
+
+                // Lấy 1 BE và 1 FE nếu có
+                const pickBE = popOne(beStudents);
+                if (pickBE) groupMembers.push(pickBE);
+                const pickFE = popOne(feStudents);
+                if (pickFE) groupMembers.push(pickFE);
+                // Lấy 1 FS nếu có
+                const pickFS = popOne(fsStudents);
+                if (pickFS) groupMembers.push(pickFS);
+
+                // Thêm thành viên cho đến khi đủ groupSize (5)
+                while (groupMembers.length < groupSize) {
+                    if (
+                        feStudents.length === 0 &&
+                        beStudents.length === 0 &&
+                        fsStudents.length === 0
+                    ) {
+                        break;
+                    }
+                    const bucketsLeft = [];
+                    if (feStudents.length > 0) bucketsLeft.push("FE");
+                    if (beStudents.length > 0) bucketsLeft.push("BE");
+                    if (fsStudents.length > 0) bucketsLeft.push("FS");
+                    if (bucketsLeft.length === 0) break;
+                    const chosen = bucketsLeft[Math.floor(Math.random() * bucketsLeft.length)];
+                    let candidate;
+                    if (chosen === "FE") candidate = popOne(feStudents);
+                    else if (chosen === "BE") candidate = popOne(beStudents);
+                    else candidate = popOne(fsStudents);
+                    if (!candidate) break;
+                    groupMembers.push(candidate);
+                }
+
+                // Nếu nhóm có số thành viên nhỏ hơn minGroupSize, bỏ qua
+                if (groupMembers.length < minGroupSize) break;
+
+                // Random chọn leader: hoán đổi phần tử đầu tiên với phần tử được chọn ngẫu nhiên
+                const leaderIndex = Math.floor(Math.random() * groupMembers.length);
+                const leaderInGroup = groupMembers[leaderIndex];
+                groupMembers[leaderIndex] = groupMembers[0];
+                groupMembers[0] = leaderInGroup;
+
+                // 5. Tạo groupCode duy nhất cho nhóm này
+                const groupCode = await this.generateUniqueGroupCode(professionName, semesterId);
+
+                // Lấy thông tin role cho "leader" và "member"
+                const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
+                const memberRole = await prisma.role.findUnique({ where: { name: "member" } });
+                if (!leaderRole || !memberRole)
+                    throw new Error("Vai trò 'leader' hoặc 'member' không tồn tại.");
+
+                // 6. Tạo nhóm mới trong database
+                const newGroup = await prisma.group.create({
+                    data: {
+                        groupCode,
+                        semesterId, // Đảm bảo khớp với học kỳ hiện tại
+                        status: "ACTIVE",
+                        createdBy,
+                        maxMembers: groupSize,
+                        isAutoCreated: true,
+                        members: {
+                            create: groupMembers.map((member, idx) => ({
+                                student: { connect: { id: member.id } },
+                                role: { connect: { id: idx === 0 ? leaderRole.id : memberRole.id } },
+                                status: "ACTIVE",
+                            })),
+                        },
+                    },
+                    include: { members: { include: { role: true } } },
+
+                });
+
+                // 7. Format lại dữ liệu trả về: chỉ trả về studentId, role (role.name) và status cho mỗi thành viên
+                const formattedGroup = {
+                    ...newGroup,
+                    members: newGroup.members.map((member) => ({
+                        studentId: member.studentId,
+                        role: member.role.name,
+                        status: member.status,
+                    })),
+                };
+
+                createdGroups.push(formattedGroup);
+            }
+        }
+
+        return {
+            message: "Random nhóm thành công!",
+            totalGroups: createdGroups.length,
+            data: createdGroups,
+        };
+    }
+
+
+
+
 
 
 
@@ -1276,16 +1290,16 @@ export class GroupService {
 
     // 17) updateMentor
     async updateMentor(groupIdOrCode: string, oldMentorIdOrEmail: string, newMentorIdOrEmail: string, newMentorRole: string, userId: string, semesterId: string) {
-      //  console.log(" Debug Inputs:", { groupIdOrCode, oldMentorIdOrEmail, newMentorIdOrEmail, newMentorRole, semesterId });
-    
+        //  console.log(" Debug Inputs:", { groupIdOrCode, oldMentorIdOrEmail, newMentorIdOrEmail, newMentorRole, semesterId });
+
         if (!groupIdOrCode || !oldMentorIdOrEmail || !newMentorIdOrEmail || !newMentorRole) {
             throw new Error("Cần cung cấp đầy đủ thông tin.");
         }
-    
+
         if (!["mentor_main", "mentor_sub"].includes(newMentorRole)) {
             throw new Error("Vai trò mới phải là 'mentor_main' hoặc 'mentor_sub'.");
         }
-    
+
         // 🔍 Tìm nhóm bằng ID hoặc groupCode
         const group = await prisma.group.findFirst({
             where: {
@@ -1296,11 +1310,11 @@ export class GroupService {
                 semesterId
             }
         });
-    
+
         if (!group) {
             throw new Error("Nhóm không tồn tại.");
         }
-    
+
         // Tìm Mentor cũ bằng ID hoặc Email
         const oldMentor = await prisma.user.findFirst({
             where: {
@@ -1310,11 +1324,11 @@ export class GroupService {
                 ]
             }
         });
-    
+
         if (!oldMentor) {
             throw new Error("Mentor cũ không tồn tại.");
         }
-    
+
         //  Tìm Mentor mới bằng ID hoặc Email
         const newMentor = await prisma.user.findFirst({
             where: {
@@ -1324,35 +1338,35 @@ export class GroupService {
                 ]
             }
         });
-    
+
         if (!newMentor) {
             throw new Error("Mentor mới không tồn tại.");
         }
-    
+
         //  Kiểm tra mentor cũ có trong nhóm không
         const oldMentorInGroup = await prisma.groupMentor.findFirst({
             where: { groupId: group.id, mentorId: oldMentor.id }
         });
-    
+
         if (!oldMentorInGroup) {
             throw new Error("Mentor cũ không thuộc nhóm.");
         }
-    
+
         //  Lấy Role ID cho mentor_main hoặc mentor_sub trước khi sử dụng
         const mentorMainRole = await prisma.role.findUnique({ where: { name: "mentor_main" } });
         const mentorSubRole = await prisma.role.findUnique({ where: { name: "mentor_sub" } });
-    
+
         if (!mentorMainRole || !mentorSubRole) {
             throw new Error("Vai trò 'mentor_main' hoặc 'mentor_sub' không tồn tại.");
         }
-    
+
         const newMentorRoleId = newMentorRole === "mentor_main" ? mentorMainRole.id : mentorSubRole.id;
-    
+
         //  Kiểm tra nếu mentor mới đã có trong nhóm
         const newMentorInGroup = await prisma.groupMentor.findFirst({
             where: { groupId: group.id, mentorId: newMentor.id }
         });
-    
+
         //  Nếu mentor mới đã có trong nhóm, chỉ cập nhật role
         if (newMentorInGroup) {
             console.log("🟢 Mentor mới đã có trong nhóm, cập nhật role...");
@@ -1360,31 +1374,31 @@ export class GroupService {
                 where: { id: newMentorInGroup.id },
                 data: { roleId: newMentorRoleId }
             });
-    
+
             return { message: `Cập nhật vai trò thành ${newMentorRole} thành công.` };
         }
-    
+
         //  Kiểm tra số lượng mentor
         const mentorCount = await prisma.groupMentor.count({ where: { groupId: group.id } });
-    
+
         if (mentorCount <= 1 && oldMentorInGroup.roleId === mentorMainRole.id) {
             throw new Error("Không thể xóa mentor_main duy nhất. Hãy thêm mentor mới trước.");
         }
-    
+
         //  Kiểm tra nếu đã có `mentor_main`, không cho thêm nữa
         if (newMentorRole === "mentor_main") {
             const existingMainMentor = await prisma.groupMentor.findFirst({
                 where: { groupId: group.id, roleId: mentorMainRole.id }
             });
-    
+
             if (existingMainMentor) {
                 throw new Error("Nhóm đã có mentor_main. Vui lòng chuyển mentor_main hiện tại thành mentor_sub trước.");
             }
         }
-    
+
         //  Xóa mentor cũ
         await prisma.groupMentor.delete({ where: { id: oldMentorInGroup.id } });
-    
+
         //  Thêm mentor mới với vai trò đã chọn
         await prisma.groupMentor.create({
             data: {
@@ -1394,7 +1408,7 @@ export class GroupService {
                 addedBy: userId,
             },
         });
-    
+
         return { message: `Mentor đã được cập nhật thành công với vai trò ${newMentorRole}.` };
     }
 
@@ -1421,7 +1435,7 @@ export class GroupService {
         let isLeader = false;
 
         if (student) {
-            const leaderRole = await prisma.role.findUnique({ where: { name: "leader"   }  });
+            const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
             if (!leaderRole) throw new Error("Vai trò 'leader' không tồn tại.");
             const leader = await prisma.groupMember.findFirst({
                 where: { groupId, studentId: student.id, roleId: leaderRole.id, isActive: true },
