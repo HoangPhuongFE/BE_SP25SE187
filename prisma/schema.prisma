@@ -354,7 +354,7 @@ model TopicAssignment {
 
 model Group {
   id               String            @id @default(uuid())
-  groupCode        String            @unique @map("group_code")
+  groupCode        String            @map("group_code")
   semesterId       String            @map("semester_id")
   status           String
   isAutoCreated    Boolean           @default(false) @map("is_auto_created")
@@ -377,7 +377,7 @@ model Group {
   topicAssignments TopicAssignment[]
   documents        Document[]        @relation("GroupDocuments")
   proposedTopics   Topic[]           @relation("ProposedGroup")
-
+  @@unique([semesterId, groupCode], name: "semesterId_groupCode")
   @@map("groups")
 }
 

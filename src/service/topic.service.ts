@@ -72,7 +72,7 @@ export class TopicService {
       let groupIdToUse: string | undefined = data.groupId;
       if (!groupIdToUse && data.groupCode) {
         const group = await prisma.group.findUnique({
-          where: { groupCode: data.groupCode },
+          where: { semesterId_groupCode: { semesterId: data.semesterId, groupCode: data.groupCode } },
           select: { id: true, groupCode: true },
         });
         if (!group) {
@@ -150,6 +150,7 @@ export class TopicService {
   async updateTopic(
     topicId: string,
     data: {
+      [x: string]: any;
       nameVi?: string;
       nameEn?: string;
       name?: string;
@@ -177,7 +178,7 @@ export class TopicService {
       let updatedGroupId = data.groupId;
       if (!updatedGroupId && data.groupCode) {
         const group = await prisma.group.findUnique({
-          where: { groupCode: data.groupCode },
+          where: { semesterId_groupCode: { semesterId: data.semesterId, groupCode: data.groupCode } },
           select: { id: true },
         });
         if (!group) {
