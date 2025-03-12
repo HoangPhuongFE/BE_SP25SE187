@@ -80,11 +80,10 @@ router.put(
 );
 
 // Academic Officer duyệt đề tài (hỗ trợ upload finalFile)
-router.post(
+router.put(
   '/:topicId/status',
   authenticateToken,
   checkRole(['academic_officer', 'admin', 'graduation_thesis_manager']),
-  upload.single('finalFile'),
   topicController.approveTopicByAcademic.bind(topicController)
 );
 

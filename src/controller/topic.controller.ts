@@ -156,14 +156,14 @@ export class TopicController {
     try {
       const { topicId } = req.params;
       const { status } = req.body;
-      const finalFile = req.file;
+      const  reviewReason = req.body.reviewReason; 
       const userId = req.user!.userId;
   
       if (!topicId || !status) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Thiếu ID đề tài hoặc trạng thái!' });
       }
   
-      const result = await topicService.approveTopicByAcademic(topicId, status, userId, finalFile);
+      const result = await topicService.approveTopicByAcademic(topicId, status, userId, reviewReason);
       return res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi khi duyệt đề tài:', error);
