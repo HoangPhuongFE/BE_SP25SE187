@@ -312,6 +312,12 @@ export const PROGRESS_REPORT_MESSAGE = {
   CANNOT_UPDATE_REVIEWED: "Không thể cập nhật báo cáo đã được đánh giá",
   REPORTS_FETCHED: "Lấy danh sách báo cáo tiến độ thành công",
   REPORT_FETCHED: "Lấy thông tin báo cáo tiến độ thành công",
+  PERIOD_CREATED: "Tạo khoảng thời gian báo cáo tiến độ thành công",
+  PERIODS_FETCHED: "Lấy danh sách khoảng thời gian báo cáo tiến độ thành công",
+  INVALID_DATE_RANGE: "Khoảng thời gian không hợp lệ",
+  WEEK_PERIOD_EXISTS: "Khoảng thời gian báo cáo cho tuần này đã tồn tại",
+  NOT_MAIN_MENTOR: "Chỉ mentor chính mới có quyền tạo khoảng thời gian báo cáo",
+  NO_ACTIVE_PERIOD: "Không có khoảng thời gian báo cáo nào đang hoạt động",
 } as const;
 
 // Cập nhật vào danh sách MESSAGES chung

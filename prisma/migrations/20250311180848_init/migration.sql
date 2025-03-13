@@ -359,6 +359,8 @@ CREATE TABLE `progress_reports` (
     `submitted_at` DATETIME(3) NOT NULL,
     `reviewed_at` DATETIME(3) NULL,
     `url` VARCHAR(191) NULL,
+    `start_date` DATETIME(3) NOT NULL,
+    `end_date` DATETIME(3) NOT NULL,
 
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
