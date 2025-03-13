@@ -10,7 +10,7 @@ const meetingController = new MeetingController();
 router.post(
   "/create",
   authenticateToken,
-  checkRole(["mentor_main"]),
+  checkRole(["lecturer"]),
   validateCreateMeeting,
   meetingController.createMeeting.bind(meetingController)
 );
@@ -19,7 +19,7 @@ router.post(
 router.put(
   "/:id",
   authenticateToken,
-  checkRole(["mentor_main"]),
+  checkRole(["lecturer"]),
   validateUpdateMeeting,
   meetingController.updateMeeting.bind(meetingController)
 );
@@ -28,7 +28,7 @@ router.put(
 router.delete(
   "/:id",
   authenticateToken,
-  checkRole(["mentor_main"]),
+  checkRole(["lecturer"]),
   meetingController.deleteMeeting.bind(meetingController)
 );
 
@@ -39,12 +39,20 @@ router.get(
   meetingController.getMeetingsByGroup.bind(meetingController)
 );
 
-// Lấy danh sách meetings của mentor đang đăng nhập (cả mentor chính và phụ)
+// Lấy meetings của lecturer với vai trò mentor chính
 router.get(
-  "/mentor",
+  "/lecturer/main",
   authenticateToken,
-  checkRole(["mentor_main", "mentor_sub"]),
-  meetingController.getMeetingsByMentor.bind(meetingController)
+  checkRole(["lecturer"]),
+  meetingController.getMainMentorMeetings.bind(meetingController)
+);
+
+// Lấy meetings của lecturer với vai trò mentor phụ
+router.get(
+  "/lecturer/sub",
+  authenticateToken,
+  checkRole(["lecturer"]),
+  meetingController.getSubMentorMeetings.bind(meetingController)
 );
 
 // Lấy thông tin chi tiết của một meeting

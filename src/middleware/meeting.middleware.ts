@@ -34,8 +34,22 @@ export const validateCreateMeeting = [
           where: { id: groupId },
         });
       } else {
-        group = await prisma.group.findUnique({
-          where: { groupCode: groupId },
+        // Tìm học kỳ hiện tại nếu không có semesterId
+        const currentSemester = await prisma.semester.findFirst({
+          where: { status: 'ACTIVE' },
+          orderBy: { startDate: 'desc' },
+        });
+
+        if (!currentSemester) {
+          return res.status(404).json({ message: "Không tìm thấy học kỳ hiện tại" });
+        }
+
+        // Tìm group theo groupCode và semesterId
+        group = await prisma.group.findFirst({
+          where: { 
+            groupCode: groupId,
+            semesterId: currentSemester.id
+          },
         });
       }
 
