@@ -124,10 +124,6 @@ export class MeetingController {
           where: { id: groupId },
         });
       } else {
-<<<<<<< HEAD
-        group = await prisma.group.findUnique({
-          where: { semesterId_groupCode: { semesterId: req.query.semesterId as string, groupCode: groupId } },
-=======
         // Tìm học kỳ hiện tại nếu không có semesterId
         const currentSemester = await prisma.semester.findFirst({
           where: { status: 'ACTIVE' },
@@ -146,7 +142,6 @@ export class MeetingController {
             groupCode: groupId,
             semesterId: currentSemester.id
           },
->>>>>>> origin/meeting-and-feedback
         });
       }
 
