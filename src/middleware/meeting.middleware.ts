@@ -21,7 +21,7 @@ export const validateCreateMeeting = [
 
     const { groupId } = req.body;
     const mentorId = req.user!.userId;
-
+//
     try {
       // Kiểm tra xem groupId là id hay code
       let group;
