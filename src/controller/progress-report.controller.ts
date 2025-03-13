@@ -286,11 +286,17 @@ export class ProgressReportController {
         mentorEmail: mr.mentor.email,
         feedback: mr.feedback,
         isRead: mr.isRead,
-        readAt: mr.readAt
+        readAt: mr.readAt,
+        roleId: mr.mentor.roleInGroup === "mentor-main" ? "Mentor-main" : "Mentor-sub"
       })).filter(mf => mf.feedback); // Chỉ lấy những mentor có feedback
       
+      // Chỉ lấy groupCode và groupId từ group
       const formattedReport = {
         ...report,
+        group: report.group ? {
+          id: report.groupId,
+          groupCode: report.group.groupCode
+        } : null,
         mentorFeedbacks,
       };
 
@@ -436,6 +442,76 @@ export class ProgressReportController {
       });
     } catch (error: any) {
       console.error("Error fetching student progress reports:", error);
+      return res.status(400).json({
+        success: false,
+        message: error.message || MESSAGES.GENERAL.ACTION_FAILED,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  }
+
+  // Tạo khoảng thời gian báo cáo tiến độ cho nhóm
+  async createReportPeriod(req: Request, res: Response) {
+    try {
+      const { groupId, weekNumber, startDate, endDate } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: MESSAGES.USER.UNAUTHORIZED,
+        });
+      }
+      
+      const userId = req.user.userId;
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: MESSAGES.USER.UNAUTHORIZED,
+        });
+      }
+
+      console.log(`API createReportPeriod được gọi bởi mentorId: ${userId} cho nhóm: ${groupId}`);
+      console.log(`Dữ liệu: tuần ${weekNumber}, bắt đầu: ${startDate}, kết thúc: ${endDate}`);
+      
+      const reportPeriod = await this.progressReportService.createReportPeriod({
+        groupId,
+        userId,
+        weekNumber,
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: MESSAGES.PROGRESS_REPORT.PERIOD_CREATED,
+        data: reportPeriod,
+      });
+    } catch (error: any) {
+      console.error("Error creating report period:", error);
+      return res.status(400).json({
+        success: false,
+        message: error.message || MESSAGES.GENERAL.ACTION_FAILED,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  }
+
+  // Lấy danh sách khoảng thời gian báo cáo tiến độ của nhóm
+  async getReportPeriods(req: Request, res: Response) {
+    try {
+      const { groupId } = req.params;
+      console.log(`API getReportPeriods được gọi cho nhóm: ${groupId}`);
+      
+      const periods = await this.progressReportService.getReportPeriods(groupId);
+
+      return res.status(200).json({
+        success: true,
+        message: MESSAGES.PROGRESS_REPORT.PERIODS_FETCHED,
+        data: periods,
+      });
+    } catch (error: any) {
+      console.error("Error fetching report periods:", error);
       return res.status(400).json({
         success: false,
         message: error.message || MESSAGES.GENERAL.ACTION_FAILED,

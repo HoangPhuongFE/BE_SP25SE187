@@ -81,6 +81,9 @@ importers:
       '@types/cors':
         specifier: ^2.8.17
         version: 2.8.17
+      '@types/exceljs':
+        specifier: ^0.5.3
+        version: 0.5.3
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.21
@@ -483,6 +486,9 @@ packages:
 
   '@types/estree@1.0.6':
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
+
+  '@types/exceljs@0.5.3':
+    resolution: {integrity: sha512-a0PLZEJGbA4kHHoSS8cQ20ynIv17vCBV1reqsrX5ksQQb077YYvhEKC82lEq6/+mMufhk68KJ5jwugL3DKG8sQ==}
 
   '@types/express-serve-static-core@4.19.6':
     resolution: {integrity: sha512-N4LZ2xG7DatVqhCZzOGb1Yi5lMbXSZcmdLDe9EzSndPV2HpWYWzRbaerl2n27irrm94EPpprqa8KpskPT085+A==}
@@ -2422,6 +2428,10 @@ snapshots:
       '@types/node': 20.17.19
 
   '@types/estree@1.0.6': {}
+
+  '@types/exceljs@0.5.3':
+    dependencies:
+      '@types/node': 20.17.19
 
   '@types/express-serve-static-core@4.19.6':
     dependencies:

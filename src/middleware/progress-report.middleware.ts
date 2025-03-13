@@ -3,9 +3,6 @@ import { body, param, validationResult } from 'express-validator';
 import { MESSAGES } from '../constants/message';
 
 export const validateCreateProgressReport = [
-  body('weekNumber')
-    .isInt({ min: 1 })
-    .withMessage('Số tuần phải là số nguyên dương'),
   body('content')
     .isString()
     .notEmpty()
@@ -19,6 +16,49 @@ export const validateCreateProgressReport = [
     .optional()
     .isString()
     .withMessage('ID nhóm phải là chuỗi'),
+  (req: Request, res: Response, next: NextFunction) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: MESSAGES.PROGRESS_REPORT.INVALID_REQUEST, 
+        errors: errors.array() 
+      });
+    }
+    next();
+  }
+];
+
+export const validateCreateReportPeriod = [
+  body('groupId')
+    .isString()
+    .notEmpty()
+    .withMessage('ID nhóm là bắt buộc'),
+  body('weekNumber')
+    .isInt({ min: 1 })
+    .withMessage('Số tuần phải là số nguyên dương'),
+  body('startDate')
+    .isISO8601()
+    .withMessage('Ngày bắt đầu phải là định dạng ISO8601')
+    .custom((value, { req }) => {
+      const startDate = new Date(value);
+      const now = new Date();
+      if (startDate < now) {
+        throw new Error('Ngày bắt đầu phải từ ngày hiện tại trở đi');
+      }
+      return true;
+    }),
+  body('endDate')
+    .isISO8601()
+    .withMessage('Ngày kết thúc phải là định dạng ISO8601')
+    .custom((value, { req }) => {
+      const endDate = new Date(value);
+      const startDate = new Date(req.body.startDate);
+      if (endDate <= startDate) {
+        throw new Error('Ngày kết thúc phải sau ngày bắt đầu');
+      }
+      return true;
+    }),
   (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
