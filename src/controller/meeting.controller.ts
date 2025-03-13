@@ -112,7 +112,7 @@ export class MeetingController {
   async getMeetingsByGroup(req: AuthenticatedRequest, res: Response) {
     try {
       const { groupId } = req.params;
-
+//
       // Kiểm tra xem groupId là id hay code
       let group;
       
