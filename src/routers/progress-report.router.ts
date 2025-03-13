@@ -4,7 +4,8 @@ import { authenticateToken, checkRole } from "../middleware/user.middleware";
 import { 
   validateCreateProgressReport, 
   validateUpdateProgressReport,
-  validateMentorFeedback 
+  validateMentorFeedback,
+  validateCreateReportPeriod
 } from "../middleware/progress-report.middleware";
 
 const router = Router();
@@ -17,6 +18,23 @@ router.post(
   checkRole(["student", "leader"]),
   validateCreateProgressReport,
   progressReportController.createProgressReport.bind(progressReportController)
+);
+
+// Mentor chính tạo khoảng thời gian báo cáo
+router.post(
+  "/period",
+  authenticateToken,
+  checkRole(["lecturer"]),
+  validateCreateReportPeriod,
+  progressReportController.createReportPeriod.bind(progressReportController)
+);
+
+// Lấy danh sách khoảng thời gian báo cáo của nhóm
+router.get(
+  "/periods/:groupId",
+  authenticateToken,
+  checkRole(["lecturer", "student", "leader"]),
+  progressReportController.getReportPeriods.bind(progressReportController)
 );
 
 // Mentor thêm phản hồi cho báo cáo
@@ -89,7 +107,7 @@ router.get(
 router.get(
   "/:id",
   authenticateToken,
-  checkRole(["student", "leader"]),
+  checkRole(["student", "leader", "lecturer"]),
   progressReportController.getProgressReportById.bind(progressReportController)
 );
 

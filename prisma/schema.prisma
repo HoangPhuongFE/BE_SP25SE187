@@ -435,6 +435,8 @@ model ProgressReport {
   submittedAt          DateTime  @map("submitted_at")
   reviewedAt           DateTime? @map("reviewed_at")
   url                  String?
+  startDate            DateTime  @map("start_date")
+  endDate              DateTime  @map("end_date")
   group                Group     @relation(fields: [groupId], references: [id])
   mentors              ProgressReportMentor[]
 
