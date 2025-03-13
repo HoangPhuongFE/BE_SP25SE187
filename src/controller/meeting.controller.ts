@@ -16,7 +16,7 @@ export class MeetingController {
   async createMeeting(req: AuthenticatedRequest, res: Response) {
     try {
       const mentorId = req.user!.userId;
-      const { groupId, meetingTime, location, agenda } = req.body;
+      const { groupId, meetingTime, location, agenda, url } = req.body;
 
       //  Kiểm tra mentor có thuộc nhóm không
       const isMentor = await prisma.groupMentor.findFirst({
@@ -39,13 +39,18 @@ export class MeetingController {
         meetingTime,
         location,
         agenda,
+        url,
       });
+
+      // Lấy thông tin chi tiết của meeting vừa tạo
+      const meetingDetail = await this.meetingService.getMeetingById(meeting.id);
 
       res.status(HTTP_STATUS.CREATED).json({
         message: MEETING_MESSAGE.MEETING_CREATED,
-        data: meeting,
+        data: meetingDetail,
       });
     } catch (error) {
+      console.error("Error creating meeting:", error);
       res.status(HTTP_STATUS.BAD_REQUEST).json({
         message: (error as Error).message,
       });
@@ -61,31 +66,18 @@ export class MeetingController {
       const mentorId = req.user!.userId;
       const updateData = req.body;
 
-      //  Kiểm tra quyền mentor
-      const meeting = await prisma.meetingSchedule.findUnique({
-        where: { id },
-      });
-
-      if (!meeting) {
-        return res.status(HTTP_STATUS.NOT_FOUND).json({
-          message: MEETING_MESSAGE.MEETING_NOT_FOUND,
-        });
-      }
-
-      if (meeting.mentorId !== mentorId) {
-        return res.status(HTTP_STATUS.FORBIDDEN).json({
-          message: MEETING_MESSAGE.UNAUTHORIZED_MENTOR,
-        });
-      }
-
       //  Cập nhật meeting
       const updatedMeeting = await this.meetingService.updateMeeting(id, mentorId, updateData);
 
+      // Lấy thông tin chi tiết của meeting sau khi cập nhật
+      const meetingDetail = await this.meetingService.getMeetingById(updatedMeeting.id);
+
       res.status(HTTP_STATUS.OK).json({
         message: MEETING_MESSAGE.MEETING_UPDATED,
-        data: updatedMeeting,
+        data: meetingDetail,
       });
     } catch (error) {
+      console.error("Error updating meeting:", error);
       res.status(HTTP_STATUS.BAD_REQUEST).json({
         message: (error as Error).message,
       });
@@ -100,23 +92,6 @@ export class MeetingController {
       const { id } = req.params;
       const mentorId = req.user!.userId;
 
-      //  Kiểm tra quyền mentor
-      const meeting = await prisma.meetingSchedule.findUnique({
-        where: { id },
-      });
-
-      if (!meeting) {
-        return res.status(HTTP_STATUS.NOT_FOUND).json({
-          message: MEETING_MESSAGE.MEETING_NOT_FOUND,
-        });
-      }
-
-      if (meeting.mentorId !== mentorId) {
-        return res.status(HTTP_STATUS.FORBIDDEN).json({
-          message: MEETING_MESSAGE.UNAUTHORIZED_MENTOR,
-        });
-      }
-
       //  Xóa meeting
       await this.meetingService.deleteMeeting(id, mentorId);
 
@@ -124,6 +99,7 @@ export class MeetingController {
         message: MEETING_MESSAGE.MEETING_DELETED,
       });
     } catch (error) {
+      console.error("Error deleting meeting:", error);
       res.status(HTTP_STATUS.BAD_REQUEST).json({
         message: (error as Error).message,
       });
@@ -137,10 +113,21 @@ export class MeetingController {
     try {
       const { groupId } = req.params;
 
-      //  Kiểm tra group có tồn tại không
-      const group = await prisma.group.findUnique({
-        where: { id: groupId },
-      });
+      // Kiểm tra xem groupId là id hay code
+      let group;
+      
+      // Nếu là UUID thì tìm theo id, nếu không thì tìm theo code
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(groupId);
+      
+      if (isUUID) {
+        group = await prisma.group.findUnique({
+          where: { id: groupId },
+        });
+      } else {
+        group = await prisma.group.findUnique({
+          where: { groupCode: groupId },
+        });
+      }
 
       if (!group) {
         return res.status(HTTP_STATUS.NOT_FOUND).json({
@@ -149,12 +136,80 @@ export class MeetingController {
       }
 
       //  Lấy danh sách meetings
-      const meetings = await this.meetingService.getMeetingsByGroup(groupId);
+      const meetings = await this.meetingService.getMeetingsByGroup(group.id);
 
       res.status(HTTP_STATUS.OK).json({
         data: meetings,
       });
     } catch (error) {
+      console.error("Error getting meetings by group:", error);
+      res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  /**
+   *  Lấy thông tin chi tiết của một meeting
+   */
+  async getMeetingById(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { id } = req.params;
+
+      //  Lấy thông tin chi tiết meeting
+      const meeting = await this.meetingService.getMeetingById(id);
+
+      res.status(HTTP_STATUS.OK).json({
+        data: meeting,
+      });
+    } catch (error) {
+      console.error("Error getting meeting by id:", error);
+      res.status(HTTP_STATUS.BAD_REQUEST).json({
+        message: (error as Error).message,
+      });
+    }
+  }
+
+  /**
+   * Lấy tất cả meeting của một mentor (cả mentor chính và mentor phụ)
+   */
+  async getMeetingsByMentor(req: AuthenticatedRequest, res: Response) {
+    try {
+      const mentorId = req.user!.userId;
+      
+      // Lấy semesterId từ query hoặc từ role của người dùng nếu không có trong query
+      let semesterId = req.query.semesterId as string;
+      
+      // Nếu không có semesterId trong query, lấy từ role của người dùng
+      if (!semesterId && req.user && req.user.roles && req.user.roles.length > 0) {
+        // Lấy semesterId từ role đầu tiên của người dùng
+        semesterId = req.user.roles[0].semesterId as string;
+        
+        // Thêm semesterId vào query để middleware checkRole có thể sử dụng
+        req.query.semesterId = semesterId;
+      }
+
+      // Kiểm tra xem người dùng có vai trò mentor không
+      const hasRoleMentor = req.user!.roles.some(role => 
+        role.name === 'mentor_main' || role.name === 'mentor_sub');
+      
+      if (!hasRoleMentor) {
+        return res.status(HTTP_STATUS.FORBIDDEN).json({
+          message: "Bạn không có quyền truy cập tài nguyên này",
+        });
+      }
+
+      // Lấy danh sách meeting
+      const meetings = await this.meetingService.getMeetingsByMentor(
+        mentorId, 
+        semesterId
+      );
+
+      res.status(HTTP_STATUS.OK).json({
+        data: meetings,
+      });
+    } catch (error) {
+      console.error("Error getting meetings by mentor:", error);
       res.status(HTTP_STATUS.BAD_REQUEST).json({
         message: (error as Error).message,
       });

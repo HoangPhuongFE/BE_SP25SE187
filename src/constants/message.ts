@@ -243,6 +243,7 @@ export const MEETING_MESSAGE = {
   MEETING_NOT_FOUND: "Meeting not found",
   UNAUTHORIZED_MENTOR: "You are not the mentor of this group",
   INVALID_MEETING_TIME: "Invalid meeting time",
+  INVALID_MEETING_URL: "Invalid meeting URL",
   GROUP_NOT_FOUND: "Group not found",
   DELETE_TIME_EXPIRED: "Cannot delete meeting before 1 day of the meeting",
   UPDATE_TIME_EXPIRED: "Cannot update meeting before 1 day of the meeting",
@@ -296,6 +297,22 @@ export const DATABASE_MESSAGE = {
   DATABASE_ERROR: "Lỗi hệ thống cơ sở dữ liệu.",
 } as const;
 
+export const PROGRESS_REPORT_MESSAGE = {
+  REPORT_CREATED: "Tạo báo cáo tiến độ thành công",
+  REPORT_UPDATED: "Cập nhật báo cáo tiến độ thành công",
+  REPORT_DELETED: "Xóa báo cáo tiến độ thành công",
+  REPORT_NOT_FOUND: "Không tìm thấy báo cáo tiến độ",
+  FEEDBACK_ADDED: "Thêm phản hồi thành công",
+  FEEDBACK_UPDATED: "Cập nhật phản hồi thành công",
+  UNAUTHORIZED: "Bạn không có quyền gửi báo cáo tiến độ cho nhóm này",
+  INVALID_REQUEST: "Yêu cầu không hợp lệ",
+  GROUP_NOT_FOUND: "Không tìm thấy nhóm",
+  MENTOR_NOT_FOUND: "Không tìm thấy mentor cho nhóm này",
+  WEEK_REPORT_EXISTS: "Báo cáo tiến độ cho tuần này đã tồn tại",
+  CANNOT_UPDATE_REVIEWED: "Không thể cập nhật báo cáo đã được đánh giá",
+  REPORTS_FETCHED: "Lấy danh sách báo cáo tiến độ thành công",
+  REPORT_FETCHED: "Lấy thông tin báo cáo tiến độ thành công",
+} as const;
 
 // Cập nhật vào danh sách MESSAGES chung
 export const MESSAGES = {
@@ -318,4 +335,5 @@ export const MESSAGES = {
   MSGV: MSGV_MESSAGE, 
   IMPORT: IMPORT_MESSAGE, 
   DATABASE: DATABASE_MESSAGE,
+  PROGRESS_REPORT: PROGRESS_REPORT_MESSAGE,
 } as const;
