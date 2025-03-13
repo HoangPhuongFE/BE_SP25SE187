@@ -20,13 +20,13 @@ router.put('/profile',
 
 router.get('/profile', 
   authenticateToken, 
-  checkRole(['admin', 'academic_officer','graduation_thesis_manager', 'dean','lecturer', 'reviewer', 'mentor', 'chairman',"student","leader","secretary"]), 
+  checkRole(['admin', 'academic_officer','graduation_thesis_manager', 'lecturer', "student","leader"],false), 
   userController.getProfile
 );
 
 router.get('/users',
   authenticateToken,
-  checkRole(['admin', 'academic_officer','graduation_thesis_manager', 'dean','lecturer', 'reviewer', 'mentor', 'chairman',"student","leader","secretary"]), 
+  checkRole(['admin', 'academic_officer','graduation_thesis_manager', 'lecturer', "student","leader"],false), 
   userController.getUsers
 );
 

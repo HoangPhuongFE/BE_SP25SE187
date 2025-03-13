@@ -8,7 +8,7 @@ export async function checkSemester(req: Request, res: Response, next: NextFunct
     try {
         // Lấy groupId từ req.params và semesterId từ req.query
         const groupId = req.params.groupId;
-        const semesterId = req.query.semesterId as string; // Ép kiểu nếu cần
+        const semesterId = req.params.semesterId as string; // Ép kiểu nếu cần
         const groupCode = req.body.groupCode; // Giữ lại cho các phương thức khác như POST
 
         // Kiểm tra nếu thiếu tất cả các tham số cần thiết

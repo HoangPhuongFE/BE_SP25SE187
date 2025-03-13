@@ -19,7 +19,7 @@ router.post(
 router.put(
   '/:topicId',
   authenticateToken,
-  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager']),
+  checkRole([ 'academic_officer', 'admin', 'graduation_thesis_manager', 'lecturer']),
   topicController.updateTopic.bind(topicController)
 );
 
@@ -75,16 +75,15 @@ router.post(
 router.put(
   '/topic-registrations/:registrationId/approve',
   authenticateToken,
-  checkRole(['mentor']),
+  checkRole(['lecturer']),
   topicController.approveTopicRegistrationByMentor.bind(topicController)
 );
 
 // Academic Officer duyệt đề tài (hỗ trợ upload finalFile)
-router.post(
+router.put(
   '/:topicId/status',
   authenticateToken,
   checkRole(['academic_officer', 'admin', 'graduation_thesis_manager']),
-  upload.single('finalFile'),
   topicController.approveTopicByAcademic.bind(topicController)
 );
 

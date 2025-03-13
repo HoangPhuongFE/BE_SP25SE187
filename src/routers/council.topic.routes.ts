@@ -17,6 +17,7 @@ router.post(
 router.get(
   '/',
   authenticateToken,
+  checkRole(["admin", "academic_officer", "graduation_thesis_manager",'lecturer'],false),
   councilTopicController.getCouncils.bind(councilTopicController)
 );
 

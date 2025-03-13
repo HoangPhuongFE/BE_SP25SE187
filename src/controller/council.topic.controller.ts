@@ -104,7 +104,7 @@
 
     async addMemberToCouncil(req: Request, res: Response) {
       try {
-        const { councilId } = req.query; // 🛑 Đổi từ req.params -> req.query
+        const { councilId } = req.params; //  Đổi từ req.params -> req.query
         const { email, role } = req.body;
         const addedBy = req.user!.userId;
     
@@ -125,7 +125,7 @@
 
     async removeMemberFromCouncil(req: Request, res: Response) {
       try {
-        const { councilId, userId } = req.query;
+        const { councilId, userId } = req.params;
     
         if (!councilId || !userId) {
           return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: "Thiếu councilId hoặc userId!" });
