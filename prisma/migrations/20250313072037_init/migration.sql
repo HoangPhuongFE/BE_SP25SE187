@@ -303,7 +303,7 @@ CREATE TABLE `groups` (
     `topicTiengViet` VARCHAR(191) NULL,
     `isLocked` BOOLEAN NOT NULL DEFAULT false,
 
-    UNIQUE INDEX `groups_group_code_key`(`group_code`),
+    UNIQUE INDEX `groups_semester_id_group_code_key`(`semester_id`, `group_code`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 

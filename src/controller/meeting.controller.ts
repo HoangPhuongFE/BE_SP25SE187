@@ -125,7 +125,7 @@ export class MeetingController {
         });
       } else {
         group = await prisma.group.findUnique({
-          where: { groupCode: groupId },
+          where: { semesterId_groupCode: { semesterId: req.query.semesterId as string, groupCode: groupId } },
         });
       }
 

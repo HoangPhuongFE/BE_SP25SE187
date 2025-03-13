@@ -35,7 +35,7 @@ export const validateCreateMeeting = [
         });
       } else {
         group = await prisma.group.findUnique({
-          where: { groupCode: groupId },
+          where: { semesterId_groupCode: { semesterId: req.body.semesterId, groupCode: groupId } },
         });
       }
 
