@@ -112,7 +112,7 @@ export class MeetingController {
   async getMeetingsByGroup(req: AuthenticatedRequest, res: Response) {
     try {
       const { groupId } = req.params;
-//
+
       // Kiểm tra xem groupId là id hay code
       let group;
       
@@ -124,8 +124,24 @@ export class MeetingController {
           where: { id: groupId },
         });
       } else {
-        group = await prisma.group.findUnique({
-          where: { groupCode: groupId },
+        // Tìm học kỳ hiện tại nếu không có semesterId
+        const currentSemester = await prisma.semester.findFirst({
+          where: { status: 'ACTIVE' },
+          orderBy: { startDate: 'desc' },
+        });
+
+        if (!currentSemester) {
+          return res.status(HTTP_STATUS.NOT_FOUND).json({
+            message: "Không tìm thấy học kỳ hiện tại"
+          });
+        }
+
+        // Tìm group theo groupCode và semesterId
+        group = await prisma.group.findFirst({
+          where: { 
+            groupCode: groupId,
+            semesterId: currentSemester.id
+          },
         });
       }
 
