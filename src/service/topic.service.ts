@@ -141,12 +141,14 @@ export class TopicService {
             status: 'PENDING',
             name: data.name,
             proposedGroupId: groupIdToUse,
+          
             // Nếu cần, có thể lưu thêm majorId cho đề tài (nếu model Topic có field này)
           },
         });
-  
+
+        let draftDocument;
         if (data.draftFileUrl) {
-          await prisma.document.create({
+          draftDocument = await prisma.document.create({
             data: {
               fileName: 'Draft File', // Có thể tùy chỉnh tên file
               fileUrl: data.draftFileUrl,
@@ -175,7 +177,12 @@ export class TopicService {
           success: true,
           status: HTTP_STATUS.CREATED,
           message: TOPIC_MESSAGE.TOPIC_CREATED,
-          data: { topic: newTopic },
+          data: { 
+            topic: {
+              ...newTopic,
+              draftFileUrl: draftDocument?.fileUrl, // Thêm vào đây để trả ra ngoài response
+            }
+          },
         };
       } catch (error) {
         console.error('Lỗi khi tạo đề tài:', error);
