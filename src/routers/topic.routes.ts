@@ -91,7 +91,7 @@ router.put(
 router.delete(
   '/:topicId',
   authenticateToken,
-  checkRole(['admin', 'graduation_thesis_manager','academic_officer']),
+  checkRole(['admin', 'graduation_thesis_manager','academic_officer', 'lecturer']),
   topicController.deleteTopic.bind(topicController)
 );
 

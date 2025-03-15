@@ -579,12 +579,6 @@ export class TopicService {
   }
   
   
-  
-  
-  
-  
-
-  
   async approveTopicRegistrationByMentor(registrationId: string, data: { status: 'APPROVED' | 'REJECTED'; reason?: string }, userId: string) {
     try {
       if (!['APPROVED', 'REJECTED'].includes(data.status)) {
@@ -691,31 +685,87 @@ export class TopicService {
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi duyệt đăng ký đề tài.' };
     }
   }
-  async deleteTopic(topicId: string) {
+ 
+  
+  async deleteTopic(topicId: string, isSystemWide: boolean, userId: string) {
     try {
+      // Tìm đề tài theo topicId và lấy các trường cần thiết
       const topic = await prisma.topic.findUnique({
         where: { id: topicId },
-        select: { status: true, topicAssignments: true, proposedGroupId: true },
+        select: {
+          status: true,
+          createdBy: true,
+          topicAssignments: true,
+          topicRegistrations: true,
+          proposedGroupId: true,
+        },
       });
+  
       if (!topic) {
-        return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy đề tài!' };
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: 'Không tìm thấy đề tài!',
+        };
       }
-
-      if (topic.status !== 'PENDING') {
-        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Chỉ có thể xóa đề tài ở trạng thái PENDING!' };
+  
+      // Nếu không có quyền system-wide, kiểm tra xem user có phải là người tạo đề tài hay không
+      if (!isSystemWide && topic.createdBy !== userId) {
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: 'Chỉ người tạo đề tài mới được phép xóa!',
+        };
       }
-
-      if (topic.topicAssignments.length > 0 || topic.proposedGroupId) {
-        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Không thể xóa đề tài đã có nhóm đề xuất hoặc đăng ký!' };
+  
+      // Nếu không có quyền system-wide, áp dụng các điều kiện ràng buộc khác
+      if (!isSystemWide) {
+        if (topic.status !== 'PENDING') {
+          return {
+            success: false,
+            status: HTTP_STATUS.FORBIDDEN,
+            message: 'Chỉ có thể xóa đề tài ở trạng thái PENDING!',
+          };
+        }
+        if (
+          topic.topicAssignments.length > 0 ||
+          topic.topicRegistrations.length > 0 ||
+          topic.proposedGroupId
+        ) {
+          return {
+            success: false,
+            status: HTTP_STATUS.FORBIDDEN,
+            message: 'Không thể xóa đề tài đã có nhóm đăng ký hoặc đề xuất!',
+          };
+        }
       }
-
-      await prisma.topic.delete({ where: { id: topicId } });
-      return { success: true, status: HTTP_STATUS.OK, message: 'Xóa đề tài thành công!' };
+  
+      // Xoá thủ công các bản ghi liên quan bằng transaction
+      await prisma.$transaction(async (tx) => {
+        await tx.topicRegistration.deleteMany({ where: { topicId } });
+        await tx.topicAssignment.deleteMany({ where: { topicId } });
+        await tx.decision.deleteMany({ where: { topicId } });
+        await tx.document.deleteMany({ where: { topicId } });
+        await tx.topic.delete({ where: { id: topicId } });
+      });
+  
+      return {
+        success: true,
+        status: HTTP_STATUS.OK,
+        message: 'Xóa đề tài thành công!',
+      };
     } catch (error) {
       console.error('Lỗi khi xóa đề tài:', error);
-      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi khi xóa đề tài!' };
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: 'Lỗi khi xóa đề tài!',
+      };
     }
   }
+  
+  
+  
 
   async getTopicsForApprovalBySubmission(query: { submissionPeriodId?: string; round?: number; semesterId?: string }) {
     try {

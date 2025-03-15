@@ -201,10 +201,14 @@ export class TopicController {
     try {
       const { topicId } = req.params;
       if (!topicId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Thiếu ID đề tài!' });
+        return res
+          .status(HTTP_STATUS.BAD_REQUEST)
+          .json({ success: false, message: 'Thiếu ID đề tài!' });
       }
-
-      const result = await topicService.deleteTopic(topicId);
+      const isSystemWide = req.user.roles.some((role: { isSystemWide: any; }) => role.isSystemWide);
+      const userId = req.user.userId; // Lấy userId từ thông tin đăng nhập
+  
+      const result = await topicService.deleteTopic(topicId, isSystemWide, userId);
       return res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi khi xóa đề tài:', error);
@@ -214,6 +218,8 @@ export class TopicController {
       });
     }
   }
+  
+  
 
   async registerTopic(req: Request, res: Response) {
     try {
