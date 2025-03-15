@@ -115,4 +115,42 @@ export const validateMentorFeedback = [
     }
     next();
   }
+];
+
+export const validateUpdateMentorFeedback = [
+  body('groupId')
+    .optional()
+    .isString()
+    .withMessage('ID nhóm phải là chuỗi'),
+  body('groupCode')
+    .optional()
+    .isString()
+    .withMessage('Mã nhóm phải là chuỗi'),
+  body('weekNumber')
+    .isInt({ min: 1 })
+    .withMessage('Số tuần phải là số nguyên dương'),
+  body('feedback')
+    .isString()
+    .notEmpty()
+    .withMessage('Nội dung phản hồi là bắt buộc')
+    .isLength({ min: 5, max: 5000 })
+    .withMessage('Nội dung phản hồi phải từ 5 đến 5000 ký tự'),
+  body()
+    .custom((value) => {
+      if (!value.groupId && !value.groupCode) {
+        throw new Error('Cần cung cấp groupId hoặc groupCode');
+      }
+      return true;
+    }),
+  (req: Request, res: Response, next: NextFunction) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: MESSAGES.PROGRESS_REPORT.INVALID_REQUEST, 
+        errors: errors.array() 
+      });
+    }
+    next();
+  }
 ]; 

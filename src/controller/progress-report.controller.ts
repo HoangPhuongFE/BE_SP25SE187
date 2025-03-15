@@ -519,4 +519,51 @@ export class ProgressReportController {
       });
     }
   }
+
+  // Cập nhật feedback của mentor
+  async updateMentorFeedback(req: Request, res: Response) {
+    try {
+      const { groupId, groupCode, weekNumber, feedback } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: MESSAGES.USER.UNAUTHORIZED,
+        });
+      }
+      
+      const mentorId = req.user.userId;
+
+      if (!mentorId) {
+        return res.status(401).json({
+          success: false,
+          message: MESSAGES.USER.UNAUTHORIZED,
+        });
+      }
+
+      console.log(`API updateMentorFeedback được gọi bởi mentorId: ${mentorId}`);
+      console.log(`Dữ liệu: nhóm ${groupId || groupCode}, tuần ${weekNumber}`);
+      
+      const updatedReport = await this.progressReportService.updateMentorFeedback({
+        mentorId,
+        groupId,
+        groupCode,
+        weekNumber,
+        feedback,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: MESSAGES.PROGRESS_REPORT.FEEDBACK_UPDATED,
+        data: updatedReport,
+      });
+    } catch (error: any) {
+      console.error("Error updating mentor feedback:", error);
+      return res.status(400).json({
+        success: false,
+        message: error.message || MESSAGES.GENERAL.ACTION_FAILED,
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    }
+  }
 }

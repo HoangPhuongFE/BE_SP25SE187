@@ -16,6 +16,7 @@ export class ProgressReportService {
     try {
       // Kiểm tra xem người dùng có thuộc nhóm không
       let groupId = data.groupId;
+      let isLeader = false;
       
       if (!groupId) {
         // Nếu không có groupId, tìm nhóm của người dùng
@@ -33,9 +34,10 @@ export class ProgressReportService {
               userId: data.userId,
               isActive: true,
             },
-            select: {
-              groupId: true,
-            },
+            include: {
+              role: true,
+              group: true
+            }
           });
 
           if (!userGroup) {
@@ -43,6 +45,8 @@ export class ProgressReportService {
           }
 
           groupId = userGroup.groupId;
+          // Kiểm tra xem người dùng có phải là leader không
+          isLeader = userGroup.role.name === "group_leader" || userGroup.role.name === "leader";
         } else {
           // Nếu tìm thấy student, tìm nhóm thông qua studentId
           const studentGroup = await prisma.groupMember.findFirst({
@@ -50,9 +54,10 @@ export class ProgressReportService {
               studentId: student.id,
               isActive: true,
             },
-            select: {
-              groupId: true,
-            },
+            include: {
+              role: true,
+              group: true
+            }
           });
 
           if (!studentGroup) {
@@ -60,9 +65,11 @@ export class ProgressReportService {
           }
 
           groupId = studentGroup.groupId;
+          // Kiểm tra xem người dùng có phải là leader không
+          isLeader = studentGroup.role.name === "group_leader" || studentGroup.role.name === "leader";
         }
       } else {
-        // Kiểm tra xem người dùng có thuộc nhóm này không
+        // Kiểm tra xem người dùng có thuộc nhóm này không và có phải là leader không
         // Đầu tiên tìm student từ userId
         const student = await prisma.student.findFirst({
           where: {
@@ -80,10 +87,14 @@ export class ProgressReportService {
               studentId: student.id,
               isActive: true,
             },
+            include: {
+              role: true
+            }
           });
 
           if (studentMember) {
             isMember = true;
+            isLeader = studentMember.role.name === "group_leader" || studentMember.role.name === "leader";
           }
         }
 
@@ -95,12 +106,22 @@ export class ProgressReportService {
               userId: data.userId,
               isActive: true,
             },
+            include: {
+              role: true
+            }
           });
 
           if (!userMember) {
             throw new Error(MESSAGES.PROGRESS_REPORT.UNAUTHORIZED);
           }
+          
+          isLeader = userMember.role.name === "group_leader" || userMember.role.name === "leader";
         }
+      }
+
+      // Kiểm tra xem người dùng có phải là leader không
+      if (!isLeader) {
+        throw new Error("Chỉ trưởng nhóm mới có quyền tạo báo cáo tiến độ");
       }
 
       // Tìm khoảng thời gian báo cáo hiện tại
@@ -115,7 +136,11 @@ export class ProgressReportService {
             gte: currentDate,
           },
           status: "ACTIVE", // Chỉ lấy khoảng thời gian đang hoạt động
+          content: "", // Đây là khoảng thời gian báo cáo (không có nội dung)
         },
+        include: {
+          mentors: true
+        }
       });
 
       if (!reportPeriod) {
@@ -125,26 +150,7 @@ export class ProgressReportService {
       // Sử dụng weekNumber từ khoảng thời gian
       const weekNumber = reportPeriod.weekNumber;
 
-      // Lấy mentorId từ bảng groupMentor
-      const mentor = await prisma.groupMentor.findFirst({
-        where: {
-          groupId: groupId,
-          role: {
-            name: { in: ["mentor_main", "lecturer"] }
-          }
-        },
-        select: {
-          mentorId: true,
-        },
-      });
-
-      if (!mentor) {
-        throw new Error(MESSAGES.PROGRESS_REPORT.MENTOR_NOT_FOUND);
-      }
-
-      const mentorId = mentor.mentorId;
-
-      // Kiểm tra xem đã có báo cáo cho tuần này chưa
+      // Kiểm tra xem đã có báo cáo cho tuần này chưa (khác với khoảng thời gian)
       const existingReport = await prisma.progressReport.findFirst({
         where: {
           groupId: groupId,
@@ -159,26 +165,37 @@ export class ProgressReportService {
         throw new Error(MESSAGES.PROGRESS_REPORT.WEEK_REPORT_EXISTS);
       }
 
-      // Tạo báo cáo tiến độ mới
-      const progressReport = await prisma.progressReport.create({
+      // Cập nhật khoảng thời gian báo cáo thay vì tạo mới
+      const progressReport = await prisma.progressReport.update({
+        where: { id: reportPeriod.id },
         data: {
-          groupId: groupId,
-          mentorId: mentorId,
-          weekNumber: weekNumber,
           content: data.content,
           completionPercentage: data.completionPercentage,
           status: "SUBMITTED",
           submittedAt: data.submittedAt,
-          startDate: reportPeriod.startDate,
-          endDate: reportPeriod.endDate,
-          mentors: {
-            create: [{
-              mentorId: mentorId,
-              isRead: false,
-            }],
-          },
         },
+        include: {
+          mentors: true
+        }
       });
+
+      // Đánh dấu tất cả các mentor là chưa đọc
+      if (progressReport.mentors && progressReport.mentors.length > 0) {
+        await Promise.all(progressReport.mentors.map(mentor => 
+          prisma.progressReportMentor.update({
+            where: {
+              reportId_mentorId: {
+                reportId: progressReport.id,
+                mentorId: mentor.mentorId
+              }
+            },
+            data: {
+              isRead: false,
+              readAt: null
+            }
+          })
+        ));
+      }
 
       return progressReport;
     } catch (error: any) {
@@ -345,24 +362,41 @@ export class ProgressReportService {
         throw new Error(MESSAGES.STUDENT.STUDENT_NOT_FOUND);
       }
       
-      // Kiểm tra xem student có thuộc nhóm không
-      const isMember = await prisma.groupMember.findFirst({
+      // Kiểm tra xem student có thuộc nhóm không và có phải là leader không
+      const groupMember = await prisma.groupMember.findFirst({
         where: {
           groupId: report.groupId,
           studentId: student.id,
           isActive: true
         },
+        include: {
+          role: true
+        }
       });
 
-      if (!isMember) {
+      if (!groupMember) {
         console.log(`Student ${student.id} không thuộc nhóm ${report.groupId}`);
         throw new Error(MESSAGES.PROGRESS_REPORT.UNAUTHORIZED);
+      }
+
+      // Kiểm tra xem người dùng có phải là leader không
+      const isLeader = groupMember.role.name === "group_leader" || groupMember.role.name === "leader";
+      if (!isLeader) {
+        console.log(`Student ${student.id} không phải là leader của nhóm ${report.groupId}`);
+        throw new Error("Chỉ trưởng nhóm mới có quyền cập nhật báo cáo tiến độ");
       }
 
       // Kiểm tra nếu báo cáo đã được đánh giá thì không cho cập nhật
       if (report.status === "REVIEWED") {
         console.log(`Báo cáo ${reportId} đã được đánh giá, không thể cập nhật`);
         throw new Error(MESSAGES.PROGRESS_REPORT.CANNOT_UPDATE_REVIEWED);
+      }
+
+      // Kiểm tra xem báo cáo có đang trong thời gian mà mentor đã tạo không
+      const currentDate = new Date();
+      if (currentDate < report.startDate || currentDate > report.endDate) {
+        console.log(`Báo cáo ${reportId} không trong thời gian cho phép cập nhật (${report.startDate.toISOString()} - ${report.endDate.toISOString()})`);
+        throw new Error("Không thể cập nhật báo cáo ngoài thời gian quy định");
       }
 
       const updatedReport = await prisma.progressReport.update({
@@ -839,15 +873,17 @@ export class ProgressReportService {
     endDate: Date;
   }) {
     try {
+      console.log(`Tạo khoảng thời gian báo cáo cho nhóm ${data.groupId}, tuần ${data.weekNumber}`);
+      
       // Lấy mentorId từ bảng groupMentor
       const mentor = await prisma.groupMentor.findFirst({
         where: {
           groupId: data.groupId,
           mentorId: data.userId,
         },
-        select: {
-          mentorId: true,
-        },
+        include: {
+          role: true
+        }
       });
 
       if (!mentor) {
@@ -904,12 +940,23 @@ export class ProgressReportService {
               },
             },
           ],
-          content: "",
         },
       });
 
       if (overlappingPeriod) {
         throw new Error("Khoảng thời gian chồng chéo với khoảng thời gian báo cáo khác");
+      }
+
+      // Kiểm tra xem đã có báo cáo cho tuần này chưa
+      const existingWeekReport = await prisma.progressReport.findFirst({
+        where: {
+          groupId: data.groupId,
+          weekNumber: data.weekNumber,
+        },
+      });
+
+      if (existingWeekReport) {
+        throw new Error(MESSAGES.PROGRESS_REPORT.WEEK_PERIOD_EXISTS);
       }
 
       // Lấy danh sách mentor của nhóm
@@ -926,13 +973,15 @@ export class ProgressReportService {
         throw new Error(MESSAGES.PROGRESS_REPORT.MENTOR_NOT_FOUND);
       }
 
+      console.log(`Tìm thấy ${mentors.length} mentor cho nhóm ${data.groupId}`);
+
       // Tạo khoảng thời gian báo cáo mới
       const reportPeriod = await prisma.progressReport.create({
         data: {
           groupId: data.groupId,
           mentorId: mentorId,
           weekNumber: data.weekNumber,
-          content: "",
+          content: "", // Để trống nội dung để đánh dấu đây là khoảng thời gian
           completionPercentage: 0,
           status: "ACTIVE",
           submittedAt: new Date(),
@@ -945,7 +994,13 @@ export class ProgressReportService {
             })),
           },
         },
+        include: {
+          mentors: true
+        }
       });
+
+      console.log(`Đã tạo khoảng thời gian báo cáo ID: ${reportPeriod.id} cho nhóm ${data.groupId}, tuần ${data.weekNumber}`);
+      console.log(`Đã tạo ${reportPeriod.mentors.length} liên kết mentor cho khoảng thời gian báo cáo`);
 
       return reportPeriod;
     } catch (error: any) {
@@ -957,20 +1012,54 @@ export class ProgressReportService {
   // Lấy danh sách khoảng thời gian báo cáo tiến độ của nhóm
   async getReportPeriods(groupId: string) {
     try {
-      const periods = await prisma.progressReport.findMany({
+      console.log(`Lấy danh sách khoảng thời gian báo cáo cho nhóm ${groupId}`);
+      
+      // Lấy tất cả các bản ghi ProgressReport của nhóm
+      const allReports = await prisma.progressReport.findMany({
         where: {
           groupId: groupId,
-          content: {
-            // Thay đổi từ null sang không kiểm tra content
-            // null, // Chỉ lấy khoảng thời gian, không lấy báo cáo
-          },
         },
         orderBy: {
           weekNumber: 'asc',
         },
+        include: {
+          mentors: {
+            include: {
+              mentor: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true,
+                }
+              }
+            }
+          }
+        }
       });
-
-      return periods;
+      
+      // Phân loại thành khoảng thời gian và báo cáo thực tế
+      const periods = allReports.filter(report => report.content === "");
+      const reports = allReports.filter(report => report.content !== "");
+      
+      console.log(`Tìm thấy ${periods.length} khoảng thời gian và ${reports.length} báo cáo thực tế`);
+      
+      // Kết hợp thông tin từ báo cáo thực tế vào khoảng thời gian
+      const result = periods.map(period => {
+        // Tìm báo cáo thực tế tương ứng với khoảng thời gian này
+        const matchingReport = reports.find(report => 
+          report.weekNumber === period.weekNumber
+        );
+        
+        return {
+          ...period,
+          hasReport: !!matchingReport,
+          reportId: matchingReport?.id || null,
+          reportStatus: matchingReport?.status || null,
+          reportSubmittedAt: matchingReport?.submittedAt || null,
+        };
+      });
+      
+      return result;
     } catch (error: any) {
       console.error(`Lỗi khi lấy danh sách khoảng thời gian báo cáo:`, error);
       throw new Error(error.message || MESSAGES.GENERAL.ACTION_FAILED);
@@ -1001,6 +1090,159 @@ export class ProgressReportService {
       return period;
     } catch (error: any) {
       console.error(`Lỗi khi lấy khoảng thời gian báo cáo hiện tại:`, error);
+      throw new Error(error.message || MESSAGES.GENERAL.ACTION_FAILED);
+    }
+  }
+
+  // Cập nhật feedback của mentor
+  async updateMentorFeedback(data: {
+    mentorId: string;
+    groupId?: string;
+    groupCode?: string;
+    weekNumber: number;
+    feedback: string;
+  }) {
+    try {
+      console.log(`Cập nhật feedback của mentor ${data.mentorId} cho nhóm ${data.groupId || data.groupCode}, tuần ${data.weekNumber}`);
+      
+      // Tìm nhóm dựa trên groupId hoặc groupCode
+      let groupId = data.groupId;
+      
+      if (!groupId && data.groupCode) {
+        const group = await prisma.group.findFirst({
+          where: {
+            groupCode: data.groupCode
+          }
+        });
+        
+        if (!group) {
+          throw new Error(MESSAGES.PROGRESS_REPORT.GROUP_NOT_FOUND);
+        }
+        
+        groupId = group.id;
+      }
+      
+      if (!groupId) {
+        throw new Error("Cần cung cấp groupId hoặc groupCode");
+      }
+      
+      // Kiểm tra xem mentor có thuộc nhóm này không
+      const isMentor = await prisma.groupMentor.findFirst({
+        where: {
+          groupId: groupId,
+          mentorId: data.mentorId
+        }
+      });
+      
+      if (!isMentor) {
+        throw new Error(MESSAGES.PROGRESS_REPORT.UNAUTHORIZED);
+      }
+      
+      // Tìm báo cáo tiến độ của tuần được chỉ định
+      const report = await prisma.progressReport.findFirst({
+        where: {
+          groupId: groupId,
+          weekNumber: data.weekNumber,
+          content: {
+            not: "" // Đảm bảo đây là báo cáo thực tế, không phải khoảng thời gian
+          }
+        },
+        include: {
+          mentors: true
+        }
+      });
+      
+      if (!report) {
+        throw new Error(MESSAGES.PROGRESS_REPORT.REPORT_NOT_FOUND);
+      }
+      
+      // Tìm liên kết mentor-báo cáo
+      const mentorReport = await prisma.progressReportMentor.findUnique({
+        where: {
+          reportId_mentorId: {
+            reportId: report.id,
+            mentorId: data.mentorId
+          }
+        }
+      });
+      
+      // Cập nhật hoặc tạo mới liên kết mentor-báo cáo
+      if (mentorReport) {
+        await prisma.progressReportMentor.update({
+          where: {
+            reportId_mentorId: {
+              reportId: report.id,
+              mentorId: data.mentorId
+            }
+          },
+          data: {
+            feedback: data.feedback,
+            isRead: true,
+            readAt: new Date()
+          }
+        });
+      } else {
+        await prisma.progressReportMentor.create({
+          data: {
+            reportId: report.id,
+            mentorId: data.mentorId,
+            feedback: data.feedback,
+            isRead: true,
+            readAt: new Date()
+          }
+        });
+      }
+      
+      // Kiểm tra xem mentor hiện tại có phải là mentor chính không
+      const groupMentor = await prisma.groupMentor.findFirst({
+        where: {
+          groupId: groupId,
+          mentorId: data.mentorId,
+        },
+        include: {
+          role: true
+        }
+      });
+      
+      // Nếu là mentor chính hoặc là mentor được gán trong báo cáo, cập nhật feedback vào báo cáo chính
+      if (groupMentor?.role.name === "mentor_main" || groupMentor?.role.name === "lecturer" || report.mentorId === data.mentorId) {
+        await prisma.progressReport.update({
+          where: { id: report.id },
+          data: {
+            mentorFeedback: data.feedback,
+            status: "REVIEWED",
+            reviewedAt: new Date()
+          }
+        });
+      }
+      
+      // Lấy báo cáo đã cập nhật với tất cả feedback
+      const updatedReport = await prisma.progressReport.findUnique({
+        where: { id: report.id },
+        include: {
+          mentors: {
+            include: {
+              mentor: {
+                select: {
+                  id: true,
+                  fullName: true,
+                  email: true
+                }
+              }
+            }
+          },
+          group: {
+            select: {
+              id: true,
+              groupCode: true
+            }
+          }
+        }
+      });
+      
+      return updatedReport;
+    } catch (error: any) {
+      console.error(`Lỗi khi cập nhật feedback:`, error);
       throw new Error(error.message || MESSAGES.GENERAL.ACTION_FAILED);
     }
   }
