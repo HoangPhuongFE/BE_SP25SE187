@@ -19,33 +19,87 @@ export class ProgressReportService {
       
       if (!groupId) {
         // Nếu không có groupId, tìm nhóm của người dùng
-        const userGroup = await prisma.groupMember.findFirst({
+        // Đầu tiên tìm student từ userId
+        const student = await prisma.student.findFirst({
           where: {
-            userId: data.userId,
-            isActive: true,
-          },
-          select: {
-            groupId: true,
-          },
+            userId: data.userId
+          }
         });
 
-        if (!userGroup) {
-          throw new Error(MESSAGES.PROGRESS_REPORT.GROUP_NOT_FOUND);
-        }
+        if (!student) {
+          // Nếu không tìm thấy student, kiểm tra trực tiếp trong group_members
+          const userGroup = await prisma.groupMember.findFirst({
+            where: {
+              userId: data.userId,
+              isActive: true,
+            },
+            select: {
+              groupId: true,
+            },
+          });
 
-        groupId = userGroup.groupId;
+          if (!userGroup) {
+            throw new Error(MESSAGES.PROGRESS_REPORT.GROUP_NOT_FOUND);
+          }
+
+          groupId = userGroup.groupId;
+        } else {
+          // Nếu tìm thấy student, tìm nhóm thông qua studentId
+          const studentGroup = await prisma.groupMember.findFirst({
+            where: {
+              studentId: student.id,
+              isActive: true,
+            },
+            select: {
+              groupId: true,
+            },
+          });
+
+          if (!studentGroup) {
+            throw new Error(MESSAGES.PROGRESS_REPORT.GROUP_NOT_FOUND);
+          }
+
+          groupId = studentGroup.groupId;
+        }
       } else {
         // Kiểm tra xem người dùng có thuộc nhóm này không
-        const isMember = await prisma.groupMember.findFirst({
+        // Đầu tiên tìm student từ userId
+        const student = await prisma.student.findFirst({
           where: {
-            groupId: groupId,
-            userId: data.userId,
-            isActive: true,
-          },
+            userId: data.userId
+          }
         });
 
+        let isMember = false;
+
+        if (student) {
+          // Kiểm tra thông qua studentId
+          const studentMember = await prisma.groupMember.findFirst({
+            where: {
+              groupId: groupId,
+              studentId: student.id,
+              isActive: true,
+            },
+          });
+
+          if (studentMember) {
+            isMember = true;
+          }
+        }
+
+        // Nếu không tìm thấy qua student, kiểm tra trực tiếp userId
         if (!isMember) {
-          throw new Error(MESSAGES.PROGRESS_REPORT.UNAUTHORIZED);
+          const userMember = await prisma.groupMember.findFirst({
+            where: {
+              groupId: groupId,
+              userId: data.userId,
+              isActive: true,
+            },
+          });
+
+          if (!userMember) {
+            throw new Error(MESSAGES.PROGRESS_REPORT.UNAUTHORIZED);
+          }
         }
       }
 
@@ -75,9 +129,9 @@ export class ProgressReportService {
       const mentor = await prisma.groupMentor.findFirst({
         where: {
           groupId: groupId,
-          mentor: {
-            id: data.userId,
-          },
+          role: {
+            name: { in: ["mentor_main", "lecturer"] }
+          }
         },
         select: {
           mentorId: true,
@@ -85,7 +139,7 @@ export class ProgressReportService {
       });
 
       if (!mentor) {
-        throw new Error(MESSAGES.PROGRESS_REPORT.UNAUTHORIZED);
+        throw new Error(MESSAGES.PROGRESS_REPORT.MENTOR_NOT_FOUND);
       }
 
       const mentorId = mentor.mentorId;
@@ -96,7 +150,7 @@ export class ProgressReportService {
           groupId: groupId,
           weekNumber: weekNumber,
           content: {
-            // Không cần kiểm tra content
+            not: ""
           },
         },
       });
@@ -789,9 +843,7 @@ export class ProgressReportService {
       const mentor = await prisma.groupMentor.findFirst({
         where: {
           groupId: data.groupId,
-          mentor: {
-            id: data.userId,
-          },
+          mentorId: data.userId,
         },
         select: {
           mentorId: true,
@@ -799,29 +851,65 @@ export class ProgressReportService {
       });
 
       if (!mentor) {
-        throw new Error(MESSAGES.PROGRESS_REPORT.NOT_MAIN_MENTOR);
+        // Kiểm tra xem người dùng có phải là mentor của nhóm không
+        const isMentor = await prisma.groupMentor.findFirst({
+          where: {
+            groupId: data.groupId,
+            mentorId: data.userId,
+          },
+        });
+
+        if (!isMentor) {
+          throw new Error(MESSAGES.PROGRESS_REPORT.NOT_MAIN_MENTOR);
+        }
       }
 
-      const mentorId = mentor.mentorId;
+      const mentorId = mentor?.mentorId || data.userId;
 
       // Kiểm tra xem khoảng thời gian có hợp lệ không
       if (data.startDate >= data.endDate) {
         throw new Error(MESSAGES.PROGRESS_REPORT.INVALID_DATE_RANGE);
       }
 
-      // Kiểm tra xem đã có khoảng thời gian cho tuần này chưa
-      const existingPeriod = await prisma.progressReport.findFirst({
+      // Kiểm tra xem có khoảng thời gian nào chồng chéo không
+      const overlappingPeriod = await prisma.progressReport.findFirst({
         where: {
           groupId: data.groupId,
-          weekNumber: data.weekNumber,
-          content: {
-            // Không cần kiểm tra content
-          },
+          OR: [
+            {
+              // Khoảng thời gian mới bắt đầu trong khoảng thời gian hiện có
+              startDate: {
+                lte: data.startDate,
+              },
+              endDate: {
+                gte: data.startDate,
+              },
+            },
+            {
+              // Khoảng thời gian mới kết thúc trong khoảng thời gian hiện có
+              startDate: {
+                lte: data.endDate,
+              },
+              endDate: {
+                gte: data.endDate,
+              },
+            },
+            {
+              // Khoảng thời gian mới bao trùm khoảng thời gian hiện có
+              startDate: {
+                gte: data.startDate,
+              },
+              endDate: {
+                lte: data.endDate,
+              },
+            },
+          ],
+          content: "",
         },
       });
 
-      if (existingPeriod) {
-        throw new Error(MESSAGES.PROGRESS_REPORT.WEEK_PERIOD_EXISTS);
+      if (overlappingPeriod) {
+        throw new Error("Khoảng thời gian chồng chéo với khoảng thời gian báo cáo khác");
       }
 
       // Lấy danh sách mentor của nhóm

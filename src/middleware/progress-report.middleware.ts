@@ -39,15 +39,7 @@ export const validateCreateReportPeriod = [
     .withMessage('Số tuần phải là số nguyên dương'),
   body('startDate')
     .isISO8601()
-    .withMessage('Ngày bắt đầu phải là định dạng ISO8601')
-    .custom((value, { req }) => {
-      const startDate = new Date(value);
-      const now = new Date();
-      if (startDate < now) {
-        throw new Error('Ngày bắt đầu phải từ ngày hiện tại trở đi');
-      }
-      return true;
-    }),
+    .withMessage('Ngày bắt đầu phải là định dạng ISO8601'),
   body('endDate')
     .isISO8601()
     .withMessage('Ngày kết thúc phải là định dạng ISO8601')
