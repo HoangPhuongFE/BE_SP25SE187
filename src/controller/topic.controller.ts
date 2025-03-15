@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { TopicService } from '../service/topic.service';
 import { TOPIC_MESSAGE } from '../constants/message';
 import HTTP_STATUS from '../constants/httpStatus';
+import { ParsedQs } from 'qs';
 
 const topicService = new TopicService();
 
@@ -201,10 +202,14 @@ export class TopicController {
     try {
       const { topicId } = req.params;
       if (!topicId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Thiếu ID đề tài!' });
+        return res
+          .status(HTTP_STATUS.BAD_REQUEST)
+          .json({ success: false, message: 'Thiếu ID đề tài!' });
       }
-
-      const result = await topicService.deleteTopic(topicId);
+      const isSystemWide = req.user.roles.some((role: { isSystemWide: any; }) => role.isSystemWide);
+      const userId = req.user.userId; // Lấy userId từ thông tin đăng nhập
+  
+      const result = await topicService.deleteTopic(topicId, isSystemWide, userId);
       return res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi khi xóa đề tài:', error);
@@ -214,6 +219,8 @@ export class TopicController {
       });
     }
   }
+  
+  
 
   async registerTopic(req: Request, res: Response) {
     try {
@@ -329,4 +336,91 @@ export class TopicController {
       });
     }
   }
+
+  
+  async getTopicRegistrations(req: Request, res: Response) {
+    try {
+      const { topicId } = req.params; // Lấy topicId từ URL
+      const { semesterId } = req.query; // Lấy semesterId từ query (nếu có)
+      const mentorId = req.user?.userId; // Lấy userId từ thông tin người dùng đã xác thực
+
+      // Kiểm tra xem người dùng đã đăng nhập chưa
+      if (!mentorId) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
+        });
+      }
+
+      // Nếu có semesterId, kiểm tra vai trò lecturer cho học kỳ đó
+      if (semesterId) {
+        const userRoles = req.user?.roles || [];
+        const hasLecturerRole = userRoles.some(
+          (role: { name: string; semesterId: string | ParsedQs | (string | ParsedQs)[]; }) => role.name === 'lecturer' && role.semesterId === semesterId
+        );
+        if (!hasLecturerRole) {
+          return res.status(HTTP_STATUS.FORBIDDEN).json({
+            success: false,
+            message: 'Bạn không có quyền truy cập cho học kỳ này!',
+          });
+        }
+      }
+
+      // Gọi service để lấy danh sách đăng ký
+      const result = await topicService.getTopicRegistrations(topicId, mentorId);
+
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error('Lỗi trong controller getTopicRegistrations:', error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: 'Lỗi hệ thống khi lấy danh sách đăng ký đề tài!',
+      });
+    }
+  }
+
+
+  
+    async getAllRegistrations(req: Request, res: Response) {
+      try {
+        const result = await topicService.getAllRegistrations();
+        return res.status(result.status).json(result);
+      } catch (error) {
+        console.error('Lỗi trong controller getAllRegistrations:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Lỗi hệ thống khi lấy danh sách đăng ký!',
+        });
+      }
+    }
+  
+   
+    async getGroupRegistrations(req: Request, res: Response) {
+      try {
+        const { groupId } = req.params; // Lấy groupId từ URL
+        const semesterId = req.query.semesterId as string; // Lấy semesterId từ query
+        const userId = (req as any).user.userId; // Lấy userId từ thông tin xác thực
+    
+        if (!userId) {
+          return res.status(401).json({
+            success: false,
+            message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
+          });
+        }
+    
+        const result = await topicService.getGroupRegistrations(groupId, userId, semesterId);
+        return res.status(result.status).json(result);
+      } catch (error) {
+        console.error('Lỗi trong controller getGroupRegistrations:', error);
+        return res.status(500).json({
+          success: false,
+          message: 'Lỗi hệ thống khi lấy thông tin đăng ký của nhóm!',
+        });
+      }
+    }
+    
+
+
+  
 }
+

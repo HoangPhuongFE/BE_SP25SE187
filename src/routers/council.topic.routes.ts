@@ -45,7 +45,7 @@ router.delete(
 );
 // Thêm thành viên vào hội đồng (chỉ admin, academic_officer, graduation_thesis_manager)
 router.post(
-  "/members",
+  "/members/:councilId",
   authenticateToken,
   checkRole(["admin", "academic_officer", "graduation_thesis_manager"]),
   councilTopicController.addMemberToCouncil.bind(councilTopicController)
