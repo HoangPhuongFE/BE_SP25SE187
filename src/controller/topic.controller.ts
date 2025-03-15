@@ -395,29 +395,30 @@ export class TopicController {
     }
   
    
-  async getGroupRegistrations(req: Request, res: Response) {
-    try {
-      const { groupId } = req.params; // Lấy groupId từ tham số URL
-      const userId = (req as any).user.userId; // Lấy userId từ middleware xác thực
-
-      if (!userId) {
-        return res.status(401).json({
+    async getGroupRegistrations(req: Request, res: Response) {
+      try {
+        const { groupId } = req.params; // Lấy groupId từ URL
+        const semesterId = req.query.semesterId as string; // Lấy semesterId từ query
+        const userId = (req as any).user.userId; // Lấy userId từ thông tin xác thực
+    
+        if (!userId) {
+          return res.status(401).json({
+            success: false,
+            message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
+          });
+        }
+    
+        const result = await topicService.getGroupRegistrations(groupId, userId, semesterId);
+        return res.status(result.status).json(result);
+      } catch (error) {
+        console.error('Lỗi trong controller getGroupRegistrations:', error);
+        return res.status(500).json({
           success: false,
-          message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
+          message: 'Lỗi hệ thống khi lấy thông tin đăng ký của nhóm!',
         });
       }
-
-      const { semesterId } = req.query; // Lấy semesterId từ query
-      const result = await topicService.getGroupRegistrations(groupId, userId, semesterId as string);
-      return res.status(result.status).json(result);
-    } catch (error) {
-      console.error('Lỗi trong controller getGroupRegistrations:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Lỗi hệ thống khi lấy thông tin đăng ký của nhóm!',
-      });
     }
-  }
+    
 
 
   
