@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { SEMESTER_MESSAGE } from "~/constants/message";
-import { paginate } from "~/helpers/pagination.helper"; // Nếu bạn có helper này
+import { paginate } from "~/helpers/pagination.helper";
 
 const prisma = new PrismaClient();
 
@@ -10,46 +10,77 @@ export class SemesterService {
     return paginate(prisma.semester, { page, pageSize }, { where: { yearId } });
   }
 
-  // Tạo mới semester
+  // Tạo mới semester: tính trạng thái tự động dựa trên thời gian
   async createSemester(
     yearId: string,
     code: string,
     startDate: Date,
     endDate: Date,
-    status: string,
+    status: string
   ) {
+    if (startDate >= endDate) {
+      throw new Error("Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc.");
+    }
+    const now = new Date();
+    let computedStatus = status;
+    if (now < startDate) {
+      computedStatus = "UPCOMING";
+    } else if (now >= startDate && now <= endDate) {
+      computedStatus = "ACTIVE";
+    } else {
+      computedStatus = "COMPLETE";
+    }
+
     return prisma.semester.create({
       data: {
         yearId,
         code,
         startDate,
         endDate,
-        status,
+        status: computedStatus,
       },
     });
   }
 
-  // Cập nhật semester
+  // Cập nhật semester: Cho phép cập nhật mọi trạng thái, không ràng buộc theo thời gian hiện tại
   async updateSemester(
-    id: string,
-    code: string,
-    startDate: Date,
-    endDate: Date,
-    status: string,
-  ) {
+id: string, code: string, startDate: Date, endDate: Date, status: any  ) {
+    if (startDate >= endDate) {
+      throw new Error("Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc.");
+    }
+    
+    const now = new Date();
+    let computedStatus: string;
+    if (now < startDate) {
+      computedStatus = "UPCOMING";
+    } else if (now >= startDate && now <= endDate) {
+      computedStatus = "ACTIVE";
+    } else {
+      computedStatus = "COMPLETE";
+    }
+    
     return prisma.semester.update({
       where: { id },
       data: {
         code,
         startDate,
         endDate,
-        status,
+        status: computedStatus,
       },
     });
   }
+  
 
-  // Xóa semester
+  // Xóa semester: Không ràng buộc theo trạng thái (cho phép xoá mọi trạng thái)
   async deleteSemester(id: string) {
+    const semester = await prisma.semester.findUnique({
+      where: { id },
+    });
+
+    if (!semester) {
+      throw new Error(SEMESTER_MESSAGE.SEMESTER_NOT_FOUND);
+    }
+
     return prisma.semester.delete({
       where: { id },
     });
@@ -67,7 +98,7 @@ export class SemesterService {
     const semester = await prisma.semester.findUnique({
       where: { id },
       include: {
-        year: true, 
+        year: true,
       },
     });
 
