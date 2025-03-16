@@ -846,7 +846,7 @@ export class TopicService {
   async getRegisteredTopicsByMentor(mentorId: string) {
     try {
       const registeredTopics = await prisma.topic.findMany({
-        where: { createdBy: mentorId, topicRegistrations: { some: { status: 'APPROVED' } } },
+        where: { createdBy: mentorId},
         select: {
           id: true,
           topicCode: true,
