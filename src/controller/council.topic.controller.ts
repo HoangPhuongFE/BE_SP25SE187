@@ -9,13 +9,13 @@
 
 
 
-    async createCouncil(req: Request, res: Response) {
-      const { name,  semesterId, submissionPeriodId, startDate, endDate, status, type, round } = req.body;
-      const createdBy = req.user!.userId; 
-
-      const result = await councilTopicService.createCouncil({
+  
+      async createCouncil(req: Request, res: Response) {
+        const { name, semesterId, submissionPeriodId, startDate, endDate, status, type, round } = req.body;
+        const createdBy = req.user!.userId;
+    
+        const result = await councilTopicService.createCouncil({
           name,
-          
           semesterId,
           submissionPeriodId,
           createdBy,
@@ -24,10 +24,34 @@
           status,
           type,
           round,
-      });
-
-      return res.status(result.status).json(result);
-  }
+        });
+    
+        return res.status(result.status).json(result);
+      }
+    
+      async updateCouncil(req: Request, res: Response) {
+        try {
+          const { id } = req.params;
+          const { name, code, round, status, councilStartDate, councilEndDate } = req.body;
+          const result = await councilTopicService.updateTopicCouncil(id, {
+            name,
+            code,
+            round,
+            status,
+            councilStartDate: councilStartDate ? new Date(councilStartDate) : undefined,
+            councilEndDate: councilEndDate ? new Date(councilEndDate) : undefined,
+          });
+          return res.status(result.status).json(result);
+        } catch (error) {
+          console.error("Lỗi trong updateCouncil:", error);
+          return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: COUNCIL_MESSAGE.COUNCIL_UPDATE_FAILED
+          });
+        }
+      }
+  
+    
 
 
     // Lấy danh sách hội đồng topic
@@ -64,28 +88,7 @@
       }
     }
 
-    // Cập nhật hội đồng topic
-    async updateCouncil(req: Request, res: Response) {
-      try {
-        const { id } = req.params;
-        const { name, code, round, status, councilStartDate, councilEndDate } = req.body;
-        const result = await councilTopicService.updateTopicCouncil(id, {
-          name,
-          code,
-          round,
-          status,
-          councilStartDate: councilStartDate ? new Date(councilStartDate) : undefined,
-          councilEndDate: councilEndDate ? new Date(councilEndDate) : undefined,
-        });
-        return res.status(result.status).json(result);
-      } catch (error) {
-        console.error("Lỗi trong updateCouncil:", error);
-        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-          success: false,
-          message: COUNCIL_MESSAGE.COUNCIL_UPDATE_FAILED
-        });
-      }
-    }
+   
 
     // Xóa hội đồng topic
     async deleteCouncil(req: Request, res: Response) {
@@ -120,8 +123,7 @@
         return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: "Lỗi hệ thống!" });
       }
     }
-    
-    
+   
 
     async removeMemberFromCouncil(req: Request, res: Response) {
       try {

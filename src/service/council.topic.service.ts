@@ -11,7 +11,7 @@ const systemConfigService = new SystemConfigService();
 
 export class CouncilTopicService {
 
-  async createCouncil(data: {
+ async createCouncil(data: {
     name: string;
     semesterId: string;
     submissionPeriodId?: string;
@@ -27,7 +27,6 @@ export class CouncilTopicService {
       const semester = await prisma.semester.findUnique({
         where: { id: data.semesterId },
       });
-
       if (!semester) {
         return {
           success: false,
@@ -41,7 +40,6 @@ export class CouncilTopicService {
         const submissionPeriod = await prisma.submissionPeriod.findUnique({
           where: { id: data.submissionPeriodId },
         });
-
         if (!submissionPeriod) {
           return {
             success: false,
@@ -51,6 +49,21 @@ export class CouncilTopicService {
         }
       }
 
+      // Tính trạng thái dựa trên thời gian
+      const now = new Date();
+      let computedStatus = data.status || "ACTIVE";
+      if (now < data.startDate) {
+        computedStatus = "UPCOMING";
+      } else if (now >= data.startDate && now <= data.endDate) {
+        computedStatus = "ACTIVE";
+      } else {
+        computedStatus = "COMPLETE";
+      }
+
+      // Tạo council_code dựa trên type, round và mã học kỳ
+      // Ví dụ: nếu type = "topic", round = 1 và semester.code = "SP25SE187" thì council_code sẽ là "TOPIC-1-SP25SE187"
+      const councilCode = `${(data.type || "topic").toUpperCase()}-${data.round || 1}-${semester.code}`;
+
       // Tạo mới hội đồng với các trường mở rộng
       const newCouncil = await prisma.council.create({
         data: {
@@ -59,10 +72,11 @@ export class CouncilTopicService {
           submissionPeriodId: data.submissionPeriodId || null,
           councilStartDate: data.startDate,
           councilEndDate: data.endDate,
-          status: data.status || "ACTIVE",
-          type: data.type || "topic", // Mặc định là hội đồng xét duyệt đề tài
-          round: data.round || 1, // Nếu không có sẽ mặc định là round 1
+          status: computedStatus,
+          type: data.type || "topic",
+          round: data.round || 1,
           createdDate: new Date(),
+          code: councilCode,
         },
       });
 
@@ -81,6 +95,56 @@ export class CouncilTopicService {
       };
     }
   }
+
+  // Cập nhật hội đồng topic: cập nhật các trường cùng với việc tính lại trạng thái nếu thay đổi thời gian
+  async updateTopicCouncil(councilId: string, data: {
+    name?: string;
+    code?: string;
+    round?: number;
+    status?: string;
+    councilStartDate?: Date;
+    councilEndDate?: Date;
+  }) {
+    try {
+      // Nếu cập nhật thời gian, tính lại trạng thái dựa trên thời gian hiện tại
+      let updateData: any = { ...data };
+      if (data.councilStartDate && data.councilEndDate) {
+        const now = new Date();
+        let computedStatus = data.status || "ACTIVE";
+        if (now < data.councilStartDate) {
+          computedStatus = "UPCOMING";
+        } else if (now >= data.councilStartDate && now <= data.councilEndDate) {
+          computedStatus = "ACTIVE";
+        } else {
+          computedStatus = "COMPLETE";
+        }
+        updateData.status = computedStatus;
+      }
+
+      // Cập nhật hội đồng với các trường mới
+      const updatedCouncil = await prisma.council.update({
+        where: { id: councilId },
+        data: updateData,
+      });
+
+      return {
+        success: true,
+        status: HTTP_STATUS.OK,
+        message: COUNCIL_MESSAGE.COUNCIL_UPDATED,
+        data: updatedCouncil
+      };
+    } catch (error) {
+      console.error("Lỗi khi cập nhật hội đồng topic:", error);
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: COUNCIL_MESSAGE.COUNCIL_UPDATE_FAILED
+      };
+    }
+  }
+
+
+  
 
   // Lấy danh sách hội đồng topic
   async getTopicCouncils(filter: { semesterId?: string; submissionPeriodId?: string; round?: number }) {
@@ -154,46 +218,117 @@ export class CouncilTopicService {
     }
   }
 
-  // Cập nhật hội đồng topic
-  async updateTopicCouncil(councilId: string, data: {
-    name?: string;
-    code?: string;
-    round?: number;
-    status?: string;
-    councilStartDate?: Date;
-    councilEndDate?: Date;
-  }) {
+  
+
+  async addMemberToCouncil(
+    councilId: string,
+    data: { email: string; role: string; addedBy: string }
+  ) {
     try {
-      // Cập nhật các trường cần thiết
-      const updatedCouncil = await prisma.council.update({
-        where: { id: councilId },
+      // Kiểm tra hội đồng có tồn tại không
+      const council = await prisma.council.findUnique({ where: { id: councilId } });
+      if (!council) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: "Không tìm thấy hội đồng!",
+        };
+      }
+
+      // Kiểm tra user có tồn tại không qua email
+      const user = await prisma.user.findUnique({
+        where: { email: data.email },
+        select: { id: true, email: true },
+      });
+
+      if (!user) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: `Không tìm thấy người dùng với email: ${data.email}`,
+        };
+      }
+
+      // Kiểm tra vai trò của user có phải là giảng viên không
+      const userRole = await prisma.userRole.findFirst({
+        where: { userId: user.id },
+        include: { role: true },
+      });
+
+      if (!userRole) {
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: "Người này không phải là giảng viên!",
+        };
+      }
+
+      // Kiểm tra số lượng thành viên tối đa trong hội đồng
+      const maxCouncilMembers = await systemConfigService.getMaxCouncilMembers();
+      const currentMemberCount = await prisma.councilMember.count({ where: { councilId } });
+
+      if (currentMemberCount >= maxCouncilMembers) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: `Số lượng thành viên hội đồng đã đạt tối đa (${maxCouncilMembers})!`,
+        };
+      }
+
+      // Kiểm tra xem thành viên đã có trong hội đồng chưa
+      const existingMember = await prisma.councilMember.findFirst({
+        where: { councilId, userId: user.id },
+      });
+
+      if (existingMember) {
+        return {
+          success: false,
+          status: HTTP_STATUS.CONFLICT,
+          message: "Người dùng đã là thành viên của hội đồng này!",
+        };
+      }
+
+      // Lấy roleId từ bảng Role dựa trên name
+      const role = await prisma.role.findUnique({
+        where: { name: data.role },
+      });
+
+      if (!role) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: `Vai trò ${data.role} không tồn tại!`,
+        };
+      }
+
+      // Thêm thành viên vào hội đồng với roleId
+      const newMember = await prisma.councilMember.create({
         data: {
-          name: data.name,
-          code: data.code,
-          round: data.round,
-          status: data.status,
-          councilStartDate: data.councilStartDate,
-          councilEndDate: data.councilEndDate
-        }
+          councilId,
+          userId: user.id,
+          roleId: role.id, // Sử dụng roleId thay vì role
+          assignedAt: new Date(),
+          status: "ACTIVE",
+          semesterId: council.semesterId || '',
+        },
       });
 
       return {
         success: true,
-        status: HTTP_STATUS.OK,
-        message: COUNCIL_MESSAGE.COUNCIL_UPDATED,
-        data: updatedCouncil
+        status: HTTP_STATUS.CREATED,
+        message: "Thêm thành viên vào hội đồng thành công!",
+        data: newMember,
       };
     } catch (error) {
-      console.error("Lỗi khi cập nhật hội đồng topic:", error);
+      console.error("Lỗi khi thêm thành viên vào hội đồng:", error);
       return {
         success: false,
         status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        message: COUNCIL_MESSAGE.COUNCIL_UPDATE_FAILED
+        message: "Lỗi hệ thống!",
       };
     }
   }
-
-  // Xóa hội đồng topic
+  // Xóa hội đồng topic, kể cả khi vẫn còn thành viên
   async deleteTopicCouncil(councilId: string) {
     try {
       // Kiểm tra xem hội đồng có tồn tại không
@@ -210,18 +345,11 @@ export class CouncilTopicService {
         };
       }
 
-      // Kiểm tra nếu còn thành viên thì không cho xóa
-      if (council.members.length > 0) {
-        return {
-          success: false,
-          status: HTTP_STATUS.BAD_REQUEST,
-          message: "Không thể xóa hội đồng khi vẫn còn thành viên. Vui lòng xóa thành viên trước."
-        };
-      }
-
-      await prisma.council.delete({
-        where: { id: councilId }
-      });
+      // Sử dụng transaction để xóa cascade các thành viên và sau đó xóa hội đồng
+      await prisma.$transaction([
+        prisma.councilMember.deleteMany({ where: { councilId } }),
+        prisma.council.delete({ where: { id: councilId } })
+      ]);
 
       return {
         success: true,
@@ -237,116 +365,8 @@ export class CouncilTopicService {
       };
     }
   }
-  async addMemberToCouncil(
-    councilId: string,
-    data: { email: string; role: string; addedBy: string }
-  ) {
-    try {
-      // Kiểm tra hội đồng có tồn tại không
-      const council = await prisma.council.findUnique({ where: { id: councilId } });
-      if (!council) {
-        return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: "Không tìm thấy hội đồng!",
-        };
-      }
-  
-      // Kiểm tra user có tồn tại không qua email
-      const user = await prisma.user.findUnique({
-        where: { email: data.email },
-        select: { id: true, email: true },
-      });
-      
-      if (!user) {
-        return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: `Không tìm thấy người dùng với email: ${data.email}`,
-        };
-      }
-  
-      // Kiểm tra vai trò của user có phải là giảng viên không
-      const userRole = await prisma.userRole.findFirst({
-        where: { userId: user.id },
-        include: { role: true },
-      });
-  
-      if (!userRole) {
-        return {
-          success: false,
-          status: HTTP_STATUS.FORBIDDEN,
-          message: "Người này không phải là giảng viên!",
-        };
-      }
-  
-      // Kiểm tra số lượng thành viên tối đa trong hội đồng
-      const maxCouncilMembers = await systemConfigService.getMaxCouncilMembers();
-      const currentMemberCount = await prisma.councilMember.count({ where: { councilId } });
-  
-      if (currentMemberCount >= maxCouncilMembers) {
-        return {
-          success: false,
-          status: HTTP_STATUS.BAD_REQUEST,
-          message: `Số lượng thành viên hội đồng đã đạt tối đa (${maxCouncilMembers})!`,
-        };
-      }
-  
-      // Kiểm tra xem thành viên đã có trong hội đồng chưa
-      const existingMember = await prisma.councilMember.findFirst({
-        where: { councilId, userId: user.id },
-      });
-  
-      if (existingMember) {
-        return {
-          success: false,
-          status: HTTP_STATUS.CONFLICT,
-          message: "Người dùng đã là thành viên của hội đồng này!",
-        };
-      }
-  
-      // Lấy roleId từ bảng Role dựa trên name
-      const role = await prisma.role.findUnique({
-        where: { name: data.role },
-      });
-  
-      if (!role) {
-        return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: `Vai trò ${data.role} không tồn tại!`,
-        };
-      }
-  
-      // Thêm thành viên vào hội đồng với roleId
-      const newMember = await prisma.councilMember.create({
-        data: {
-          councilId,
-          userId: user.id,
-          roleId: role.id, // Sử dụng roleId thay vì role
-          assignedAt: new Date(),
-          status: "ACTIVE",
-          semesterId: council.semesterId || '',
-        },
-      });
-  
-      return {
-        success: true,
-        status: HTTP_STATUS.CREATED,
-        message: "Thêm thành viên vào hội đồng thành công!",
-        data: newMember,
-      };
-    } catch (error) {
-      console.error("Lỗi khi thêm thành viên vào hội đồng:", error);
-      return {
-        success: false,
-        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        message: "Lỗi hệ thống!",
-      };
-    }
-  }
 
- 
+
   async removeMemberFromCouncil(councilId: string, userId: string) {
     try {
       // Kiểm tra hội đồng có tồn tại không
