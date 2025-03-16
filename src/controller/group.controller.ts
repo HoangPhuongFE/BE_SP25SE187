@@ -140,7 +140,7 @@ async inviteMember(req: Request, res: Response) {
 
   async getGroupsBySemester(req: AuthenticatedRequest, res: Response) {
     try {
-      const { semesterId } = req.query;
+      const { semesterId } = req.params;
       if (!semesterId) {
         return res.status(400).json({ message: "semesterId là bắt buộc." });
       }
@@ -312,18 +312,42 @@ async inviteMember(req: Request, res: Response) {
   // update mentor
   async updateMentor(req: Request, res: Response) {
     try {
-      const { groupId, oldMentorId, newMentorId } = req.body;
-      const result = await groupService.updateMentor(
-        groupId,
-        oldMentorId,
-        newMentorId,
-        req.user!.userId
-      );
-      return res.status(200).json(result);
+       // console.log(" Debug Body:", req.body);
+
+        const { groupIdOrCode, oldMentorIdOrEmail, newMentorIdOrEmail, newMentorRole, semesterId } = req.body;
+
+        if (!groupIdOrCode || !oldMentorIdOrEmail || !newMentorIdOrEmail || !newMentorRole) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: "Cần cung cấp groupId hoặc groupCode, oldMentorIdOrEmail, newMentorIdOrEmail và newMentorRole."
+            });
+        }
+
+        if (!["mentor_main", "mentor_sub"].includes(newMentorRole)) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: "Vai trò mới phải là 'mentor_main' hoặc 'mentor_sub'."
+            });
+        }
+
+        const result = await groupService.updateMentor(
+            groupIdOrCode,
+            oldMentorIdOrEmail,
+            newMentorIdOrEmail,
+            newMentorRole,
+            req.user!.userId,
+            semesterId
+        );
+
+        return res.status(200).json(result);
     } catch (error) {
-      return res.status(400).json({ message: (error as Error).message });
+     //   console.error(" Lỗi updateMentor:", error);
+        return res.status(400).json({ message: (error as Error).message });
     }
-  }
+}
+
+
+
 
 
   // Lấy danh sách thành viên trong nhóm

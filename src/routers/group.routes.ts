@@ -1,7 +1,6 @@
 import { Router } from "express";
 import { GroupController } from "../controller/group.controller";
 import { authenticateToken, checkRole } from "../middleware/user.middleware";
-import { checkSemester } from "../middleware/checkSemester";
 
 const router = Router();
 const groupController = new GroupController();
@@ -10,7 +9,8 @@ const groupController = new GroupController();
 router.post(
   "/create",
   authenticateToken,
-  checkRole(["leader", "admin", "mentor", "student"]),
+  checkRole([ "admin","student", "graduation_thesis_manager", "academic_officer"]),
+   
   groupController.createGroup.bind(groupController)
 );
 
@@ -18,8 +18,7 @@ router.post(
 router.post(
   "/invite",
   authenticateToken,
-  checkRole(["student", "admin"]),
-  checkSemester, 
+  checkRole(["student", "admin","leader", "mentor"]),
   groupController.inviteMember.bind(groupController)
 );
 
@@ -35,15 +34,15 @@ router.post(
 router.get(
   "/info/:groupId",
   authenticateToken,
-  checkRole(["admin", "graduation_thesis_manager", "mentor", "examination_officer", "student"]),
+  checkRole(["admin", "graduation_thesis_manager", "mentor", "examination_officer", "student", 'lecturer']),
   groupController.getGroupInfo.bind(groupController)
 );
 
 // 5️ Lấy DS nhóm theo kỳ
 router.get(
-  "/semester",
+  "/semester/:semesterId",
   authenticateToken,
-  checkRole(["leader", "admin", "mentor", "student", "graduation_thesis_manager", "academic_officer"]),
+  checkRole(["leader", "admin",  "student", "graduation_thesis_manager", "academic_officer",'lecturer']),
   groupController.getGroupsBySemester.bind(groupController)
 );
 
@@ -52,7 +51,6 @@ router.post(
   "/change-leader",
   authenticateToken,
   checkRole(["leader", "admin", "student"]),
-  checkSemester, 
   groupController.changeLeader.bind(groupController)
 );
 
@@ -61,7 +59,6 @@ router.post(
   "/add-mentor",
   authenticateToken,
   checkRole(["admin", "graduation_thesis_manager", "academic_officer"]),
-  checkSemester,
   groupController.addMentorToGroup.bind(groupController)
 );
 
@@ -69,8 +66,8 @@ router.post(
 router.post(
   "/remove-member",
   authenticateToken,
-  checkRole(["leader", "mentor", "admin", "student"]),
-  checkSemester,
+  checkRole([ "mentor_main","mentor_sub", "admin", "leader", "academic_officer"]),
+  
   groupController.removeMemberFromGroup.bind(groupController)
 );
 
@@ -79,7 +76,7 @@ router.delete(
   "/delete/:groupId",
     authenticateToken,
   checkRole(["leader", "student", "mentor", "admin", "graduation_thesis_manager", "academic_officer"]),
-  checkSemester, 
+
   groupController.deleteGroup.bind(groupController)
 );
 
@@ -88,7 +85,7 @@ router.post(
   "/leave",
   authenticateToken,
   checkRole(["student", "mentor", "admin"]),
-  checkSemester, 
+  
   groupController.leaveGroup.bind(groupController)
 );
 
@@ -97,7 +94,7 @@ router.post(
   "/cancel-invitation",
   authenticateToken,
   checkRole(["student", "mentor", "admin"]),
-  checkSemester, 
+  
   groupController.cancelInvitation.bind(groupController)
 );
 
@@ -105,7 +102,7 @@ router.post(
 router.post(
   "/lock",
   authenticateToken,
-  checkRole(["mentor", "admin"]),
+  checkRole(["mentor", "admin", "graduation_thesis_manager", "academic_officer"]),
   groupController.lockGroup.bind(groupController)
 );
 
@@ -121,7 +118,8 @@ router.put(
 router.get(
   "/members/:groupId",
   authenticateToken,
-  checkRole(["leader", "admin"]),
+  checkRole(["leader", "admin", "mentor", "student", "graduation_thesis_manager", "academic_officer",'member']),
+  
   groupController.getGroupMembers.bind(groupController)
 );
 
@@ -129,7 +127,8 @@ router.get(
 router.get(
   "/mentors/:groupId",
   authenticateToken,
-  checkRole(["leader", "admin", "mentor"]),
+  checkRole(["leader", "admin", "lecturer", "student", "graduation_thesis_manager", "academic_officer"]),
+  
   groupController.getGroupMentors.bind(groupController)
 );
 
@@ -137,7 +136,8 @@ router.get(
 router.get(
   "/students-without-group/:semesterId",
   authenticateToken,
-  checkRole(["admin", "graduation_thesis_manager", "academic_officer"]),
+  checkRole(["admin", "graduation_thesis_manager", "academic_officer", "mentor","lecturer",'student']),
+ 
   groupController.getStudentsWithoutGroup.bind(groupController)
 );
 
@@ -153,8 +153,8 @@ router.post(
 router.put(
   "/change-mentor",
   authenticateToken,
-  checkRole(["admin", "mentor"]),
-  checkSemester,
+  checkRole(["admin", "graduation_thesis_manager", "academic_officer"]),
+ 
   groupController.updateMentor.bind(groupController)
 );
 

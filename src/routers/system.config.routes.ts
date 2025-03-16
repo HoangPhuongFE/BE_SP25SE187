@@ -6,6 +6,7 @@ import { authenticateToken, checkRole } from "../middleware/user.middleware";
 const router = Router();
 const controller = new SystemConfigController();
 
+
 // Lấy cấu hình (GET /api/config?key=...)
 router.get(
   "/",

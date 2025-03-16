@@ -24,7 +24,7 @@ export const GROUP_MESSAGE = {
   NO_PERMISSION_INVITE: "Bạn không có quyền mời thành viên vào nhóm.",
   GROUP_LOCKED: "Nhóm đã bị khóa. Không thể gửi lời mời.",
   GROUP_MAJOR_MISMATCH: "Sinh viên thuộc ngành khác, không thể tham gia nhóm.",
-
+  GROUP_ALREADY_CREATED: "Nhóm đã được tạo trước đó.",
 
 
 
@@ -243,6 +243,7 @@ export const MEETING_MESSAGE = {
   MEETING_NOT_FOUND: "Meeting not found",
   UNAUTHORIZED_MENTOR: "You are not the mentor of this group",
   INVALID_MEETING_TIME: "Invalid meeting time",
+  INVALID_MEETING_URL: "Invalid meeting URL",
   GROUP_NOT_FOUND: "Group not found",
   DELETE_TIME_EXPIRED: "Cannot delete meeting before 1 day of the meeting",
   UPDATE_TIME_EXPIRED: "Cannot update meeting before 1 day of the meeting",
@@ -296,6 +297,28 @@ export const DATABASE_MESSAGE = {
   DATABASE_ERROR: "Lỗi hệ thống cơ sở dữ liệu.",
 } as const;
 
+export const PROGRESS_REPORT_MESSAGE = {
+  REPORT_CREATED: "Tạo báo cáo tiến độ thành công",
+  REPORT_UPDATED: "Cập nhật báo cáo tiến độ thành công",
+  REPORT_DELETED: "Xóa báo cáo tiến độ thành công",
+  REPORT_NOT_FOUND: "Không tìm thấy báo cáo tiến độ",
+  FEEDBACK_ADDED: "Thêm phản hồi thành công",
+  FEEDBACK_UPDATED: "Cập nhật phản hồi thành công",
+  UNAUTHORIZED: "Bạn không có quyền gửi báo cáo tiến độ cho nhóm này",
+  INVALID_REQUEST: "Yêu cầu không hợp lệ",
+  GROUP_NOT_FOUND: "Không tìm thấy nhóm",
+  MENTOR_NOT_FOUND: "Không tìm thấy mentor cho nhóm này",
+  WEEK_REPORT_EXISTS: "Báo cáo tiến độ cho tuần này đã tồn tại",
+  CANNOT_UPDATE_REVIEWED: "Không thể cập nhật báo cáo đã được đánh giá",
+  REPORTS_FETCHED: "Lấy danh sách báo cáo tiến độ thành công",
+  REPORT_FETCHED: "Lấy thông tin báo cáo tiến độ thành công",
+  PERIOD_CREATED: "Tạo khoảng thời gian báo cáo tiến độ thành công",
+  PERIODS_FETCHED: "Lấy danh sách khoảng thời gian báo cáo tiến độ thành công",
+  INVALID_DATE_RANGE: "Khoảng thời gian không hợp lệ",
+  WEEK_PERIOD_EXISTS: "Khoảng thời gian báo cáo cho tuần này đã tồn tại",
+  NOT_MAIN_MENTOR: "Chỉ mentor chính mới có quyền tạo khoảng thời gian báo cáo",
+  NO_ACTIVE_PERIOD: "Không có khoảng thời gian báo cáo nào đang hoạt động",
+} as const;
 
 // Cập nhật vào danh sách MESSAGES chung
 export const MESSAGES = {
@@ -318,4 +341,5 @@ export const MESSAGES = {
   MSGV: MSGV_MESSAGE, 
   IMPORT: IMPORT_MESSAGE, 
   DATABASE: DATABASE_MESSAGE,
+  PROGRESS_REPORT: PROGRESS_REPORT_MESSAGE,
 } as const;
