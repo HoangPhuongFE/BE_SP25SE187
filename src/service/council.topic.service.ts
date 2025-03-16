@@ -23,6 +23,27 @@ export class CouncilTopicService {
     round?: number;
   }) {
     try {
+      // Kiểm tra quyền của người tạo - không cho phép academic_officer hoặc admin tạo hội đồng
+      const creator = await prisma.user.findUnique({
+        where: { id: data.createdBy },
+        include: { roles: { include: { role: true } } },
+      });
+      if (!creator) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: "Người tạo không tồn tại!",
+        };
+      }
+      const creatorRoles = creator.roles.map(r => r.role.name.toLowerCase());
+      if (creatorRoles.includes("academic_officer") || creatorRoles.includes("admin")) {
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: "Academic officer và admin không được phép tạo hội đồng.",
+        };
+      }
+  
       // Kiểm tra học kỳ có tồn tại không
       const semester = await prisma.semester.findUnique({
         where: { id: data.semesterId },
@@ -34,7 +55,7 @@ export class CouncilTopicService {
           message: "Học kỳ không tồn tại!",
         };
       }
-
+  
       // Kiểm tra đợt xét duyệt nếu có
       if (data.submissionPeriodId) {
         const submissionPeriod = await prisma.submissionPeriod.findUnique({
@@ -48,7 +69,7 @@ export class CouncilTopicService {
           };
         }
       }
-
+  
       // Tính trạng thái dựa trên thời gian
       const now = new Date();
       let computedStatus = data.status || "ACTIVE";
@@ -59,11 +80,11 @@ export class CouncilTopicService {
       } else {
         computedStatus = "COMPLETE";
       }
-
+  
       // Tạo council_code dựa trên type, round và mã học kỳ
       // Ví dụ: nếu type = "topic", round = 1 và semester.code = "SP25SE187" thì council_code sẽ là "TOPIC-1-SP25SE187"
       const councilCode = `${(data.type || "topic").toUpperCase()}-${data.round || 1}-${semester.code}`;
-
+  
       // Tạo mới hội đồng với các trường mở rộng
       const newCouncil = await prisma.council.create({
         data: {
@@ -79,7 +100,7 @@ export class CouncilTopicService {
           code: councilCode,
         },
       });
-
+  
       return {
         success: true,
         status: HTTP_STATUS.CREATED,
@@ -95,6 +116,7 @@ export class CouncilTopicService {
       };
     }
   }
+  
 
   // Cập nhật hội đồng topic: cập nhật các trường cùng với việc tính lại trạng thái nếu thay đổi thời gian
   async updateTopicCouncil(councilId: string, data: {
