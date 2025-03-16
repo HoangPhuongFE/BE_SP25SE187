@@ -9,7 +9,7 @@ const councilTopicController = new CouncilTopicController();
 router.post(
   '/',
   authenticateToken,
-  checkRole(["admin", "academic_officer", "graduation_thesis_manager"]),
+  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager"]),
   councilTopicController.createCouncil.bind(councilTopicController)
 );
 
@@ -17,7 +17,7 @@ router.post(
 router.get(
   '/',
   authenticateToken,
-  checkRole(["admin", "academic_officer", "graduation_thesis_manager",'lecturer'],false),
+  checkRole(["examination_officer",  "graduation_thesis_manager",'lecturer']),
   councilTopicController.getCouncils.bind(councilTopicController)
 );
 
@@ -25,6 +25,7 @@ router.get(
 router.get(
   '/:id',
   authenticateToken,
+  checkRole(["examination_officer",  "graduation_thesis_manager",'lecturer']),
   councilTopicController.getCouncilById.bind(councilTopicController)
 );
 
@@ -32,7 +33,7 @@ router.get(
 router.put(
   '/:id',
   authenticateToken,
-  checkRole(["admin", "academic_officer", "graduation_thesis_manager"]),
+  checkRole(["examination_officer",  "graduation_thesis_manager"]),
   councilTopicController.updateCouncil.bind(councilTopicController)
 );
 
@@ -40,22 +41,22 @@ router.put(
 router.delete(
   '/:id',
   authenticateToken,
-  checkRole(["admin", "academic_officer", "graduation_thesis_manager"]),
+  checkRole(["examination_officer", "graduation_thesis_manager"]),
   councilTopicController.deleteCouncil.bind(councilTopicController)
 );
-// Thêm thành viên vào hội đồng (chỉ admin, academic_officer, graduation_thesis_manager)
+// Thêm thành viên vào hội đồng (chỉ  academic_officer, graduation_thesis_manager)
 router.post(
   "/members/:councilId",
   authenticateToken,
-  checkRole(["admin", "academic_officer", "graduation_thesis_manager"]),
+  checkRole(["examination_officer", "graduation_thesis_manager"]),
   councilTopicController.addMemberToCouncil.bind(councilTopicController)
 );
 
 // Xóa thành viên khỏi hội đồng
 router.delete(
-  "/",
+  "/council/:councilId/user/:userId",
   authenticateToken,
-  checkRole(["admin", "academic_officer", "graduation_thesis_manager"]),
+  checkRole(["examination_officer",  "graduation_thesis_manager"]),
   councilTopicController.removeMemberFromCouncil.bind(councilTopicController)
 );
 export default router;

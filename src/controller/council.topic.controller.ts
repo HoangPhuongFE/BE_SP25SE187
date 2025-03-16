@@ -127,7 +127,7 @@
 
     async removeMemberFromCouncil(req: Request, res: Response) {
       try {
-        const { councilId, userId } = req.params;
+        const { councilId, userId } = req.params; //  Đổi từ req.params -> req.query
     
         if (!councilId || !userId) {
           return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: "Thiếu councilId hoặc userId!" });

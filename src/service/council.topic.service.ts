@@ -11,7 +11,7 @@ const systemConfigService = new SystemConfigService();
 
 export class CouncilTopicService {
 
- async createCouncil(data: {
+  async createCouncil(data: {
     name: string;
     semesterId: string;
     submissionPeriodId?: string;
@@ -144,7 +144,7 @@ export class CouncilTopicService {
   }
 
 
-  
+
 
   // Lấy danh sách hội đồng topic
   async getTopicCouncils(filter: { semesterId?: string; submissionPeriodId?: string; round?: number }) {
@@ -198,7 +198,7 @@ export class CouncilTopicService {
       if (!council) {
         return {
           success: false,
-          status: HTTP_STATUS.NOT_FOUND,
+          status: HTTP_STATUS.OK,
           message: COUNCIL_MESSAGE.COUNCIL_NOT_FOUND
         };
       }
@@ -218,7 +218,7 @@ export class CouncilTopicService {
     }
   }
 
-  
+
 
   async addMemberToCouncil(
     councilId: string,
@@ -262,6 +262,33 @@ export class CouncilTopicService {
           message: "Người này không phải là giảng viên!",
         };
       }
+
+      // Kiểm tra xem sinh viên đã tham gia hội đồng nào có thời gian giao nhau hay không (trừ hội đồng hiện tại)
+      const overlappingCouncil = await prisma.council.findFirst({
+        where: {
+          id: { not: councilId },
+          AND: [
+            { councilStartDate: { lt: council.councilEndDate! } },
+            { councilEndDate: { gt: council.councilStartDate! } },
+          ],
+          members: {
+            some: {
+              userId: user.id,
+            },
+          },
+        },
+      });
+
+      if (overlappingCouncil) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: ` Giảng viên đã tham gia hội đồng "${overlappingCouncil.name}" (code: ${overlappingCouncil.code}) có lịch họp từ ${overlappingCouncil.councilStartDate!.toISOString()} đến ${overlappingCouncil.councilEndDate!.toISOString()}, không thể tham gia hội đồng mới có thời gian giao nhau.`,
+        };
+      }
+
+
+      // *** Kết thúc kiểm tra xung đột thời gian ***
 
       // Kiểm tra số lượng thành viên tối đa trong hội đồng
       const maxCouncilMembers = await systemConfigService.getMaxCouncilMembers();
@@ -328,6 +355,7 @@ export class CouncilTopicService {
       };
     }
   }
+
   // Xóa hội đồng topic, kể cả khi vẫn còn thành viên
   async deleteTopicCouncil(councilId: string) {
     try {
