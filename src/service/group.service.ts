@@ -341,7 +341,13 @@ export class GroupService {
 
             //  Tạo lời mời
             const invitation = await prisma.groupInvitation.create({
-                data: { groupId: group.id, studentId: invitedStudent.id, status: "PENDING" },
+                data: { groupId: group.id, 
+                    studentId: invitedStudent.id,
+                     status: "PENDING",
+                    expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000) // hết hạn sau 2 giờ
+                    //expiresAt: new Date(Date.now() + 15 * 60 * 1000)hết hạn sau 15phut
+
+                 },
             });
 
             // 6️ **Gửi email lời mời**
