@@ -165,12 +165,35 @@ export class CouncilTopicService {
           }
         }
       });
-
+  
+      // Thu thập tất cả roleId từ các thành viên
+      const roleIds = councils
+        .flatMap(council => council.members.map(member => member.roleId))
+        .filter((id, index, self) => self.indexOf(id) === index); // Loại bỏ trùng lặp
+  
+      // Truy vấn bảng role để lấy thông tin vai trò
+      const roles = await prisma.role.findMany({
+        where: { id: { in: roleIds } },
+        select: { id: true, name: true }
+      });
+  
+      // Tạo map để tra cứu tên vai trò nhanh chóng
+      const roleMap = new Map(roles.map(role => [role.id, role.name]));
+  
+      // Thêm roleName vào mỗi thành viên trong danh sách hội đồng
+      const councilsWithRoleNames = councils.map(council => ({
+        ...council,
+        members: council.members.map(member => ({
+          ...member,
+          roleName: roleMap.get(member.roleId) || "Không xác định"
+        }))
+      }));
+  
       return {
         success: true,
         status: HTTP_STATUS.OK,
         message: COUNCIL_MESSAGE.COUNCIL_LIST_FETCHED,
-        data: councils
+        data: councilsWithRoleNames
       };
     } catch (error) {
       console.error("Lỗi khi lấy danh sách hội đồng topic:", error);
@@ -195,6 +218,7 @@ export class CouncilTopicService {
           }
         }
       });
+  
       if (!council) {
         return {
           success: false,
@@ -202,11 +226,33 @@ export class CouncilTopicService {
           message: COUNCIL_MESSAGE.COUNCIL_NOT_FOUND
         };
       }
+  
+      // Thu thập tất cả roleId từ các thành viên
+      const roleIds = council.members.map(member => member.roleId);
+  
+      // Truy vấn bảng role để lấy thông tin vai trò
+      const roles = await prisma.role.findMany({
+        where: { id: { in: roleIds } },
+        select: { id: true, name: true }
+      });
+  
+      // Tạo map để tra cứu tên vai trò
+      const roleMap = new Map(roles.map(role => [role.id, role.name]));
+  
+      // Thêm roleName vào mỗi thành viên
+      const councilWithRoleNames = {
+        ...council,
+        members: council.members.map(member => ({
+          ...member,
+          roleName: roleMap.get(member.roleId) || "Không xác định"
+        }))
+      };
+  
       return {
         success: true,
         status: HTTP_STATUS.OK,
         message: COUNCIL_MESSAGE.COUNCIL_FETCHED,
-        data: council
+        data: councilWithRoleNames
       };
     } catch (error) {
       console.error("Lỗi khi lấy hội đồng topic:", error);
