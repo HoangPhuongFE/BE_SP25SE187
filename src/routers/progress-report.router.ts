@@ -5,7 +5,8 @@ import {
   validateCreateProgressReport, 
   validateUpdateProgressReport,
   validateMentorFeedback,
-  validateCreateReportPeriod
+  validateCreateReportPeriod,
+  validateUpdateMentorFeedback
 } from "../middleware/progress-report.middleware";
 
 const router = Router();
@@ -44,6 +45,15 @@ router.post(
   checkRole(["lecturer"]),
   validateMentorFeedback,
   progressReportController.addMentorFeedback.bind(progressReportController)
+);
+
+// Mentor cập nhật phản hồi cho báo cáo
+router.put(
+  "/feedback",
+  authenticateToken,
+  checkRole(["lecturer"]),
+  validateUpdateMentorFeedback,
+  progressReportController.updateMentorFeedback.bind(progressReportController)
 );
 
 // Đánh dấu báo cáo đã đọc
