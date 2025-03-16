@@ -1027,55 +1027,113 @@ export class GroupService {
 
 
     // 10) removeMemberFromGroup
-    async removeMemberFromGroup(groupId: string, memberId: string, invitedById: string) {
-        const group = await prisma.group.findUnique({ where: { id: groupId } });
-        if (!group) throw new Error("Nhóm không tồn tại.");
-        if (group.isLocked) throw new Error("Nhóm đã bị khóa. Không thể xoá thành viên.");
-
-        const user = await prisma.user.findUnique({
-            where: { id: invitedById },
-            include: { roles: { include: { role: true } } },
+async removeMemberFromGroup(
+    groupId: string,
+    memberId: string,       // memberId là studentId của thành viên cần xóa
+    invitedById: string     // ID của người thực hiện thao tác
+  ) {
+    try {
+    //  console.log('--- Bắt đầu xóa thành viên ---');
+    //  console.log('Group ID:', groupId);
+   //   console.log('Member ID (thành viên bị xóa):', memberId);
+    //  console.log('Invited By ID (người thực hiện):', invitedById);
+  
+      // Kiểm tra nhóm có tồn tại và trạng thái không bị khóa
+      const group = await prisma.group.findUnique({ where: { id: groupId } });
+      if (!group) throw new Error("Nhóm không tồn tại.");
+      if (group.isLocked) throw new Error("Nhóm đã bị khóa. Không thể xóa thành viên.");
+   //   console.log('Nhóm tồn tại và không bị khóa.');
+  
+      // Lấy thông tin người thực hiện hành động cùng với vai trò của họ
+      const user = await prisma.user.findUnique({
+        where: { id: invitedById },
+        include: { roles: { include: { role: true } } },
+      });
+      if (!user) throw new Error("Người dùng không tồn tại.");
+  //    console.log('Thông tin người thực hiện:', user);
+  
+      const userRoles = user.roles.map(r => r.role.name.toLowerCase());
+   //   console.log('Vai trò của người thực hiện:', userRoles);
+  
+      // Xác định các nhóm vai trò:
+      // - SuperAdmin: academic_officer, graduation_thesis_manager
+      // - Mentor: mentor_main, mentor_sub, và ngoài ra nếu tài khoản có vai trò lecturer, cũng có thể là mentor nếu có record trong GroupMentor.
+      const superAdminRoles = ["graduation_thesis_manager", "academic_officer"];
+      const mentorRoles = ["mentor_main", "mentor_sub"];
+      
+      const isSuperAdmin = userRoles.some(role => superAdminRoles.includes(role));
+      const isExplicitMentor = userRoles.some(role => mentorRoles.includes(role));
+      const isLecturer = userRoles.includes("lecturer");
+    //  console.log('Là SuperAdmin?:', isSuperAdmin);
+    //  console.log('Là Explicit Mentor?:', isExplicitMentor);
+    //  console.log('Là Lecturer?:', isLecturer);
+  
+      let isMentorAssigned = false;
+      // Nếu người thực hiện không phải SuperAdmin, kiểm tra xem họ có được giao làm mentor của nhóm hay không.
+      if (!isSuperAdmin) {
+        // Truy vấn bảng GroupMentor cho cả trường hợp explicit mentor và lecturer.
+        const assignedMentor = await prisma.groupMentor.findFirst({
+          where: { groupId, mentorId: invitedById },
         });
-        if (!user) throw new Error("Người dùng không tồn tại.");
-
-        const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
-        const isAdmin = userRoles.some(role => ["admin", "graduation_thesis_manager", "academic_officer"].includes(role));
-
+     //   console.log('Thông tin mentor được giao của nhóm:', assignedMentor);
+        if (assignedMentor) {
+          isMentorAssigned = true;
+        }
+      }
+  
+      // Nếu người thực hiện thuộc vai trò mentor (explicit hoặc lecturer được giao) thì cho phép xóa.
+      if (!isSuperAdmin && !isMentorAssigned) {
+        // Nếu không có quyền qua GroupMentor, chuyển sang kiểm tra quyền của Leader (cho sinh viên)
         let isLeader = false;
-        let actingStudent = null;
-        if (!isAdmin) {
-            actingStudent = await prisma.student.findUnique({
-                where: { userId: invitedById },
-                select: { id: true },
-            });
-            if (!actingStudent) throw new Error("Người dùng không phải sinh viên.");
-
-            const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
-            if (!leaderRole) throw new Error("Vai trò 'leader' không tồn tại.");
-
-            isLeader = !!(await prisma.groupMember.findFirst({
-                where: { groupId, studentId: actingStudent.id, roleId: leaderRole.id, isActive: true },
-            }));
-        }
-
-        if (!isAdmin && !isLeader) {
-            throw new Error("Bạn không có quyền xoá thành viên khỏi nhóm (chỉ leader hoặc graduation_thesis_manager ,academic_officer  ).");
-        }
-
-        const member = await prisma.groupMember.findFirst({
-            where: { groupId, studentId: memberId },
+        let actingStudent = await prisma.student.findUnique({
+          where: { userId: invitedById },
+          select: { id: true },
         });
-        if (!member) throw new Error("Thành viên không tồn tại trong nhóm.");
-
-        if (isLeader && member.studentId === actingStudent?.id) {
-            throw new Error("Leader không thể tự xoá chính mình khỏi nhóm. Hãy đổi leader trước.");
+        if (!actingStudent) {
+          throw new Error("Bạn không có quyền xóa thành viên khỏi nhóm.");
         }
-
-        await prisma.groupMember.delete({ where: { id: member.id } });
-
-        return { message: "Xoá thành viên khỏi nhóm thành công." };
+       // console.log('ID của sinh viên thực hiện (actingStudent.id):', actingStudent.id);
+        
+        const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
+        if (!leaderRole) throw new Error("Vai trò 'leader' không tồn tại.");
+      //  console.log('ID vai trò leader:', leaderRole.id);
+  
+        isLeader = !!(await prisma.groupMember.findFirst({
+          where: { groupId, studentId: actingStudent.id, roleId: leaderRole.id, isActive: true },
+        }));
+     //   console.log('Là leader của nhóm?:', isLeader);
+  
+        if (!isLeader) {
+          throw new Error("Bạn không có quyền xóa thành viên khỏi nhóm (chỉ leader, mentor của nhóm hoặc academic_officer/graduation_thesis_manager có quyền).");
+        }
+        // Nếu là leader, kiểm tra leader không tự xóa chính mình.
+        if (isLeader && memberId === actingStudent.id) {
+        //  console.log('Leader đang cố tự xóa chính mình.');
+          throw new Error("Leader không thể tự xóa chính mình khỏi nhóm. Hãy đổi leader trước.");
+        }
+      }
+  
+      // Kiểm tra thông tin thành viên cần xóa (memberId ở đây là studentId của thành viên)
+      const member = await prisma.groupMember.findFirst({
+        where: { groupId, studentId: memberId },
+      });
+      if (!member) throw new Error("Thành viên không tồn tại trong nhóm.");
+     // console.log('Thông tin thành viên bị xóa:', member);
+  
+      // Thực hiện xóa thành viên
+      await prisma.groupMember.delete({ where: { id: member.id } });
+      //console.log('Xóa thành viên thành công.');
+      return { message: "Xóa thành viên khỏi nhóm thành công." };
+    } catch (error) {
+    //  console.error('Lỗi khi xóa thành viên:', error);
+      throw error;
     }
+  }
+ 
+  
 
+
+  
 
 
     // 11) deleteGroup

@@ -66,7 +66,7 @@ router.post(
 router.post(
   "/remove-member",
   authenticateToken,
-  checkRole([ "mentor_main","mentor_sub", "admin", "leader", "academic_officer"]),
+  checkRole([ "lecturer", "student", "academic_officer",'graduation_thesis_manager']),
   
   groupController.removeMemberFromGroup.bind(groupController)
 );

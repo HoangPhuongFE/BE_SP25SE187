@@ -218,17 +218,20 @@ async inviteMember(req: Request, res: Response) {
     }
 }
 
-  // Xóa thành viên
+ 
+  // Controller
   async removeMemberFromGroup(req: Request, res: Response) {
     try {
-      const { groupId, mentorId } = req.body;
-      const result = await groupService.removeMemberFromGroup(groupId, mentorId, req.user!.userId);
+      const { groupId, memberId } = req.body;
+      const result = await groupService.removeMemberFromGroup(groupId, memberId, req.user!.userId);
       return res.status(200).json(result);
     } catch (error) {
       return res.status(400).json({ message: (error as Error).message });
     }
   }
-
+  
+  
+  
   async getGroupMentors(req: Request, res: Response) {
     try {
       const { groupId } = req.params;
