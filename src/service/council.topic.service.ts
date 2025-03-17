@@ -90,10 +90,20 @@ export class CouncilTopicService {
         computedStatus = "COMPLETE";
       }
   
-      // 6. Tạo council_code dựa trên type, round và mã học kỳ (giả sử semester.code có giá trị)
-      const councilCode = `${(data.type || "topic").toUpperCase()}-${data.round || 1}-${semester.code}`;
+      // 6. Tạo council_code dựa trên type, round và mã học kỳ, kèm số thứ tự tăng dần
+      // Prefix: ví dụ "TOPIC-1-SP25SE187"
+      const prefix = `${(data.type || "topic").toUpperCase()}-${data.round || 1}-${semester.code}`;
+      // Đếm số hội đồng có mã bắt đầu với prefix này
+      const count = await prisma.council.count({
+        where: {
+          code: { startsWith: prefix },
+        },
+      });
+      // Tính số thứ tự mới với padding 3 chữ số, ví dụ: "001", "002",...
+      const sequenceNumber = (count + 1).toString().padStart(3, "0");
+      const councilCode = `${prefix}-${sequenceNumber}`;
   
-      // 7. Kiểm tra xem mã hội đồng đã tồn tại chưa (để tránh lỗi unique constraint)
+      // 7. Kiểm tra xem mã hội đồng đã tồn tại chưa (nếu cần kiểm tra lại, mặc dù cách tạo này đảm bảo tính duy nhất)
       const existingCouncil = await prisma.council.findUnique({
         where: { code: councilCode },
       });
@@ -143,6 +153,7 @@ export class CouncilTopicService {
       };
     }
   }
+  
   
   
 
