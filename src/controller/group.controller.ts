@@ -375,4 +375,43 @@ async inviteMember(req: Request, res: Response) {
 }
 
 
+async createGroupByAcademicOfficer(req: AuthenticatedRequest, res: Response) {
+  try {
+    // Kiểm tra xem người dùng đã đăng nhập chưa
+    if (!req.user || !req.user.userId) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+        success: false,
+        message: "Bạn chưa đăng nhập hoặc phiên làm việc đã hết hạn."
+      });
+    }
+
+    // Lấy dữ liệu từ req.body
+    const { leaderEmail, semesterId } = req.body;
+    const createdBy = req.user.userId; // Lấy userId từ req.user
+
+    // Kiểm tra các trường bắt buộc
+    if (!leaderEmail || !semesterId) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: "Email trưởng nhóm, học kỳ là bắt buộc."
+      });
+    }
+
+    // Tạo đối tượng input cho service
+    const input = { leaderEmail, semesterId, createdBy };
+
+    // Gọi service để tạo nhóm
+    const result = await groupService.createGroupByAcademicOfficer(input);
+
+    // Trả về kết quả từ service
+    return res.status(result.status).json(result);
+  } catch (error) {
+    console.error("Lỗi trong createGroupByAcademicOfficerController:", error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Lỗi hệ thống khi tạo nhóm."
+    });
+  }
+}
+
 }

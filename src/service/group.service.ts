@@ -1597,5 +1597,114 @@ async removeMemberFromGroup(
         return { message: "Nhóm đã được mở khóa thành công." };
     }
 
-
+    async createGroupByAcademicOfficer(input: { leaderEmail: string; semesterId: string; createdBy: string }) {
+        const { leaderEmail, semesterId, createdBy } = input;
+      
+        try {
+          // **1. Kiểm tra thông tin bắt buộc**
+          if (!leaderEmail) {
+            return { success: false, status: 400, message: "Email trưởng nhóm là bắt buộc." };
+          }
+          if (!semesterId) {
+            return { success: false, status: 400, message: "Học kỳ là bắt buộc." };
+          }
+          if (!createdBy) {
+            return { success: false, status: 400, message: "Thông tin người tạo nhóm không hợp lệ." };
+          }
+      
+          // **2. Kiểm tra học kỳ**
+          const semester = await prisma.semester.findUnique({
+            where: { id: semesterId },
+            select: { id: true, startDate: true },
+          });
+          if (!semester) {
+            return { success: false, status: 404, message: "Học kỳ không tồn tại." };
+          }
+      
+          // **3. Tìm trưởng nhóm và thông tin chuyên ngành**
+          const leader = await prisma.student.findFirst({
+            where: { user: { email: leaderEmail } },
+            include: { user: true, major: true },
+          });
+          if (!leader || !leader.major) {
+            return { success: false, status: 404, message: "Trưởng nhóm không tồn tại hoặc không có chuyên ngành." };
+          }
+          const majorName = leader.major.name;
+      
+          // **4. Kiểm tra sinh viên có thuộc học kỳ không**
+          const studentSemester = await prisma.semesterStudent.findFirst({
+            where: { studentId: leader.id, semesterId },
+          });
+          if (!studentSemester) {
+            return { success: false, status: 400, message: "Trưởng nhóm không thuộc học kỳ này." };
+          }
+      
+          // **5. Kiểm tra trạng thái đủ điều kiện**
+          if (studentSemester.qualificationStatus.trim().toLowerCase() !== "qualified") {
+            return { 
+              success: false, 
+              status: 400, 
+              message: `Trưởng nhóm không đủ điều kiện tham gia nhóm. Trạng thái hiện tại: ${studentSemester.qualificationStatus}` 
+            };
+          }
+      
+          // **6. Kiểm tra trưởng nhóm đã thuộc nhóm nào chưa**
+          const existingMember = await prisma.groupMember.findFirst({
+            where: { studentId: leader.id, group: { semesterId } },
+          });
+          if (existingMember) {
+            return { success: false, status: 400, message: "Trưởng nhóm đã thuộc một nhóm trong học kỳ này." };
+          }
+      
+          // **7. Tạo mã nhóm duy nhất**
+          const groupCode = await this.generateUniqueGroupCode(majorName, semesterId, semester.startDate);
+          if (!groupCode) {
+            return { success: false, status: 500, message: "Không thể tạo mã nhóm." };
+          }
+      
+          // **8. Lấy số lượng thành viên tối đa từ SystemConfigService**
+          const maxMembers = await systemConfigService.getMaxGroupMembers();
+          if (maxMembers <= 0) {
+            return { success: false, status: 500, message: "Số lượng thành viên tối đa không hợp lệ." };
+          }
+      
+          // **9. Tạo nhóm mới**
+          const newGroup = await prisma.group.create({
+            data: {
+              groupCode,
+              semesterId,
+              status: "ACTIVE",
+              createdBy,
+              maxMembers,
+            },
+          });
+      
+          // **10. Thêm trưởng nhóm vào nhóm với vai trò "leader"**
+          const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
+          if (!leaderRole) {
+            return { success: false, status: 500, message: "Vai trò 'leader' không tồn tại." };
+          }
+      
+          await prisma.groupMember.create({
+            data: {
+              groupId: newGroup.id,
+              studentId: leader.id,
+              roleId: leaderRole.id,
+              status: "ACTIVE",
+              userId: leader.userId,
+            },
+          });
+      
+          // **11. Trả về kết quả thành công**
+          return {
+            success: true,
+            status: 201,
+            message: "Nhóm đã được tạo thành công.",
+            data: newGroup,
+          };
+        } catch (error) {
+          console.error("Lỗi khi tạo nhóm:", error);
+          return { success: false, status: 500, message: "Lỗi hệ thống." };
+        }
+      }
 }

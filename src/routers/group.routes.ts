@@ -163,4 +163,16 @@ router.get(
 "/accept-invitation/:invitationId",
   groupController.acceptInvitation.bind(groupController)
 );
+
+
+
+
+// Route tạo nhóm bởi academic_officer
+router.post(
+  "/create-group-by-academic",
+  authenticateToken, // Xác thực token
+  groupController.createGroupByAcademicOfficer.bind(groupController)
+);
+
+
 export default router;
