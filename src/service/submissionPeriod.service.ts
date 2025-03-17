@@ -5,7 +5,8 @@ import { TOPIC_SUBMISSION_PERIOD_MESSAGE } from "../constants/message";
 const prisma = new PrismaClient();
 
 export class SubmissionPeriodService {
-  //  Tạo một đợt đề xuất mới
+ 
+  // Tạo một đợt đề xuất mới, thêm kiểm tra quyền ở đây
   async createSubmissionPeriod(data: {
     semesterId: string;
     roundNumber: number;
@@ -15,6 +16,28 @@ export class SubmissionPeriodService {
     createdBy: string;
   }) {
     try {
+      // Kiểm tra quyền của người tạo (createdBy) - không cho phép academic_officer tạo đợt đề xuất
+      const creator = await prisma.user.findUnique({
+        where: { id: data.createdBy },
+        include: { roles: { include: { role: true } } },
+      });
+      if (!creator) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: "Người tạo không tồn tại!",
+        };
+      }
+      const creatorRoles = creator.roles.map((r) => r.role.name.toLowerCase());
+      // Nếu người tạo có vai trò academic_officer, từ chối thao tác tạo đợt đề xuất
+      if (creatorRoles.includes("academic_officer")) {
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: "Academic officer không được phép tạo đợt đề xuất.",
+        };
+      }
+
       // Kiểm tra xem đợt này đã tồn tại chưa
       const existingPeriod = await prisma.submissionPeriod.findFirst({
         where: { semesterId: data.semesterId, roundNumber: data.roundNumber },
@@ -28,11 +51,19 @@ export class SubmissionPeriodService {
         };
       }
 
-      // Xác định trạng thái tự động
+      // Kiểm tra rằng startDate < endDate
+      if (data.startDate >= data.endDate) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc.",
+        };
+      }
+
+      // Tính toán trạng thái tự động dựa trên thời gian
       const status = this.determineStatus(data.startDate, data.endDate);
 
-      
-
+      // Tạo đợt đề xuất mới
       const newPeriod = await prisma.submissionPeriod.create({
         data: {
           semesterId: data.semesterId,
@@ -44,8 +75,6 @@ export class SubmissionPeriodService {
           status, // Lưu trạng thái đã tính toán
         },
       });
-
-     
 
       return {
         success: true,
@@ -62,6 +91,7 @@ export class SubmissionPeriodService {
       };
     }
   }
+
 
   //  Cập nhật đợt đề xuất
   async updateSubmissionPeriod(
