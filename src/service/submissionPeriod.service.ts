@@ -5,7 +5,6 @@ import { TOPIC_SUBMISSION_PERIOD_MESSAGE } from "../constants/message";
 const prisma = new PrismaClient();
 
 export class SubmissionPeriodService {
- 
   // Tạo một đợt đề xuất mới, thêm kiểm tra quyền ở đây
   async createSubmissionPeriod(data: {
     semesterId: string;
@@ -181,14 +180,14 @@ export class SubmissionPeriodService {
   async getSubmissionPeriodById(periodId: string) {
     try {
       const period = await prisma.submissionPeriod.findUnique({ where: { id: periodId } });
-
+      
       if (!period) {
         return {
           success: false,
-          status: HTTP_STATUS.NOT_FOUND,
+          status: HTTP_STATUS.OK,
           message: TOPIC_SUBMISSION_PERIOD_MESSAGE.NOT_FOUND,
         };
-      }
+      } 
 
       // Tính toán trạng thái mới
       const newStatus = this.determineStatus(new Date(period.startDate), new Date(period.endDate));
