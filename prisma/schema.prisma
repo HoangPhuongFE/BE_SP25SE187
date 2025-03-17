@@ -234,7 +234,7 @@ model TopicRegistration {
   reviewedAt         DateTime? @map("reviewed_at")
 
   topic Topic @relation(fields: [topicId], references: [id])
-
+  SubmissionPeriod SubmissionPeriod? @relation(fields: [submissionPeriodId], references: [id], onDelete: Cascade)
   @@map("topic_registrations")
 }
 
@@ -270,7 +270,7 @@ model Council {
   councilStartDate      DateTime?              @map("council_start_date")
   councilEndDate        DateTime?              @map("council_end_date")
   submissionPeriodId    String?                @map("submission_period_id")
-  submissionPeriod      SubmissionPeriod?      @relation(name: "SubmissionPeriodCouncils", fields: [submissionPeriodId], references: [id])
+  submissionPeriod      SubmissionPeriod?      @relation(name: "SubmissionPeriodCouncils", fields: [submissionPeriodId], references: [id],onDelete: Cascade)
 
   @@map("councils")
 }
@@ -323,7 +323,7 @@ model Topic {
   semesterTopicMajors SemesterTopicMajor[]
   decisions           Decision[]
   documents           Document[]           @relation("TopicDocuments")
-  SubmissionPeriod    SubmissionPeriod?    @relation(fields: [submissionPeriodId], references: [id])
+  SubmissionPeriod    SubmissionPeriod?    @relation(fields: [submissionPeriodId], references: [id],onDelete: Cascade)
 
   @@map("topics")
 }
@@ -706,10 +706,10 @@ model SubmissionPeriod {
   updatedAt   DateTime  @updatedAt @map("updated_at") // Thời gian cập nhật
   description String    @map("description")
   status      String    @default("PENDING") @map("status")
-  semester    Semester  @relation(fields: [semesterId], references: [id]) // Liên kết với học kỳ
+  semester    Semester  @relation(fields: [semesterId], references: [id], onDelete: Cascade) // Liên kết với học kỳ
   creator     User      @relation(fields: [createdBy], references: [id]) // Người tạo đợt nộp
   topics      Topic[] // Các đề tài thuộc đợt nộp này
   councils    Council[] @relation("SubmissionPeriodCouncils")
-
+  topicRegistrations TopicRegistration[] 
   @@map("submission_periods")
 }

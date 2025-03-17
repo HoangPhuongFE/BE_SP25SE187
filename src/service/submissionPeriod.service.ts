@@ -213,7 +213,7 @@ export class SubmissionPeriodService {
   async deleteSubmissionPeriod(periodId: string) {
     try {
       const period = await prisma.submissionPeriod.findUnique({ where: { id: periodId } });
-  
+    
       if (!period) {
         return {
           success: false,
@@ -221,24 +221,25 @@ export class SubmissionPeriodService {
           message: TOPIC_SUBMISSION_PERIOD_MESSAGE.NOT_FOUND,
         };
       }
-  
-      // Xoá đợt đề xuất mà không kiểm tra trạng thái
+    
+      // Xoá đợt đề xuất (cascade deletion sẽ tự động xoá các record liên quan nếu cấu hình)
       await prisma.submissionPeriod.delete({ where: { id: periodId } });
-  
+    
       return { 
         success: true, 
         status: HTTP_STATUS.OK, 
         message: TOPIC_SUBMISSION_PERIOD_MESSAGE.DELETED 
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lỗi khi xóa đợt đề xuất:", error);
       return { 
         success: false, 
         status: HTTP_STATUS.INTERNAL_SERVER_ERROR, 
-        message: "Lỗi hệ thống!" 
+        message: error.message || "Lỗi hệ thống!"  // Trả về thông báo lỗi chi tiết nếu có
       };
     }
   }
+  
   
 
   //  Hàm xác định trạng thái SubmissionPeriod
