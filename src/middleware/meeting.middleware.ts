@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 export const validateCreateMeeting = [
   body('groupId').notEmpty().withMessage('Group ID hoặc Group Code là bắt buộc'),
   body('meetingTime').isISO8601().withMessage(MEETING_MESSAGE.INVALID_MEETING_TIME),
-  body('location').notEmpty().withMessage('Địa điểm là bắt buộc'),
+  body('location').optional(),
   body('agenda').notEmpty().withMessage('Nội dung họp là bắt buộc'),
   body('url').optional().isURL().withMessage(MEETING_MESSAGE.INVALID_MEETING_URL),
 
@@ -83,7 +83,7 @@ export const validateCreateMeeting = [
 export const validateUpdateMeeting = [
   param('id').notEmpty().withMessage('Meeting ID là bắt buộc'),
   body('meetingTime').optional().isISO8601().withMessage(MEETING_MESSAGE.INVALID_MEETING_TIME),
-  body('location').optional().notEmpty().withMessage('Địa điểm không được để trống'),
+  body('location').optional(),
   body('agenda').optional().notEmpty().withMessage('Nội dung họp không được để trống'),
   body('url').optional().isURL().withMessage(MEETING_MESSAGE.INVALID_MEETING_URL),
   body('status').optional().isIn(['SCHEDULED', 'COMPLETED', 'CANCELLED']).withMessage('Trạng thái không hợp lệ'),
