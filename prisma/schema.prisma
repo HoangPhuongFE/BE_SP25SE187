@@ -559,7 +559,7 @@ model ReviewCouncil {
   id          String   @id @default(uuid())
   semesterId  String   @map("semester_id")
   reviewType  String   @map("review_type")
-  room        String
+  room        String    
   councilCode String   @unique @map("council_code")
   startDate   DateTime @map("start_date")
   endDate     DateTime @map("end_date")
