@@ -23,7 +23,7 @@ export class CouncilTopicService {
     round?: number;
   }) {
     try {
-      // Kiểm tra quyền của người tạo - không cho phép academic_officer hoặc admin tạo hội đồng
+      // 1. Kiểm tra quyền của người tạo - không cho phép academic_officer hoặc admin tạo hội đồng
       const creator = await prisma.user.findUnique({
         where: { id: data.createdBy },
         include: { roles: { include: { role: true } } },
@@ -44,7 +44,7 @@ export class CouncilTopicService {
         };
       }
   
-      // Kiểm tra học kỳ có tồn tại không
+      // 2. Kiểm tra học kỳ có tồn tại không
       const semester = await prisma.semester.findUnique({
         where: { id: data.semesterId },
       });
@@ -56,7 +56,7 @@ export class CouncilTopicService {
         };
       }
   
-      // Kiểm tra đợt xét duyệt nếu có
+      // 3. Kiểm tra đợt xét duyệt nếu có
       if (data.submissionPeriodId) {
         const submissionPeriod = await prisma.submissionPeriod.findUnique({
           where: { id: data.submissionPeriodId },
@@ -70,7 +70,16 @@ export class CouncilTopicService {
         }
       }
   
-      // Tính trạng thái dựa trên thời gian
+      // 4. Kiểm tra khoảng thời gian: startDate phải nhỏ hơn endDate
+      if (data.startDate >= data.endDate) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc.",
+        };
+      }
+  
+      // 5. Tính trạng thái dựa trên thời gian hiện tại so với startDate và endDate
       const now = new Date();
       let computedStatus = data.status || "ACTIVE";
       if (now < data.startDate) {
@@ -81,11 +90,22 @@ export class CouncilTopicService {
         computedStatus = "COMPLETE";
       }
   
-      // Tạo council_code dựa trên type, round và mã học kỳ
-      // Ví dụ: nếu type = "topic", round = 1 và semester.code = "SP25SE187" thì council_code sẽ là "TOPIC-1-SP25SE187"
+      // 6. Tạo council_code dựa trên type, round và mã học kỳ (giả sử semester.code có giá trị)
       const councilCode = `${(data.type || "topic").toUpperCase()}-${data.round || 1}-${semester.code}`;
   
-      // Tạo mới hội đồng với các trường mở rộng
+      // 7. Kiểm tra xem mã hội đồng đã tồn tại chưa (để tránh lỗi unique constraint)
+      const existingCouncil = await prisma.council.findUnique({
+        where: { code: councilCode },
+      });
+      if (existingCouncil) {
+        return {
+          success: false,
+          status: HTTP_STATUS.CONFLICT,
+          message: "Mã hội đồng đã tồn tại. Vui lòng kiểm tra lại thông tin hoặc thay đổi round/type để tạo mã mới.",
+        };
+      }
+  
+      // 8. Tạo mới hội đồng với các trường mở rộng
       const newCouncil = await prisma.council.create({
         data: {
           name: data.name,
@@ -107,15 +127,23 @@ export class CouncilTopicService {
         message: "Tạo hội đồng thành công!",
         data: newCouncil,
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lỗi khi tạo hội đồng:", error);
+      if (error.code === "P2002" && error.meta?.target.includes("councils_council_code_key")) {
+        return {
+          success: false,
+          status: HTTP_STATUS.CONFLICT,
+          message: "Mã hội đồng trùng lặp, vui lòng kiểm tra lại thông tin.",
+        };
+      }
       return {
         success: false,
         status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        message: "Lỗi hệ thống!",
+        message: "Lỗi hệ thống khi tạo hội đồng.",
       };
     }
   }
+  
   
 
   // Cập nhật hội đồng topic: cập nhật các trường cùng với việc tính lại trạng thái nếu thay đổi thời gian

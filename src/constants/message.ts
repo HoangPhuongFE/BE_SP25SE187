@@ -25,19 +25,6 @@ export const GROUP_MESSAGE = {
   GROUP_LOCKED: "Nhóm đã bị khóa. Không thể gửi lời mời.",
   GROUP_MAJOR_MISMATCH: "Sinh viên thuộc ngành khác, không thể tham gia nhóm.",
   GROUP_ALREADY_CREATED: "Nhóm đã được tạo trước đó.",
-
-
-
-
-
-
-
-
-
-
-
-
-
 } as const;
 
 
