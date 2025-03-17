@@ -86,9 +86,9 @@ export class MeetingService {
     // Tạo meeting mới với các trường cơ bản
     const meetingData: any = {
       mentorId: data.mentorId,
-      groupId: data.groupId, // Sử dụng UUID trực tiếp
+      groupId: data.groupId,
       meetingTime: meetingStartTime,
-      location: data.location,
+      location: data.location || 'Online',
       agenda: data.agenda,
       status: 'SCHEDULED',
     };
@@ -135,54 +135,8 @@ export class MeetingService {
     // Chuẩn bị dữ liệu cập nhật
     const updateData: any = {};
     
-    // Nếu có cập nhật thời gian, kiểm tra trùng lặp
-    if (data.meetingTime) {
-      const newMeetingTime = new Date(data.meetingTime);
-      const newMeetingEndTime = new Date(newMeetingTime.getTime() + 45 * 60 * 1000); // 45 phút sau
-      
-      // Kiểm tra xem có cuộc họp nào khác trong khoảng thời gian này không (trừ cuộc họp hiện tại)
-      const overlappingMeetings = await prisma.meetingSchedule.findMany({
-        where: {
-          groupId: existingMeeting.groupId,
-          id: { not: id }, // Loại trừ cuộc họp hiện tại
-          OR: [
-            // Kiểm tra cuộc họp mới bắt đầu trong khoảng thời gian của cuộc họp đã tồn tại
-            {
-              meetingTime: {
-                lte: newMeetingTime,
-              },
-              AND: {
-                meetingTime: {
-                  gte: new Date(newMeetingTime.getTime() - 45 * 60 * 1000), // 45 phút trước thời gian bắt đầu
-                }
-              }
-            },
-            // Kiểm tra cuộc họp mới kết thúc trong khoảng thời gian của cuộc họp đã tồn tại
-            {
-              meetingTime: {
-                gte: newMeetingTime,
-                lte: newMeetingEndTime,
-              }
-            },
-            // Kiểm tra cuộc họp mới bao trùm cuộc họp đã tồn tại
-            {
-              meetingTime: {
-                gte: new Date(newMeetingTime.getTime() - 45 * 60 * 1000),
-                lte: new Date(newMeetingEndTime.getTime() + 45 * 60 * 1000),
-              }
-            }
-          ]
-        }
-      });
-
-      if (overlappingMeetings.length > 0) {
-        throw new Error("Thời gian mới trùng với cuộc họp khác hoặc cách thời gian quá gần (dưới 45 phút).");
-      }
-      
-      updateData.meetingTime = newMeetingTime;
-    }
-    
-    if (data.location) updateData.location = data.location;
+    if (data.meetingTime) updateData.meetingTime = new Date(data.meetingTime);
+    if (data.location !== undefined) updateData.location = data.location || 'Online';
     if (data.agenda) updateData.agenda = data.agenda;
     if (data.meetingNotes) updateData.meetingNotes = data.meetingNotes;
     if (data.status) updateData.status = data.status;
