@@ -185,7 +185,8 @@ export class SubmissionPeriodService {
         return {
           success: false,
           status: HTTP_STATUS.OK,
-          message: TOPIC_SUBMISSION_PERIOD_MESSAGE.NOT_FOUND,
+          data: [],
+          message : TOPIC_SUBMISSION_PERIOD_MESSAGE.NOT_FOUND
         };
       } 
 

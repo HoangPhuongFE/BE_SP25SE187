@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import HTTP_STATUS from "~/constants/httpStatus";
 import { SEMESTER_MESSAGE } from "~/constants/message";
 import { paginate } from "~/helpers/pagination.helper";
 
@@ -95,17 +96,34 @@ id: string, code: string, startDate: Date, endDate: Date, status: any  ) {
 
   // Lấy semester theo id, kèm quan hệ year
   async getSemesterById(id: string) {
-    const semester = await prisma.semester.findUnique({
-      where: { id },
-      include: {
-        year: true,
-      },
-    });
-
-    if (!semester) {
-      throw new Error(SEMESTER_MESSAGE.SEMESTER_NOT_FOUND);
+    try {
+      const semester = await prisma.semester.findUnique({
+        where: { id },
+        include: { year: true },
+      });
+  
+      if (!semester) {
+        return {
+          success: false,
+          status: HTTP_STATUS.OK,
+          data: [],  // trả về mảng rỗng
+          message: SEMESTER_MESSAGE.SEMESTER_NOT_FOUND,
+        };
+      }
+  
+      return {
+        success: true,
+        status: HTTP_STATUS.OK,
+        data: semester,
+      };
+    } catch (error) {
+      console.error("Lỗi khi lấy semester theo ID:", error);
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: "Lỗi hệ thống!",
+      };
     }
-
-    return semester;
   }
 }
+  
