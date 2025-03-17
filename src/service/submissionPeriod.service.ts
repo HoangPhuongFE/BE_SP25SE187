@@ -5,7 +5,8 @@ import { TOPIC_SUBMISSION_PERIOD_MESSAGE } from "../constants/message";
 const prisma = new PrismaClient();
 
 export class SubmissionPeriodService {
-  //  Tạo một đợt đề xuất mới
+ 
+  // Tạo một đợt đề xuất mới, thêm kiểm tra quyền ở đây
   async createSubmissionPeriod(data: {
     semesterId: string;
     roundNumber: number;
@@ -15,6 +16,28 @@ export class SubmissionPeriodService {
     createdBy: string;
   }) {
     try {
+      // Kiểm tra quyền của người tạo (createdBy) - không cho phép academic_officer tạo đợt đề xuất
+      const creator = await prisma.user.findUnique({
+        where: { id: data.createdBy },
+        include: { roles: { include: { role: true } } },
+      });
+      if (!creator) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: "Người tạo không tồn tại!",
+        };
+      }
+      const creatorRoles = creator.roles.map((r) => r.role.name.toLowerCase());
+      // Nếu người tạo có vai trò academic_officer, từ chối thao tác tạo đợt đề xuất
+      if (creatorRoles.includes("academic_officer")|| creatorRoles.includes("admin")) {
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: "Admin và Academic officer không được phép tạo đợt đề xuất.",
+        };
+      }
+
       // Kiểm tra xem đợt này đã tồn tại chưa
       const existingPeriod = await prisma.submissionPeriod.findFirst({
         where: { semesterId: data.semesterId, roundNumber: data.roundNumber },
@@ -28,11 +51,19 @@ export class SubmissionPeriodService {
         };
       }
 
-      // Xác định trạng thái tự động
+      // Kiểm tra rằng startDate < endDate
+      if (data.startDate >= data.endDate) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc.",
+        };
+      }
+
+      // Tính toán trạng thái tự động dựa trên thời gian
       const status = this.determineStatus(data.startDate, data.endDate);
 
-      
-
+      // Tạo đợt đề xuất mới
       const newPeriod = await prisma.submissionPeriod.create({
         data: {
           semesterId: data.semesterId,
@@ -44,8 +75,6 @@ export class SubmissionPeriodService {
           status, // Lưu trạng thái đã tính toán
         },
       });
-
-     
 
       return {
         success: true,
@@ -63,6 +92,7 @@ export class SubmissionPeriodService {
     }
   }
 
+
   //  Cập nhật đợt đề xuất
   async updateSubmissionPeriod(
     periodId: string,
@@ -70,7 +100,6 @@ export class SubmissionPeriodService {
   ) {
     try {
       const existingPeriod = await prisma.submissionPeriod.findUnique({ where: { id: periodId } });
-
       if (!existingPeriod) {
         return {
           success: false,
@@ -78,46 +107,29 @@ export class SubmissionPeriodService {
           message: TOPIC_SUBMISSION_PERIOD_MESSAGE.NOT_FOUND,
         };
       }
-
-      // Kiểm tra nếu đợt đã hoàn thành (COMPLETE) thì không cho chỉnh sửa
-      const currentStatus = this.determineStatus(existingPeriod.startDate, existingPeriod.endDate);
-      if (currentStatus === "COMPLETE") {
-        return {
-          success: false,
-          status: HTTP_STATUS.FORBIDDEN,
-          message: TOPIC_SUBMISSION_PERIOD_MESSAGE.CANNOT_UPDATE_COMPLETED,
-        };
-      }
-
-      // Nếu đã ACTIVE, không cho thay đổi ngày bắt đầu
-      if (currentStatus === "ACTIVE" && data.startDate) {
-        return {
-          success: false,
-          status: HTTP_STATUS.FORBIDDEN,
-          message: "Không thể thay đổi ngày bắt đầu khi đợt đề xuất đã bắt đầu.",
-        };
-      }
-
-      // Kiểm tra nếu ngày kết thúc nhỏ hơn ngày bắt đầu
-      if (data.endDate && data.startDate && data.endDate < data.startDate) {
+  
+      // Nếu có cung cấp cả startDate và endDate mới, kiểm tra hợp lệ
+      if (data.startDate && data.endDate && data.endDate < data.startDate) {
         return {
           success: false,
           status: HTTP_STATUS.BAD_REQUEST,
           message: "Ngày kết thúc không thể trước ngày bắt đầu.",
         };
       }
-
-      // Nếu có thay đổi ngày, tính toán lại trạng thái
-      const updatedStatus = this.determineStatus(
-        data.startDate ?? existingPeriod.startDate,
-        data.endDate ?? existingPeriod.endDate
-      );
-
+  
+      // Sử dụng giá trị mới nếu có, ngược lại giữ nguyên giá trị cũ
+      const newStartDate = data.startDate ?? existingPeriod.startDate;
+      const newEndDate = data.endDate ?? existingPeriod.endDate;
+  
+      // Tính trạng thái mới dựa trên newStartDate và newEndDate
+      const updatedStatus = this.determineStatus(new Date(newStartDate), new Date(newEndDate));
+  
+      // Cập nhật đợt đề xuất với dữ liệu mới và trạng thái tính toán lại
       const updatedPeriod = await prisma.submissionPeriod.update({
         where: { id: periodId },
         data: { ...data, status: updatedStatus },
       });
-
+  
       return {
         success: true,
         status: HTTP_STATUS.OK,
@@ -133,6 +145,7 @@ export class SubmissionPeriodService {
       };
     }
   }
+  
 
   //  Lấy danh sách đợt đề xuất theo học kỳ
   async getSubmissionPeriods(semesterId: string) {
@@ -200,7 +213,7 @@ export class SubmissionPeriodService {
   async deleteSubmissionPeriod(periodId: string) {
     try {
       const period = await prisma.submissionPeriod.findUnique({ where: { id: periodId } });
-
+  
       if (!period) {
         return {
           success: false,
@@ -208,24 +221,25 @@ export class SubmissionPeriodService {
           message: TOPIC_SUBMISSION_PERIOD_MESSAGE.NOT_FOUND,
         };
       }
-
-      // Nếu đang ACTIVE, không cho phép xóa
-      if (period.status === "ACTIVE") {
-        return {
-          success: false,
-          status: HTTP_STATUS.FORBIDDEN,
-          message: TOPIC_SUBMISSION_PERIOD_MESSAGE.CANNOT_DELETE_ACTIVE,
-        };
-      }
-
+  
+      // Xoá đợt đề xuất mà không kiểm tra trạng thái
       await prisma.submissionPeriod.delete({ where: { id: periodId } });
-
-      return { success: true, status: HTTP_STATUS.OK, message: TOPIC_SUBMISSION_PERIOD_MESSAGE.DELETED };
+  
+      return { 
+        success: true, 
+        status: HTTP_STATUS.OK, 
+        message: TOPIC_SUBMISSION_PERIOD_MESSAGE.DELETED 
+      };
     } catch (error) {
       console.error("Lỗi khi xóa đợt đề xuất:", error);
-      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
+      return { 
+        success: false, 
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR, 
+        message: "Lỗi hệ thống!" 
+      };
     }
   }
+  
 
   //  Hàm xác định trạng thái SubmissionPeriod
   private determineStatus(startDate: Date, endDate: Date): string {
