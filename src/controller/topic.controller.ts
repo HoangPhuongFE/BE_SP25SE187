@@ -85,12 +85,54 @@ export class TopicController {
     try {
       const { topicId } = req.params;
       if (!topicId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: TOPIC_MESSAGE.INVALID_REQUEST });
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({ 
+          success: false, 
+          message: TOPIC_MESSAGE.INVALID_ID 
+        });
       }
 
-      const { nameVi, nameEn, name, description, isBusiness, businessPartner, source, subSupervisor, subSupervisorEmail, groupId, groupCode, documents } = req.body;
-      const updatedBy = req.user!.userId;
-      
+      const updatedBy = req.user?.userId;
+      if (!updatedBy) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: TOPIC_MESSAGE.UNAUTHORIZED,
+        });
+      }
+
+      const {
+        nameVi,
+        nameEn,
+        name,
+        description,
+        isBusiness,
+        businessPartner,
+        source,
+        subSupervisor,
+        subSupervisorEmail,
+        groupId,
+        groupCode,
+        semesterId,
+        documents
+      } = req.body;
+
+      // Kiểm tra các trường bắt buộc
+      if (!nameVi || !nameEn || !name || !description) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: TOPIC_MESSAGE.INVALID_REQUEST,
+          details: 'Thiếu thông tin bắt buộc cho đề tài'
+        });
+      }
+
+      // Nếu là đề tài doanh nghiệp thì phải có thông tin doanh nghiệp
+      if (isBusiness && !businessPartner) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: TOPIC_MESSAGE.INVALID_BUSINESS_INFO
+        });
+      }
+
+      // Gọi service để cập nhật đề tài
       const result = await topicService.updateTopic(topicId, {
         nameVi,
         nameEn,
@@ -104,7 +146,8 @@ export class TopicController {
         groupId,
         groupCode,
         updatedBy,
-        documents,
+        semesterId,
+        documents
       });
 
       return res.status(result.status).json(result);

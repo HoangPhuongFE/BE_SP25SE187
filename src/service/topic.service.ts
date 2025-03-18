@@ -372,43 +372,68 @@ export class TopicService {
       groupId?: string;
       groupCode?: string;
       updatedBy: string;
-      semesterId?: string; // nếu cần để tìm group theo composite key
+      semesterId?: string;
       documents?: { fileName: string; fileUrl: string; fileType: string }[];
     }
   ) {
     try {
+      // Kiểm tra đề tài tồn tại
       const existingTopic = await prisma.topic.findUnique({
         where: { id: topicId },
-        select: { status: true, proposedGroupId: true },
+        include: {
+          creator: true,
+          group: {
+            include: {
+              members: {
+                include: {
+                  student: true,
+                  user: true
+                }
+              }
+            }
+          }
+        }
       });
+
       if (!existingTopic) {
-        return { success: false, status: HTTP_STATUS.NOT_FOUND, message: TOPIC_MESSAGE.TOPIC_NOT_FOUND };
+        return {
+          success: false,
+          message: TOPIC_MESSAGE.TOPIC_NOT_FOUND,
+          status: HTTP_STATUS.NOT_FOUND,
+        };
       }
 
-      let updatedGroupId = data.groupId;
-      if (!updatedGroupId && data.groupCode && data.semesterId) {
-        const group = await prisma.group.findUnique({
-          where: { semesterId_groupCode: { semesterId: data.semesterId, groupCode: data.groupCode } },
-          select: { id: true },
+      // Nếu có groupId hoặc groupCode, tìm thông tin nhóm
+      let group = null;
+      if (data.groupId || data.groupCode) {
+        group = await prisma.group.findFirst({
+          where: {
+            OR: [
+              { id: data.groupId },
+              { groupCode: data.groupCode }
+            ],
+            semesterId: data.semesterId || existingTopic.semesterId
+          },
+          include: {
+            members: {
+              include: {
+                student: true,
+                user: true
+              }
+            }
+          }
         });
+
         if (!group) {
-          return { success: false, status: HTTP_STATUS.NOT_FOUND, message: GROUP_MESSAGE.GROUP_NOT_FOUND };
+          return {
+            success: false,
+            message: 'Không tìm thấy nhóm với thông tin đã cung cấp',
+            status: HTTP_STATUS.NOT_FOUND
+          };
         }
-        updatedGroupId = group.id;
       }
 
-      let updatedSubSupervisorId = data.subSupervisor ?? null;
-      if (!updatedSubSupervisorId && data.subSupervisorEmail) {
-        const mentor = await prisma.user.findUnique({
-          where: { email: data.subSupervisorEmail },
-          select: { id: true },
-        });
-        if (!mentor) {
-          return { success: false, status: HTTP_STATUS.NOT_FOUND, message: TOPIC_MESSAGE.INVALID_REVIEWER };
-        }
-        updatedSubSupervisorId = mentor.id;
-      }
-
+      // Cập nhật đề tài
       const updatedTopic = await prisma.topic.update({
         where: { id: topicId },
         data: {
@@ -419,39 +444,38 @@ export class TopicService {
           isBusiness: data.isBusiness,
           businessPartner: data.businessPartner,
           source: data.source,
-          subSupervisor: updatedSubSupervisorId,
+          subSupervisor: data.subSupervisor,
+          proposedGroupId: group?.id || undefined,
           updatedAt: new Date(),
-          proposedGroupId: updatedGroupId || existingTopic.proposedGroupId,
+          documents: data.documents ? {
+            createMany: {
+              data: data.documents.map(doc => ({
+                ...doc,
+                uploadedBy: data.updatedBy
+              }))
+            }
+          } : undefined
         },
         include: {
+          creator: true,
           group: true,
-        },
-
+          documents: true
+        }
       });
-
-      if (data.documents && data.documents.length > 0) {
-        await prisma.document.deleteMany({ where: { topicId } });
-        await prisma.document.createMany({
-          data: data.documents.map((doc) => ({
-            fileName: doc.fileName,
-            fileUrl: doc.fileUrl,
-            fileType: doc.fileType,
-            uploadedBy: data.updatedBy,
-            topicId,
-            uploadedAt: new Date(),
-          })),
-        });
-      }
 
       return {
         success: true,
-        status: HTTP_STATUS.OK,
         message: TOPIC_MESSAGE.TOPIC_UPDATED,
         data: updatedTopic,
+        status: HTTP_STATUS.OK,
       };
     } catch (error) {
       console.error('Lỗi khi cập nhật đề tài:', error);
-      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: TOPIC_MESSAGE.ACTION_FAILED };
+      return {
+        success: false,
+        message: TOPIC_MESSAGE.ACTION_FAILED,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      };
     }
   }
 
