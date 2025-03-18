@@ -45,11 +45,11 @@ export class SemesterService {
 
   // Cập nhật semester: Cho phép cập nhật mọi trạng thái, không ràng buộc theo thời gian hiện tại
   async updateSemester(
-id: string, code: string, startDate: Date, endDate: Date, status: any  ) {
+    id: string, code: string, startDate: Date, endDate: Date, status: any) {
     if (startDate >= endDate) {
       throw new Error("Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc.");
     }
-    
+
     const now = new Date();
     let computedStatus: string;
     if (now < startDate) {
@@ -59,7 +59,7 @@ id: string, code: string, startDate: Date, endDate: Date, status: any  ) {
     } else {
       computedStatus = "COMPLETE";
     }
-    
+
     return prisma.semester.update({
       where: { id },
       data: {
@@ -70,7 +70,7 @@ id: string, code: string, startDate: Date, endDate: Date, status: any  ) {
       },
     });
   }
-  
+
 
   // Xóa semester: Không ràng buộc theo trạng thái (cho phép xoá mọi trạng thái)
   async deleteSemester(id: string) {
@@ -101,16 +101,16 @@ id: string, code: string, startDate: Date, endDate: Date, status: any  ) {
         where: { id },
         include: { year: true },
       });
-  
+
       if (!semester) {
         return {
           success: false,
           status: HTTP_STATUS.OK,
-          data: [],  // trả về mảng rỗng
+          data: [],
           message: SEMESTER_MESSAGE.SEMESTER_NOT_FOUND,
         };
       }
-  
+
       return {
         success: true,
         status: HTTP_STATUS.OK,
@@ -126,4 +126,4 @@ id: string, code: string, startDate: Date, endDate: Date, status: any  ) {
     }
   }
 }
-  
+

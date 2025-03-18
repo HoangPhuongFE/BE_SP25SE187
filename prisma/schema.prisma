@@ -620,7 +620,7 @@ model CouncilMember {
   roleId            String   @map("role_id") // Thay role bằng roleId
   assignedAt        DateTime @default(now()) @map("assigned_at")
   status            String
-  council           Council  @relation(fields: [councilId], references: [id],, onDelete: Cascade)
+  council           Council  @relation(fields: [councilId], references: [id], onDelete: Cascade)
   userId            String   @map("user_id")
   semesterId        String   @map("semester_id")
   user              User     @relation(fields: [userId], references: [id])
