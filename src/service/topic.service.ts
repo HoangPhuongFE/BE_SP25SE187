@@ -560,7 +560,7 @@ export class TopicService {
 
   async approveTopicByAcademic(
     topicId: string,
-    status: 'APPROVED' | 'REJECTED' | 'IMPROVED',
+    status: 'APPROVED' | 'REJECTED' | 'IMPROVED' ,
     userId: string,
     reviewReason?: string
   ) {

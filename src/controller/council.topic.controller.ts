@@ -135,4 +135,23 @@ export class CouncilTopicController {
     }
   }
 
+
+
+  // Trong CouncilTopicController
+  async getCouncilDetailsForLecturer(req: Request, res: Response) {
+    try {
+      const { id } = req.params; // councilId từ URL
+      const userId = req.user!.userId; // Lấy từ token
+
+      // Gọi service để lấy chi tiết hội đồng
+      const result = await councilTopicService.getCouncilDetailsForLecturer(id, userId);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error("Lỗi trong getCouncilDetailsForLecturer:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: COUNCIL_MESSAGE.COUNCIL_LIST_FAILED,
+      });
+    }
+  }
 }
