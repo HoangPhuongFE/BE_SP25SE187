@@ -248,7 +248,7 @@ export class SubmissionPeriodService {
     const start = new Date(startDate); // Chuyển đổi startDate về cùng kiểu Date
     const end = new Date(endDate); // Chuyển đổi endDate về cùng kiểu Date
 
-    if (now < start) return "PENDING"; // Chưa bắt đầu
+    if (now < start) return "UPCOMING"; // Chưa bắt đầu
     if (now >= start && now <= end) return "ACTIVE"; // Đang mở
     return "COMPLETE"; // Đã kết thúc
 }
