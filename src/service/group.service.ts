@@ -541,7 +541,7 @@ export class GroupService {
 
         const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
 
-        if (userRoles.includes("graduation_thesis_manager") || userRoles.includes("admin") || userRoles.includes("academic_officer")) {
+        if (userRoles.includes("graduation_thesis_manager") || userRoles.includes("lecturer") || userRoles.includes("academic_officer")) {
             return prisma.group.findMany({
                 where: { semesterId },
                 include: {
@@ -638,7 +638,7 @@ export class GroupService {
                 },
             },
         });
-        console.log(JSON.stringify(students, null, 2));
+   //     console.log(JSON.stringify(students, null, 2));
         return students;
     }
     // Hàm tạo mã nhóm duy nhất theo học kỳ và tên ngành
