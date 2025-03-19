@@ -128,8 +128,8 @@ model Semester {
   yearId                String
   year                  Year                   @relation("YearSemesters", fields: [yearId], references: [id], onDelete: Cascade)
   SubmissionPeriod      SubmissionPeriod[]
-  userRoles             UserRole[]             @relation(name: "UserRoleToSemester") // Thêm quan hệ ngược lại
-
+  userRoles             UserRole[]             @relation(name: "UserRoleToSemester")
+  decisions             Decision[]             @relation
   @@map("semesters")
 }
 
@@ -230,6 +230,7 @@ model TopicRegistration {
   reviewerId         String?   @map("reviewer_id")
   role               String
   status             String
+  reason             String?
   decisionFile       String?   @map("decision_file")
   rejectionReason    String?   @map("rejection_reason") @db.Text
   registeredAt       DateTime  @default(now()) @map("registered_at")
