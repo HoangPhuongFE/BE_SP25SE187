@@ -5,7 +5,6 @@ import { TOPIC_SUBMISSION_PERIOD_MESSAGE } from "../constants/message";
 const prisma = new PrismaClient();
 
 export class SubmissionPeriodService {
- 
   // Tạo một đợt đề xuất mới, thêm kiểm tra quyền ở đây
   async createSubmissionPeriod(data: {
     semesterId: string;
@@ -181,14 +180,15 @@ export class SubmissionPeriodService {
   async getSubmissionPeriodById(periodId: string) {
     try {
       const period = await prisma.submissionPeriod.findUnique({ where: { id: periodId } });
-
+      
       if (!period) {
         return {
           success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: TOPIC_SUBMISSION_PERIOD_MESSAGE.NOT_FOUND,
+          status: HTTP_STATUS.OK,
+          data: [],
+          message : TOPIC_SUBMISSION_PERIOD_MESSAGE.NOT_FOUND
         };
-      }
+      } 
 
       // Tính toán trạng thái mới
       const newStatus = this.determineStatus(new Date(period.startDate), new Date(period.endDate));
@@ -213,7 +213,7 @@ export class SubmissionPeriodService {
   async deleteSubmissionPeriod(periodId: string) {
     try {
       const period = await prisma.submissionPeriod.findUnique({ where: { id: periodId } });
-  
+    
       if (!period) {
         return {
           success: false,
@@ -221,24 +221,25 @@ export class SubmissionPeriodService {
           message: TOPIC_SUBMISSION_PERIOD_MESSAGE.NOT_FOUND,
         };
       }
-  
-      // Xoá đợt đề xuất mà không kiểm tra trạng thái
+    
+      // Xoá đợt đề xuất (cascade deletion sẽ tự động xoá các record liên quan nếu cấu hình)
       await prisma.submissionPeriod.delete({ where: { id: periodId } });
-  
+    
       return { 
         success: true, 
         status: HTTP_STATUS.OK, 
         message: TOPIC_SUBMISSION_PERIOD_MESSAGE.DELETED 
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Lỗi khi xóa đợt đề xuất:", error);
       return { 
         success: false, 
         status: HTTP_STATUS.INTERNAL_SERVER_ERROR, 
-        message: "Lỗi hệ thống!" 
+        message: error.message || "Lỗi hệ thống!"  // Trả về thông báo lỗi chi tiết nếu có
       };
     }
   }
+  
   
 
   //  Hàm xác định trạng thái SubmissionPeriod
@@ -247,7 +248,7 @@ export class SubmissionPeriodService {
     const start = new Date(startDate); // Chuyển đổi startDate về cùng kiểu Date
     const end = new Date(endDate); // Chuyển đổi endDate về cùng kiểu Date
 
-    if (now < start) return "PENDING"; // Chưa bắt đầu
+    if (now < start) return "UPCOMING"; // Chưa bắt đầu
     if (now >= start && now <= end) return "ACTIVE"; // Đang mở
     return "COMPLETE"; // Đã kết thúc
 }

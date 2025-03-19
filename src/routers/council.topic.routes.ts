@@ -59,4 +59,12 @@ router.delete(
   checkRole(["examination_officer",  "graduation_thesis_manager"]),
   councilTopicController.removeMemberFromCouncil.bind(councilTopicController)
 );
+
+// Route mới cho giảng viên
+router.get(
+  '/lecturers/councils/:id',
+  authenticateToken,
+  checkRole(['lecturer', 'council_member']),
+  councilTopicController.getCouncilDetailsForLecturer.bind(councilTopicController)
+);
 export default router;

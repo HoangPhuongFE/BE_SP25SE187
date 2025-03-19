@@ -85,12 +85,54 @@ export class TopicController {
     try {
       const { topicId } = req.params;
       if (!topicId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: TOPIC_MESSAGE.INVALID_REQUEST });
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({ 
+          success: false, 
+          message: TOPIC_MESSAGE.INVALID_ID 
+        });
       }
 
-      const { nameVi, nameEn, name, description, isBusiness, businessPartner, source, subSupervisor, subSupervisorEmail, groupId, groupCode, documents } = req.body;
-      const updatedBy = req.user!.userId;
-      
+      const updatedBy = req.user?.userId;
+      if (!updatedBy) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: TOPIC_MESSAGE.UNAUTHORIZED,
+        });
+      }
+
+      const {
+        nameVi,
+        nameEn,
+        name,
+        description,
+        isBusiness,
+        businessPartner,
+        source,
+        subSupervisor,
+        subSupervisorEmail,
+        groupId,
+        groupCode,
+        semesterId,
+        documents
+      } = req.body;
+
+      // Kiểm tra các trường bắt buộc
+      if (!nameVi || !nameEn || !name || !description) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: TOPIC_MESSAGE.INVALID_REQUEST,
+          details: 'Thiếu thông tin bắt buộc cho đề tài'
+        });
+      }
+
+      // Nếu là đề tài doanh nghiệp thì phải có thông tin doanh nghiệp
+      if (isBusiness && !businessPartner) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: TOPIC_MESSAGE.INVALID_BUSINESS_INFO
+        });
+      }
+
+      // Gọi service để cập nhật đề tài
       const result = await topicService.updateTopic(topicId, {
         nameVi,
         nameEn,
@@ -104,7 +146,8 @@ export class TopicController {
         groupId,
         groupCode,
         updatedBy,
-        documents,
+        semesterId,
+        documents
       });
 
       return res.status(result.status).json(result);
@@ -138,11 +181,12 @@ export class TopicController {
   async getTopicsBySemester(req: Request, res: Response) {
     try {
       const { semesterId } = req.params;
+      const { round } = req.query;
       if (!semesterId) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Thiếu ID học kỳ.' });
       }
 
-      const result = await topicService.getTopicsBySemester(semesterId);
+      const result = await topicService.getTopicsBySemester(semesterId, round ? Number(round) : undefined);
       return res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi khi lấy danh sách đề tài:', error);
@@ -305,37 +349,7 @@ export class TopicController {
       });
     }
   }
-  async downloadDecisionFile(req: Request, res: Response) {
-    try {
-      const { decisionId, fileType } = req.query;
-      if (!decisionId || !fileType) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          success: false,
-          message: 'Thiếu decisionId hoặc fileType!',
-        });
-      }
-
-      const result = await topicService.downloadDecisionFile(decisionId as string, fileType as string);
-      if (!result.success) {
-        return res.status(result.status).json(result);
-      }
-
-      if (typeof result.data === 'string') {
-        res.redirect(result.data); // fileUrl từ service
-      } else {
-        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-          success: false,
-          message: 'Invalid file URL!',
-        });
-      }
-    } catch (error) {
-      console.error('Lỗi khi tải file:', error);
-      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: 'Lỗi hệ thống khi tải file!',
-      });
-    }
-  }
+ 
 
   
   async getTopicRegistrations(req: Request, res: Response) {
@@ -420,7 +434,51 @@ export class TopicController {
     }
     
 
+// Lấy danh sách đề tài đã duyệt cho nhóm sinh viên 
+async getApprovedTopicsFortudent(req: Request, res: Response) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+        success: false,
+        message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
+      });
+    }
 
-  
+    // Gọi service mà không cần truyền semesterId
+    const result = await topicService.getApprovedTopicsForStudent(userId);
+    return res.status(result.status).json(result);
+  } catch (error) {
+    console.error('Lỗi trong getApprovedTopicsForStudent:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Lỗi hệ thống khi lấy danh sách đề tài đã duyệt!',
+    });
+  }
+}
+
+
+
+// Lấy danh sách tất cả  đề tài đã duyệt cho sinh viên xem 
+async getAllApprovedTopicsForStudent(req: Request, res: Response) {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+        success: false,
+        message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
+      });
+    }
+
+    const result = await topicService.getAllApprovedTopicsForStudent(userId);
+    return res.status(result.status).json(result);
+  } catch (error) {
+    console.error('Lỗi trong getAllApprovedTopicsForStudent:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Lỗi hệ thống khi lấy danh sách tất cả đề tài đã duyệt!',
+    });
+  }
+}
 }
 
