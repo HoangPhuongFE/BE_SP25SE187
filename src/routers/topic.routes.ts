@@ -34,7 +34,7 @@ router.get(
 router.get(
   '/semester/:semesterId',
   authenticateToken,
-  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager', 'student', 'leader', 'review', 'lecturer']),
+  checkRole( ['academic_officer', 'graduation_thesis_manager',  'lecturer']),
   topicController.getTopicsBySemester.bind(topicController)
 );
 
@@ -62,13 +62,7 @@ router.get(
   topicController.getAllRegistrations.bind(topicController)
 );
 
-// 8. Tải file từ Decision (draftFile hoặc finalFile)
-router.get(
-  '/decisions/download',
-  authenticateToken,
-  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager']),
-  topicController.downloadDecisionFile.bind(topicController)
-);
+
 
 // 9. Các route liên quan đến đăng ký đề tài (các route với prefix cố định)
 //    a) Sinh viên đăng ký đề tài
@@ -129,4 +123,22 @@ router.delete(
   topicController.deleteTopic.bind(topicController)
 );
 
+
+// 11. Các route liên quan đến đợt đăng ký đề tài
+//    a) Lấy danh sách đợt đăng ký đề tài
+
+router.get(
+  '/student/topics/approved',
+  authenticateToken,
+  checkRole(['student', 'leader', 'member'],false),
+  topicController.getApprovedTopicsFortudent.bind(topicController)
+);
+
+// Route mới: Tất cả đề tài đã duyệt
+router.get(
+  '/student/topics/approved/all',
+  authenticateToken,
+  checkRole(['student', 'leader', 'member'],false),
+  topicController.getAllApprovedTopicsForStudent.bind(topicController)
+);
 export default router;

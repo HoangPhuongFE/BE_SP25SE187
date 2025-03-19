@@ -541,7 +541,7 @@ export class GroupService {
 
         const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
 
-        if (userRoles.includes("graduation_thesis_manager") || userRoles.includes("admin") || userRoles.includes("academic_officer")) {
+        if (userRoles.includes("graduation_thesis_manager") || userRoles.includes("lecturer") || userRoles.includes("academic_officer")) {
             return prisma.group.findMany({
                 where: { semesterId },
                 include: {
@@ -612,21 +612,35 @@ export class GroupService {
 
     // 6) getStudentsWithoutGroup
     async getStudentsWithoutGroup(semesterId: string) {
-        return prisma.student.findMany({
+        const students = await prisma.student.findMany({
             where: {
                 semesterStudents: {
                     some: { semesterId },
                 },
-                groupMembers: { none: {} },
+                NOT: {
+                    groupMembers: {
+                        some: {
+                            group: {
+                                semesterId: semesterId,
+                            },
+                        },
+                    },
+                },
             },
             include: {
                 user: true,
                 major: true,
                 specialization: true,
+                groupMembers: {
+                    include: {
+                        group: true,
+                    },
+                },
             },
         });
+   //     console.log(JSON.stringify(students, null, 2));
+        return students;
     }
-
     // Hàm tạo mã nhóm duy nhất theo học kỳ và tên ngành
     private async generateUniqueGroupCode(
         professionName: string,
@@ -1566,7 +1580,7 @@ export class GroupService {
     // 21) createGroupByAcademicOfficer
     async createGroupByAcademicOfficer(input: { leaderEmail: string; semesterId: string; createdBy: string }) {
         const { leaderEmail, semesterId, createdBy } = input;
-
+    
         try {
             // **1. Kiểm tra thông tin bắt buộc**
             if (!leaderEmail) {
@@ -1578,16 +1592,17 @@ export class GroupService {
             if (!createdBy) {
                 return { success: false, status: 400, message: "Thông tin người tạo nhóm không hợp lệ." };
             }
-
-            // **2. Kiểm tra học kỳ**
+    
+            // **2. Kiểm tra học kỳ (chỉ cần tồn tại, không quan tâm trạng thái)**
             const semester = await prisma.semester.findUnique({
                 where: { id: semesterId },
-                select: { id: true, startDate: true },
+                select: { id: true, startDate: true }, // Giữ startDate để tạo mã nhóm
             });
             if (!semester) {
                 return { success: false, status: 404, message: "Học kỳ không tồn tại." };
             }
-
+            // Không kiểm tra semester.status, cho phép tạo nhóm ở mọi trạng thái học kỳ
+    
             // **3. Tìm trưởng nhóm và thông tin chuyên ngành**
             const leader = await prisma.student.findFirst({
                 where: { user: { email: leaderEmail } },
@@ -1597,7 +1612,7 @@ export class GroupService {
                 return { success: false, status: 404, message: "Trưởng nhóm không tồn tại hoặc không có chuyên ngành." };
             }
             const majorName = leader.major.name;
-
+    
             // **4. Kiểm tra sinh viên có thuộc học kỳ không**
             const studentSemester = await prisma.semesterStudent.findFirst({
                 where: { studentId: leader.id, semesterId },
@@ -1605,7 +1620,7 @@ export class GroupService {
             if (!studentSemester) {
                 return { success: false, status: 400, message: "Trưởng nhóm không thuộc học kỳ này." };
             }
-
+    
             // **5. Kiểm tra trạng thái đủ điều kiện**
             if (studentSemester.qualificationStatus.trim().toLowerCase() !== "qualified") {
                 return {
@@ -1614,7 +1629,7 @@ export class GroupService {
                     message: `Trưởng nhóm không đủ điều kiện tham gia nhóm. Trạng thái hiện tại: ${studentSemester.qualificationStatus}`
                 };
             }
-
+    
             // **6. Kiểm tra trưởng nhóm đã thuộc nhóm nào chưa**
             const existingMember = await prisma.groupMember.findFirst({
                 where: { studentId: leader.id, group: { semesterId } },
@@ -1622,19 +1637,19 @@ export class GroupService {
             if (existingMember) {
                 return { success: false, status: 400, message: "Trưởng nhóm đã thuộc một nhóm trong học kỳ này." };
             }
-
+    
             // **7. Tạo mã nhóm duy nhất**
             const groupCode = await this.generateUniqueGroupCode(majorName, semesterId, semester.startDate);
             if (!groupCode) {
                 return { success: false, status: 500, message: "Không thể tạo mã nhóm." };
             }
-
+    
             // **8. Lấy số lượng thành viên tối đa từ SystemConfigService**
             const maxMembers = await systemConfigService.getMaxGroupMembers();
             if (maxMembers <= 0) {
                 return { success: false, status: 500, message: "Số lượng thành viên tối đa không hợp lệ." };
             }
-
+    
             // **9. Tạo nhóm mới**
             const newGroup = await prisma.group.create({
                 data: {
@@ -1645,13 +1660,13 @@ export class GroupService {
                     maxMembers,
                 },
             });
-
+    
             // **10. Thêm trưởng nhóm vào nhóm với vai trò "leader"**
             const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
             if (!leaderRole) {
                 return { success: false, status: 500, message: "Vai trò 'leader' không tồn tại." };
             }
-
+    
             await prisma.groupMember.create({
                 data: {
                     groupId: newGroup.id,
@@ -1661,7 +1676,7 @@ export class GroupService {
                     userId: leader.userId,
                 },
             });
-
+    
             // **11. Trả về kết quả thành công**
             return {
                 success: true,
@@ -1672,6 +1687,115 @@ export class GroupService {
         } catch (error) {
             console.error("Lỗi khi tạo nhóm:", error);
             return { success: false, status: 500, message: "Lỗi hệ thống." };
+        }
+    }
+    // 22) getStudentsWithoutGroupForStudent (by student)
+    async getStudentsWithoutGroupForStudent(userId: string) {
+        try {
+            // 1. Tìm thông tin sinh viên hiện tại
+            const currentStudent = await prisma.student.findUnique({
+                where: { userId },
+                include: { major: true, semesterStudents: { include: { semester: true } } },
+            });
+
+            if (!currentStudent) {
+                throw new Error("Sinh viên không tồn tại.");
+            }
+
+            // Ngày hiện tại (dựa trên thời gian hệ thống, ở đây là 19-3-2025 theo giả định)
+            const currentDate = new Date(); // Ví dụ: new Date("2025-03-19") để kiểm tra
+
+            // 2. Xác định trạng thái thực tế của học kỳ dựa trên ngày hiện tại
+            const semesters = currentStudent.semesterStudents.map(ss => {
+                const semester = ss.semester;
+                const startDate = new Date(semester.startDate);
+                const endDate = new Date(semester.endDate || Infinity); // Nếu không có endDate, coi như chưa kết thúc
+
+                let effectiveStatus = semester.status;
+                if (currentDate < startDate) {
+                    effectiveStatus = "UPCOMING";
+                } else if (currentDate >= startDate && currentDate <= endDate) {
+                    effectiveStatus = "ACTIVE";
+                } else if (currentDate > endDate) {
+                    effectiveStatus = "COMPLETE";
+                }
+
+                return { ...semester, effectiveStatus };
+            });
+
+            // 3. Lấy học kỳ UPCOMING sớm nhất dựa trên startDate
+            const upcomingSemesters = semesters.filter(s => s.effectiveStatus === "UPCOMING");
+            const activeSemesters = semesters.filter(s => s.effectiveStatus === "ACTIVE");
+            const completeSemesters = semesters.filter(s => s.effectiveStatus === "COMPLETE");
+
+            // Nếu không có học kỳ nào phù hợp
+            if (upcomingSemesters.length === 0 && activeSemesters.length === 0 && completeSemesters.length > 0) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.OK,
+                    message: "Tất cả học kỳ đã hoàn thành, không thể xem danh sách sinh viên chưa có nhóm.",
+                    data: null,
+                };
+            }
+
+            // Nếu chỉ có học kỳ ACTIVE
+            if (upcomingSemesters.length === 0 && activeSemesters.length > 0) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.OK,
+                    message: "Học kỳ đang hoạt động, không thể xem danh sách sinh viên chưa có nhóm.",
+                    data: null,
+                };
+            }
+
+            // Nếu có UPCOMING, chọn học kỳ có startDate sớm nhất
+            const selectedSemester = upcomingSemesters.length > 0
+                ? upcomingSemesters.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0]
+                : null;
+
+            if (!selectedSemester) {
+                throw new Error("Không tìm thấy học kỳ sắp tới phù hợp.");
+            }
+
+            // 4. Lấy danh sách sinh viên chưa có nhóm trong học kỳ UPCOMING được chọn
+            const students = await prisma.student.findMany({
+                where: {
+                    majorId: currentStudent.majorId, // Lọc theo chuyên ngành
+                    semesterStudents: {
+                        some: {
+                            semesterId: selectedSemester.id,
+                            qualificationStatus: "qualified" // Chỉ lấy sinh viên đủ điều kiện
+                        },
+                    },
+                    groupMembers: { none: { group: { semesterId: selectedSemester.id } } }, // Chưa có nhóm trong học kỳ này
+                },
+                include: {
+                    user: { select: { fullName: true, email: true } },
+                    major: { select: { name: true } },
+                },
+            });
+
+            // 5. Format dữ liệu trả về
+            const formattedStudents = students.map(student => ({
+                studentId: student.id,
+                fullName: student.user?.fullName || "Không có tên",
+                email: student.user?.email || "Không có email",
+                major: student.major?.name || "Không có chuyên ngành",
+            }));
+
+            return {
+                success: true,
+                status: HTTP_STATUS.OK,
+                message: `Danh sách sinh viên chưa có nhóm trong học kỳ ${selectedSemester.id} (Bắt đầu: ${selectedSemester.startDate}).`,
+                data: formattedStudents,
+            };
+        } catch (error) {
+            console.error("Lỗi khi lấy danh sách sinh viên chưa có nhóm:", error);
+            return {
+                success: false,
+                status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+                message: "Lỗi hệ thống khi lấy danh sách sinh viên chưa có nhóm.",
+            };
         }
     }
 }

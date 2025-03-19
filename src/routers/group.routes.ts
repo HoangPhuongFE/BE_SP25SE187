@@ -174,5 +174,11 @@ router.post(
   groupController.createGroupByAcademicOfficer.bind(groupController)
 );
 
-
+// Trong file router (thêm vào cuối danh sách route)
+router.get(
+  "/students-without-group",
+  authenticateToken, // Xác thực token
+  checkRole(["student"],false), // Chỉ cho phép sinh viên truy cập
+  groupController.getStudentsWithoutGroupForStudent.bind(groupController)
+);
 export default router;
