@@ -34,7 +34,7 @@ router.get(
 router.get(
   '/semester/:semesterId',
   authenticateToken,
-  checkRole(['mentor', 'academic_officer', 'admin', 'graduation_thesis_manager', 'student', 'leader', 'review', 'lecturer']),
+  checkRole( ['academic_officer', 'graduation_thesis_manager',  'lecturer']),
   topicController.getTopicsBySemester.bind(topicController)
 );
 

@@ -181,11 +181,12 @@ export class TopicController {
   async getTopicsBySemester(req: Request, res: Response) {
     try {
       const { semesterId } = req.params;
+      const { round } = req.query;
       if (!semesterId) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Thiếu ID học kỳ.' });
       }
 
-      const result = await topicService.getTopicsBySemester(semesterId);
+      const result = await topicService.getTopicsBySemester(semesterId, round ? Number(round) : undefined);
       return res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi khi lấy danh sách đề tài:', error);
