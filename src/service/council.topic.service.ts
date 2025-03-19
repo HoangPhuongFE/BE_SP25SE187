@@ -547,8 +547,7 @@ export class CouncilTopicService {
   }
 
 
-
-  // Trong CouncilTopicService
+// Lấy danh sách hội đồng topic cho giảng viên
   async getCouncilDetailsForLecturer(councilId: string, userId: string) {
     try {
       // Kiểm tra xem người dùng có phải là thành viên hội đồng không

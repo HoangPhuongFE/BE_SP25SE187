@@ -1047,24 +1047,6 @@ export class TopicService {
     }
   }
 
-  async downloadDecisionFile(decisionId: string, fileType: string) {
-    try {
-      const decision = await prisma.decision.findUnique({ where: { id: decisionId } });
-      if (!decision) {
-        return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy quyết định!' };
-      }
-
-      const fileUrl = fileType === 'draft' ? decision.draftFileUrl : decision.finalFileUrl;
-      if (!fileUrl) {
-        return { success: false, status: HTTP_STATUS.NOT_FOUND, message: `Không có file ${fileType}!` };
-      }
-
-      return { success: true, status: HTTP_STATUS.OK, data: fileUrl };
-    } catch (error) {
-      console.error('Lỗi khi tải file:', error);
-      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi tải file!' };
-    }
-  }
 
 
 
@@ -1362,5 +1344,295 @@ export class TopicService {
     }
   }
 
+  // Lấy danh sách đề tài đã duyệt cho sinh viên
+  async getApprovedTopicsForStudent(userId: string) {
+    try {
+        // 1. Kiểm tra sinh viên
+        const student = await prisma.student.findUnique({
+            where: { userId },
+            select: { id: true },
+        });
+
+        if (!student) {
+            return {
+                success: false,
+                status: HTTP_STATUS.FORBIDDEN,
+                message: "Bạn không phải là sinh viên!",
+            };
+        }
+
+        // Ngày hiện tại
+        const currentDate = new Date();
+
+        // 2. Lấy danh sách nhóm của sinh viên
+        const groupMemberships = await prisma.groupMember.findMany({
+            where: { studentId: student.id },
+            include: {
+                group: {
+                    select: {
+                        id: true,
+                        groupCode: true,
+                        semester: { select: { id: true, code: true, startDate: true, endDate: true } },
+                    },
+                },
+            },
+        });
+
+        if (groupMemberships.length === 0) {
+            return {
+                success: false,
+                status: HTTP_STATUS.NOT_FOUND,
+                message: "Bạn không thuộc nhóm nào!",
+            };
+        }
+
+        // 3. Xác định trạng thái thực tế của học kỳ
+        const semesters = groupMemberships.map(m => {
+            const semester = m.group.semester;
+            const startDate = new Date(semester.startDate);
+            const endDate = new Date(semester.endDate || Infinity);
+
+            let effectiveStatus = "COMPLETE";
+            if (currentDate < startDate) effectiveStatus = "UPCOMING";
+            else if (currentDate >= startDate && currentDate <= endDate) effectiveStatus = "ACTIVE";
+
+            return { ...semester, effectiveStatus, groupId: m.groupId };
+        });
+
+        const groupIds = groupMemberships.map(m => m.groupId);
+
+        // 4. Lấy danh sách đề tài liên quan đến các nhóm
+        const topics = await prisma.topic.findMany({
+            where: {
+                topicAssignments: {
+                    some: {
+                        groupId: { in: groupIds },
+                        approvalStatus: { in: ["PENDING", "APPROVED", "REJECTED"] },
+                    },
+                },
+            },
+            include: {
+                topicAssignments: {
+                    include: {
+                        group: {
+                            select: {
+                                id: true,
+                                groupCode: true,
+                                semester: { select: { id: true, code: true, startDate: true, endDate: true } },
+                                members: {
+                                    include: {
+                                        user: { select: { id: true, fullName: true, email: true } },
+                                        role: { select: { name: true } },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+                creator: { select: { fullName: true, email: true } },
+                subMentor: { select: { fullName: true, email: true } },
+                majors: { select: { id: true, name: true } },
+                semester: { select: { id: true, code: true, startDate: true, endDate: true } },
+            },
+        });
+
+        if (topics.length === 0) {
+            return {
+                success: false,
+                status: HTTP_STATUS.NOT_FOUND,
+                message: "Không tìm thấy đề tài nào liên quan đến nhóm của bạn!",
+            };
+        }
+
+        // 5. Định dạng dữ liệu trả về, xử lý trường hợp semester undefined
+        const formattedTopics = topics.map(topic => {
+            const assignment = topic.topicAssignments[0]; // Lấy assignment đầu tiên liên quan đến nhóm
+            const semester = semesters.find(s => s.id === assignment.group.semester.id);
+
+            // Nếu không tìm thấy semester, sử dụng thông tin từ assignment.group.semester
+            const semesterData = semester || {
+                id: assignment.group.semester.id,
+                code: assignment.group.semester.code,
+                startDate: assignment.group.semester.startDate,
+                endDate: assignment.group.semester.endDate,
+                effectiveStatus: "UNKNOWN", // Trạng thái mặc định nếu không tính được
+            };
+
+            return {
+                id: topic.id,
+                topicCode: topic.topicCode,
+                nameVi: topic.nameVi,
+                nameEn: topic.nameEn,
+                description: topic.description,
+                status: topic.status,
+                approvalStatus: assignment.approvalStatus,
+                semester: {
+                    id: semesterData.id,
+                    code: semesterData.code,
+                    startDate: semesterData.startDate,
+                    endDate: semesterData.endDate,
+                    effectiveStatus: semesterData.effectiveStatus,
+                },
+                createdBy: topic.creator,
+                subSupervisor: topic.subMentor,
+                majors: topic.majors,
+                group: {
+                    id: assignment.group.id,
+                    groupCode: assignment.group.groupCode,
+                    members: assignment.group.members,
+                },
+            };
+        });
+
+        return {
+            success: true,
+            status: HTTP_STATUS.OK,
+            message: "Lấy danh sách đề tài liên quan đến nhóm thành công!",
+            data: formattedTopics,
+        };
+    } catch (error) {
+        console.error("Lỗi khi lấy danh sách đề tài cho sinh viên:", error);
+        return {
+            success: false,
+            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            message: "Lỗi hệ thống khi lấy danh sách đề tài!",
+        };
+    }
+}
+// Lấy danh sách tất cả đề tài đã duyệt cho sinh viên
+async getAllApprovedTopicsForStudent(userId: string) {
+  try {
+      // 1. Kiểm tra sinh viên
+      const student = await prisma.student.findUnique({
+          where: { userId },
+          select: { id: true, majorId: true },
+      });
+
+      if (!student) {
+          return {
+              success: false,
+              status: HTTP_STATUS.FORBIDDEN,
+              message: "Bạn không phải là sinh viên!",
+          };
+      }
+
+      // Ngày hiện tại
+      const currentDate = new Date();
+
+      // 2. Lấy tất cả đề tài đã duyệt
+      const topics = await prisma.topic.findMany({
+          where: { status: "APPROVED" },
+          include: {
+              semester: { select: { id: true, code: true, startDate: true, endDate: true } },
+              topicAssignments: {
+                  include: {
+                      group: {
+                          select: {
+                              id: true,
+                              groupCode: true,
+                              semester: { select: { id: true, code: true } },
+                              members: {
+                                  include: {
+                                      user: { select: { id: true, fullName: true, email: true } },
+                                      role: { select: { name: true } },
+                                  },
+                              },
+                          },
+                      },
+                  },
+              },
+              creator: { select: { fullName: true, email: true } },
+              subMentor: { select: { fullName: true, email: true } },
+              majors: { select: { id: true, name: true } },
+          },
+      });
+
+      // 3. Xác định trạng thái thực tế của học kỳ
+      const semesters = [...new Map(topics.map(t => [t.semester.id, t.semester])).values()];
+      const semesterStatus = semesters.map(s => {
+          const startDate = new Date(s.startDate);
+          const endDate = new Date(s.endDate || Infinity);
+
+          let effectiveStatus = "COMPLETE";
+          if (currentDate < startDate) effectiveStatus = "UPCOMING";
+          else if (currentDate >= startDate && currentDate <= endDate) effectiveStatus = "ACTIVE";
+
+          return { ...s, effectiveStatus };
+      });
+
+      // 4. Lọc học kỳ UPCOMING
+      const upcomingSemesters = semesterStatus.filter(s => s.effectiveStatus === "UPCOMING");
+
+      if (upcomingSemesters.length === 0) {
+          const hasActive = semesterStatus.some(s => s.effectiveStatus === "ACTIVE");
+          const hasComplete = semesterStatus.some(s => s.effectiveStatus === "COMPLETE");
+
+          if (hasActive) {
+              return {
+                  success: true,
+                  status: HTTP_STATUS.OK,
+                  message: "Hiện tại học kỳ đang diễn ra, bạn hãy tập trung vào đề tài của nhóm mình nhé!",
+                  data: [],
+              };
+          } else if (hasComplete) {
+              return {
+                  success: true,
+                  status: HTTP_STATUS.OK,
+                  message: "Học kỳ đã kết thúc, hãy chờ học kỳ mới để xem các đề tài sắp tới!",
+                  data: [],
+              };
+          } else {
+              return {
+                  success: true,
+                  status: HTTP_STATUS.OK,
+                  message: "Hiện tại chưa có đề tài nào cho học kỳ sắp tới, hãy quay lại sau nhé!",
+                  data: [],
+              };
+          }
+      }
+
+      // Chọn học kỳ UPCOMING có startDate sớm nhất
+      const selectedSemester = upcomingSemesters.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0];
+      const validTopics = topics.filter(t => t.semester.id === selectedSemester.id);
+
+      if (validTopics.length === 0) {
+          return {
+              success: true,
+              status: HTTP_STATUS.OK,
+              message: "Chưa có đề tài nào được duyệt cho học kỳ sắp tới, hãy chờ thêm nhé!",
+              data: [],
+          };
+      }
+
+      // 5. Định dạng dữ liệu trả về
+      const formattedTopics = validTopics.map(topic => ({
+          id: topic.id,
+          topicCode: topic.topicCode,
+          nameVi: topic.nameVi,
+          nameEn: topic.nameEn,
+          description: topic.description,
+          status: topic.status,
+          semester: topic.semester,
+          createdBy: topic.creator,
+          subSupervisor: topic.subMentor,
+          majors: topic.majors,
+          group: topic.topicAssignments[0]?.group || null,
+      }));
+
+      return {
+          success: true,
+          status: HTTP_STATUS.OK,
+          message: `Danh sách các đề tài đã duyệt cho học kỳ sắp tới (${selectedSemester.code}) đã sẵn sàng để bạn khám phá!`,
+          data: formattedTopics,
+      };
+  } catch (error) {
+      console.error("Lỗi khi lấy danh sách tất cả đề tài đã duyệt cho sinh viên:", error);
+      return {
+          success: false,
+          status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+          message: "Lỗi hệ thống khi lấy danh sách đề tài đã duyệt!",
+      };
+  }
+}
 
 }
