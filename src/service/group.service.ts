@@ -612,21 +612,35 @@ export class GroupService {
 
     // 6) getStudentsWithoutGroup
     async getStudentsWithoutGroup(semesterId: string) {
-        return prisma.student.findMany({
+        const students = await prisma.student.findMany({
             where: {
                 semesterStudents: {
                     some: { semesterId },
                 },
-                groupMembers: { none: {} },
+                NOT: {
+                    groupMembers: {
+                        some: {
+                            group: {
+                                semesterId: semesterId,
+                            },
+                        },
+                    },
+                },
             },
             include: {
                 user: true,
                 major: true,
                 specialization: true,
+                groupMembers: {
+                    include: {
+                        group: true,
+                    },
+                },
             },
         });
+        console.log(JSON.stringify(students, null, 2));
+        return students;
     }
-
     // Hàm tạo mã nhóm duy nhất theo học kỳ và tên ngành
     private async generateUniqueGroupCode(
         professionName: string,
