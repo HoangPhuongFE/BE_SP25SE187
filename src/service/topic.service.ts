@@ -47,6 +47,45 @@ export class TopicService {
         };
       }
 
+      // **Kiểm tra vai trò của người tạo**
+      const userRole = await prisma.userRole.findFirst({
+        where: {
+          userId: data.createdBy,
+          isActive: true, // Chỉ lấy vai trò đang hoạt động
+        },
+        include: { role: true }, // Lấy thông tin vai trò
+      });
+
+      if (!userRole) {
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: 'Bạn không có quyền tạo đề tài!',
+        };
+      }
+
+      const roleName = userRole.role.name.toUpperCase(); // Ví dụ: "ACADEMIC_OFFICER" hoặc "LECTURER"
+
+      // **Kiểm tra quyền tạo đề tài theo trạng thái học kỳ**
+      const semesterStatus = semester.status.toUpperCase(); // Ví dụ: "UPCOMING", "ACTIVE", "COMPLETE"
+      if (roleName === 'lecturer') {
+        if (semesterStatus !== 'UPCOMING') {
+          return {
+            success: false,
+            status: HTTP_STATUS.FORBIDDEN,
+            message: 'Giảng viên chỉ được tạo đề tài trong học kỳ sắp tới (UPCOMING)!',
+          };
+        }
+      } else if (roleName !== 'academic_officer') {
+        // Nếu không phải Academic Officer hoặc Lecturer, từ chối
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: 'Chỉ Academic Officer hoặc Lecturer mới được tạo đề tài!',
+        };
+      }
+      // **Academic Officer có thể tạo ở mọi trạng thái học kỳ, không cần kiểm tra thêm**
+
       // **Kiểm tra chuyên ngành**
       const major = await prisma.major.findUnique({ where: { id: data.majorId } });
       if (!major) {
@@ -57,23 +96,21 @@ export class TopicService {
         };
       }
 
-      // **Sử dụng semester.code trực tiếp**
-      const semesterCode = semester.code.toUpperCase(); // Ví dụ: "SP24"
-
-      // **Tạo majorCode từ tên chuyên ngành**
-      const majorCode = major.name.length > 1
-        ? major.name.split(' ').map(word => word[0].toUpperCase()).join('')
-        : major.name.slice(0, 2).toUpperCase();
-
-      // **Đếm số đề tài trong học kỳ**
-      const topicCount = await prisma.topic.count({ where: { semesterId: data.semesterId } });
-
       // **Tạo topicCode**
-      const topicCode = `${majorCode}-${semesterCode}-${(topicCount + 1).toString().padStart(3, '0')}`; // Ví dụ: "SE-SP24-001"
+      const semesterCode = semester.code.toUpperCase();
+      const majorCode =
+        major.name.length > 1
+          ? major.name.split(' ').map(word => word[0].toUpperCase()).join('')
+          : major.name.slice(0, 2).toUpperCase();
+      const topicCount = await prisma.topic.count({ where: { semesterId: data.semesterId } });
+      const topicCode = `${majorCode}-${semesterCode}-${(topicCount + 1).toString().padStart(3, '0')}`;
 
       // **Xử lý đợt xét duyệt**
       const submissionPeriod = await prisma.submissionPeriod.findFirst({
-        where: { semesterId: data.semesterId, OR: [{ status: 'ACTIVE' }, { endDate: { gte: new Date() } }] },
+        where: {
+          semesterId: data.semesterId,
+          OR: [{ status: 'ACTIVE' }, { endDate: { gte: new Date() } }],
+        },
         orderBy: { startDate: 'asc' },
         select: { id: true, status: true },
       });
@@ -103,9 +140,10 @@ export class TopicService {
       }
 
       // **Xử lý isBusiness**
-      const isBusiness = data.isBusiness !== undefined
-        ? data.isBusiness === 'true' || data.isBusiness === true
-        : true;
+      const isBusiness =
+        data.isBusiness !== undefined
+          ? data.isBusiness === 'true' || data.isBusiness === true
+          : true;
 
       // **Xử lý nhóm đề xuất**
       let groupIdToUse: string | undefined = data.groupId;
@@ -277,126 +315,126 @@ export class TopicService {
 
   async registerTopic(data: { topicId?: string; topicCode?: string }, leaderId: string) {
     try {
-        const { topicId, topicCode } = data;
-        if (!topicId && !topicCode) {
-            return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Thiếu topicId hoặc topicCode để đăng ký!' };
-        }
+      const { topicId, topicCode } = data;
+      if (!topicId && !topicCode) {
+        return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Thiếu topicId hoặc topicCode để đăng ký!' };
+      }
 
-        const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
-        if (!leaderRole) throw new Error("Vai trò 'leader' không tồn tại.");
+      const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
+      if (!leaderRole) throw new Error("Vai trò 'leader' không tồn tại.");
 
-        const leaderMembership = await prisma.groupMember.findFirst({
-            where: {
-                OR: [
-                    { userId: leaderId },
-                    { studentId: (await prisma.student.findUnique({ where: { userId: leaderId } }))?.id },
-                ],
-                roleId: leaderRole.id,
-            },
-            select: { groupId: true },
+      const leaderMembership = await prisma.groupMember.findFirst({
+        where: {
+          OR: [
+            { userId: leaderId },
+            { studentId: (await prisma.student.findUnique({ where: { userId: leaderId } }))?.id },
+          ],
+          roleId: leaderRole.id,
+        },
+        select: { groupId: true },
+      });
+      if (!leaderMembership) {
+        console.log(`User ${leaderId} không phải leader của bất kỳ nhóm nào`);
+        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Bạn không phải là trưởng nhóm!' };
+      }
+
+      // Lấy thông tin đề tài với majorId
+      let topic;
+      if (topicId) {
+        topic = await prisma.topic.findUnique({
+          where: { id: topicId },
+          select: {
+            id: true,
+            status: true,
+            topicAssignments: true,
+            submissionPeriodId: true,
+            topicCode: true,
+            proposedGroupId: true,
+            majors: { select: { id: true } }, // Lấy majorId của đề tài
+          },
         });
-        if (!leaderMembership) {
-            console.log(`User ${leaderId} không phải leader của bất kỳ nhóm nào`);
-            return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Bạn không phải là trưởng nhóm!' };
-        }
-
-        // Lấy thông tin đề tài với majorId
-        let topic;
-        if (topicId) {
-            topic = await prisma.topic.findUnique({
-                where: { id: topicId },
-                select: {
-                    id: true,
-                    status: true,
-                    topicAssignments: true,
-                    submissionPeriodId: true,
-                    topicCode: true,
-                    proposedGroupId: true,
-                    majors: { select: { id: true } }, // Lấy majorId của đề tài
-                },
-            });
-        } else if (topicCode) {
-            topic = await prisma.topic.findUnique({
-                where: { topicCode },
-                select: {
-                    id: true,
-                    status: true,
-                    topicAssignments: true,
-                    submissionPeriodId: true,
-                    topicCode: true,
-                    proposedGroupId: true,
-                    majors: { select: { id: true } }, // Lấy majorId của đề tài
-                },
-            });
-        }
-        if (!topic) {
-            return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Đề tài không tồn tại!' };
-        }
-        if (topic.status !== 'APPROVED') {
-            return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Đề tài chưa được duyệt!' };
-        }
-        if (topic.topicAssignments.length > 0) {
-            return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Đề tài đã được gán cho nhóm khác!' };
-        }
-        if (topic.proposedGroupId) {
-            return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Đề tài đã được mentor đề xuất gán cho nhóm khác!' };
-        }
-
-        // Kiểm tra chuyên ngành của leader
-        const leaderStudent = await prisma.student.findUnique({
-            where: { userId: leaderId },
-            select: { majorId: true },
+      } else if (topicCode) {
+        topic = await prisma.topic.findUnique({
+          where: { topicCode },
+          select: {
+            id: true,
+            status: true,
+            topicAssignments: true,
+            submissionPeriodId: true,
+            topicCode: true,
+            proposedGroupId: true,
+            majors: { select: { id: true } }, // Lấy majorId của đề tài
+          },
         });
-        if (!leaderStudent || !leaderStudent.majorId) {
-            return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Không tìm thấy thông tin chuyên ngành của bạn.' };
-        }
+      }
+      if (!topic) {
+        return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Đề tài không tồn tại!' };
+      }
+      if (topic.status !== 'APPROVED') {
+        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Đề tài chưa được duyệt!' };
+      }
+      if (topic.topicAssignments.length > 0) {
+        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Đề tài đã được gán cho nhóm khác!' };
+      }
+      if (topic.proposedGroupId) {
+        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Đề tài đã được mentor đề xuất gán cho nhóm khác!' };
+      }
 
-        // Lấy majorId của đề tài (giả sử đề tài chỉ liên kết với một chuyên ngành)
-        const topicMajorId = topic.majors[0]?.id;
-        if (!topicMajorId) {
-            return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Đề tài không có thông tin chuyên ngành!' };
-        }
+      // Kiểm tra chuyên ngành của leader
+      const leaderStudent = await prisma.student.findUnique({
+        where: { userId: leaderId },
+        select: { majorId: true },
+      });
+      if (!leaderStudent || !leaderStudent.majorId) {
+        return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Không tìm thấy thông tin chuyên ngành của bạn.' };
+      }
 
-        // So sánh majorId của leader và đề tài
-        if (topicMajorId !== leaderStudent.majorId) {
-            return {
-                success: false,
-                status: HTTP_STATUS.BAD_REQUEST,
-                message: 'Đề tài không cùng chuyên ngành với nhóm của bạn!',
-            };
-        }
+      // Lấy majorId của đề tài (giả sử đề tài chỉ liên kết với một chuyên ngành)
+      const topicMajorId = topic.majors[0]?.id;
+      if (!topicMajorId) {
+        return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Đề tài không có thông tin chuyên ngành!' };
+      }
 
-        // Kiểm tra đăng ký hiện có
-        const existingRegistration = await prisma.topicRegistration.findFirst({
-            where: { topicId: topic.id, userId: leaderId },
-        });
-        if (existingRegistration) {
-            return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Nhóm của bạn đã đăng ký đề tài này!' };
-        }
-
-        // Tạo đăng ký mới
-        const registration = await prisma.topicRegistration.create({
-            data: {
-                topicId: topic.id,
-                userId: leaderId,
-                submissionPeriodId: topic.submissionPeriodId || '',
-                role: 'leader',
-                status: 'PENDING',
-                registeredAt: new Date(),
-            },
-        });
-
+      // So sánh majorId của leader và đề tài
+      if (topicMajorId !== leaderStudent.majorId) {
         return {
-            success: true,
-            status: HTTP_STATUS.CREATED,
-            message: 'Đăng ký đề tài thành công! Chờ mentor duyệt.',
-            data: registration,
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: 'Đề tài không cùng chuyên ngành với nhóm của bạn!',
         };
+      }
+
+      // Kiểm tra đăng ký hiện có
+      const existingRegistration = await prisma.topicRegistration.findFirst({
+        where: { topicId: topic.id, userId: leaderId },
+      });
+      if (existingRegistration) {
+        return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Nhóm của bạn đã đăng ký đề tài này!' };
+      }
+
+      // Tạo đăng ký mới
+      const registration = await prisma.topicRegistration.create({
+        data: {
+          topicId: topic.id,
+          userId: leaderId,
+          submissionPeriodId: topic.submissionPeriodId || '',
+          role: 'leader',
+          status: 'PENDING',
+          registeredAt: new Date(),
+        },
+      });
+
+      return {
+        success: true,
+        status: HTTP_STATUS.CREATED,
+        message: 'Đăng ký đề tài thành công! Chờ mentor duyệt.',
+        data: registration,
+      };
     } catch (error) {
-        console.error('Lỗi khi đăng ký đề tài:', error);
-        return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi đăng ký đề tài.' };
+      console.error('Lỗi khi đăng ký đề tài:', error);
+      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi đăng ký đề tài.' };
     }
-}
+  }
 
 
   async updateTopic(
@@ -524,101 +562,101 @@ export class TopicService {
 
   async getTopicsBySemester(semesterId: string, round?: number) {
     try {
-        const semester = await prisma.semester.findUnique({
-            where: { id: semesterId },
-            select: { id: true },
-        });
-        if (!semester) {
-            return {
-                success: false,
-                status: HTTP_STATUS.NOT_FOUND,
-                message: 'Học kỳ không tồn tại.',
-            };
-        }
-
-        let whereClause: any = { semesterId };
-        if (round !== undefined) {
-            const submissionPeriod = await prisma.submissionPeriod.findFirst({
-                where: { semesterId, roundNumber: round },
-                select: { id: true },
-            });
-            if (!submissionPeriod) {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.NOT_FOUND,
-                    message: `Không tìm thấy đợt xét duyệt ${round} trong học kỳ này.`,
-                };
-            }
-            whereClause.submissionPeriodId = submissionPeriod.id;
-        }
-
-        const topics = await prisma.topic.findMany({
-            where: whereClause,
-            select: {
-                id: true,
-                topicCode: true,
-                nameVi: true,
-                nameEn: true,
-                name: true,
-                description: true,
-                isBusiness: true,
-                businessPartner: true,
-                source: true,
-                subSupervisor: true,
-                createdBy: true,
-                status: true,
-                createdAt: true,
-                submissionPeriodId: true,
-                subMentor: { select: { fullName: true, email: true } },
-                creator: { select: { fullName: true, email: true } },
-                proposedGroupId: true,
-                group: { select: { id: true, groupCode: true } }, // Nhóm đề xuất
-                topicAssignments: { // Nhóm thực tế
-                    select: {
-                        group: { select: { id: true, groupCode: true } },
-                    },
-                    take: 1, // Lấy assignment đầu tiên
-                },
-            },
-        });
-
-        // Định dạng dữ liệu để hiển thị nhóm hợp lý
-        const formattedTopics = topics.map(topic => ({
-            ...topic,
-            group: topic.topicAssignments.length > 0 
-                ? topic.topicAssignments[0].group // Ưu tiên nhóm từ TopicAssignment
-                : topic.group, // Nếu không có TopicAssignment, dùng nhóm từ proposedGroupId
-            topicAssignments: undefined, // Loại bỏ nếu không cần trả về
-        }));
-
-        if (formattedTopics.length === 0) {
-            return {
-                success: true,
-                status: HTTP_STATUS.OK,
-                message: round !== undefined
-                    ? `Không có đề tài nào trong đợt xét duyệt ${round} của học kỳ này.`
-                    : 'Không có đề tài nào trong học kỳ này.',
-                data: [],
-            };
-        }
-
+      const semester = await prisma.semester.findUnique({
+        where: { id: semesterId },
+        select: { id: true },
+      });
+      if (!semester) {
         return {
-            success: true,
-            status: HTTP_STATUS.OK,
-            message: round !== undefined
-                ? `Lấy danh sách đề tài trong đợt xét duyệt ${round} thành công.`
-                : 'Lấy danh sách đề tài trong học kỳ thành công.',
-            data: formattedTopics,
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: 'Học kỳ không tồn tại.',
         };
-    } catch (error) {
-        console.error('Lỗi khi lấy danh sách đề tài:', error);
-        return {
+      }
+
+      let whereClause: any = { semesterId };
+      if (round !== undefined) {
+        const submissionPeriod = await prisma.submissionPeriod.findFirst({
+          where: { semesterId, roundNumber: round },
+          select: { id: true },
+        });
+        if (!submissionPeriod) {
+          return {
             success: false,
-            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-            message: 'Lỗi khi lấy danh sách đề tài.',
+            status: HTTP_STATUS.NOT_FOUND,
+            message: `Không tìm thấy đợt xét duyệt ${round} trong học kỳ này.`,
+          };
+        }
+        whereClause.submissionPeriodId = submissionPeriod.id;
+      }
+
+      const topics = await prisma.topic.findMany({
+        where: whereClause,
+        select: {
+          id: true,
+          topicCode: true,
+          nameVi: true,
+          nameEn: true,
+          name: true,
+          description: true,
+          isBusiness: true,
+          businessPartner: true,
+          source: true,
+          subSupervisor: true,
+          createdBy: true,
+          status: true,
+          createdAt: true,
+          submissionPeriodId: true,
+          subMentor: { select: { fullName: true, email: true } },
+          creator: { select: { fullName: true, email: true } },
+          proposedGroupId: true,
+          group: { select: { id: true, groupCode: true } }, // Nhóm đề xuất
+          topicAssignments: { // Nhóm thực tế
+            select: {
+              group: { select: { id: true, groupCode: true } },
+            },
+            take: 1, // Lấy assignment đầu tiên
+          },
+        },
+      });
+
+      // Định dạng dữ liệu để hiển thị nhóm hợp lý
+      const formattedTopics = topics.map(topic => ({
+        ...topic,
+        group: topic.topicAssignments.length > 0
+          ? topic.topicAssignments[0].group // Ưu tiên nhóm từ TopicAssignment
+          : topic.group, // Nếu không có TopicAssignment, dùng nhóm từ proposedGroupId
+        topicAssignments: undefined, // Loại bỏ nếu không cần trả về
+      }));
+
+      if (formattedTopics.length === 0) {
+        return {
+          success: true,
+          status: HTTP_STATUS.OK,
+          message: round !== undefined
+            ? `Không có đề tài nào trong đợt xét duyệt ${round} của học kỳ này.`
+            : 'Không có đề tài nào trong học kỳ này.',
+          data: [],
         };
+      }
+
+      return {
+        success: true,
+        status: HTTP_STATUS.OK,
+        message: round !== undefined
+          ? `Lấy danh sách đề tài trong đợt xét duyệt ${round} thành công.`
+          : 'Lấy danh sách đề tài trong học kỳ thành công.',
+        data: formattedTopics,
+      };
+    } catch (error) {
+      console.error('Lỗi khi lấy danh sách đề tài:', error);
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: 'Lỗi khi lấy danh sách đề tài.',
+      };
     }
-}
+  }
   async getTopicById(topicId: string) {
     try {
       const topic = await prisma.topic.findUnique({
@@ -652,332 +690,525 @@ export class TopicService {
     status: 'APPROVED' | 'REJECTED' | 'IMPROVED',
     userId: string,
     reviewReason?: string
-) {
+  ) {
     try {
-        if (!['APPROVED', 'REJECTED', 'IMPROVED'].includes(status)) {
-            return {
-                success: false,
-                status: HTTP_STATUS.BAD_REQUEST,
-                message: 'Trạng thái không hợp lệ! Chỉ chấp nhận APPROVED, REJECTED hoặc IMPROVED.',
-            };
-        }
-
-        const topic = await prisma.topic.findUnique({
-            where: { id: topicId },
-            include: {
-                group: {
-                    select: {
-                        id: true,
-                        groupCode: true,
-                        semesterId: true,
-                        mentors: { select: { mentorId: true, roleId: true } },
-                    },
-                },
-            },
-        });
-
-        if (!topic) {
-            return {
-                success: false,
-                status: HTTP_STATUS.NOT_FOUND,
-                message: 'Đề tài không tồn tại!',
-            };
-        }
-
-        if (topic.status !== 'PENDING') {
-            return {
-                success: false,
-                status: HTTP_STATUS.BAD_REQUEST,
-                message: 'Đề tài không ở trạng thái PENDING nên không thể duyệt!',
-            };
-        }
-
-        // Cập nhật trạng thái đề tài (không reset proposedGroupId)
-        const updatedTopic = await prisma.topic.update({
-            where: { id: topicId },
-            data: {
-                status,
-                reviewReason: reviewReason || null,
-                updatedAt: new Date(),
-            },
-            include: { group: true },
-        });
-
-        // Xử lý khi APPROVED
-        if (status === 'APPROVED' && topic.proposedGroupId) {
-            const existingAssignment = await prisma.topicAssignment.findFirst({
-                where: { topicId, groupId: topic.proposedGroupId },
-            });
-
-            if (!existingAssignment) {
-                await prisma.topicAssignment.create({
-                    data: {
-                        topicId,
-                        groupId: topic.proposedGroupId,
-                        assignedBy: userId,
-                        approvalStatus: 'APPROVED',
-                        defendStatus: 'NOT_SCHEDULED',
-                        status: 'ASSIGNED',
-                    },
-                });
-            }
-
-            const mentorMainRole = await prisma.role.findUnique({ where: { name: "mentor_main" } });
-            if (!mentorMainRole) throw new Error("Vai trò mentor_main không tồn tại.");
-
-            const creator = await prisma.user.findUnique({
-                where: { id: topic.createdBy },
-                select: { roles: { select: { role: true } } },
-            });
-            const isLecturer = creator?.roles.some(r => r.role.name.toLowerCase() === 'lecturer');
-
-            const hasMentorMain = topic.group?.mentors.some(gm => gm.roleId === mentorMainRole.id) || false;
-            if (isLecturer && !hasMentorMain) {
-                await prisma.groupMentor.upsert({
-                    where: { groupId_mentorId: { groupId: topic.proposedGroupId, mentorId: topic.createdBy } },
-                    update: {},
-                    create: {
-                        groupId: topic.proposedGroupId,
-                        mentorId: topic.createdBy,
-                        roleId: mentorMainRole.id,
-                        addedBy: userId,
-                    },
-                });
-            }
-
-            if (topic.subSupervisor) {
-                const mentorSubRole = await prisma.role.findUnique({ where: { name: "mentor_sub" } });
-                if (!mentorSubRole) throw new Error("Vai trò mentor_sub không tồn tại.");
-                const hasMentorSub = topic.group?.mentors.some(gm => gm.mentorId === topic.subSupervisor) || false;
-                if (!hasMentorSub) {
-                    await prisma.groupMentor.create({
-                        data: {
-                            groupId: topic.proposedGroupId,
-                            mentorId: topic.subSupervisor,
-                            roleId: mentorSubRole.id,
-                            addedBy: userId,
-                        },
-                    });
-                }
-            }
-
-            // KHÔNG reset proposedGroupId
-        }
-
+      if (!['APPROVED', 'REJECTED', 'IMPROVED'].includes(status)) {
         return {
-            success: true,
-            status: HTTP_STATUS.OK,
-            message: status === 'APPROVED' ? 'Đề tài đã được duyệt thành công!' : status === 'REJECTED' ? 'Đề tài đã bị từ chối.' : 'Đề tài cần được cải thiện thêm.',
-            data: { topic: updatedTopic, group: updatedTopic.group },
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: 'Trạng thái không hợp lệ! Chỉ chấp nhận APPROVED, REJECTED hoặc IMPROVED.',
         };
-    } catch (error) {
-        console.error('Lỗi khi duyệt đề tài:', error);
-        return {
-            success: false,
-            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-            message: 'Lỗi hệ thống khi duyệt đề tài!',
-        };
-    }
-}
-
-async approveTopicRegistrationByMentor(
-  registrationId: string,
-  data: { status: 'APPROVED' | 'REJECTED'; reason?: string },
-  userId: string
-) {
-  try {
-      // Kiểm tra trạng thái hợp lệ
-      if (!['APPROVED', 'REJECTED'].includes(data.status)) {
-          return {
-              success: false,
-              status: HTTP_STATUS.BAD_REQUEST,
-              message: 'Trạng thái không hợp lệ! Chỉ chấp nhận APPROVED hoặc REJECTED.',
-          };
       }
 
+      const topic = await prisma.topic.findUnique({
+        where: { id: topicId },
+        include: {
+          group: {
+            select: {
+              id: true,
+              groupCode: true,
+              semesterId: true,
+              mentors: { select: { mentorId: true, roleId: true } },
+            },
+          },
+        },
+      });
+
+      if (!topic) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: 'Đề tài không tồn tại!',
+        };
+      }
+
+      if (topic.status !== 'PENDING') {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: 'Đề tài không ở trạng thái PENDING nên không thể duyệt!',
+        };
+      }
+
+      // Cập nhật trạng thái đề tài (không reset proposedGroupId)
+      const updatedTopic = await prisma.topic.update({
+        where: { id: topicId },
+        data: {
+          status,
+          reviewReason: reviewReason || null,
+          updatedAt: new Date(),
+        },
+        include: { group: true },
+      });
+
+      // Xử lý khi APPROVED
+      if (status === 'APPROVED' && topic.proposedGroupId) {
+        const existingAssignment = await prisma.topicAssignment.findFirst({
+          where: { topicId, groupId: topic.proposedGroupId },
+        });
+
+        if (!existingAssignment) {
+          await prisma.topicAssignment.create({
+            data: {
+              topicId,
+              groupId: topic.proposedGroupId,
+              assignedBy: userId,
+              approvalStatus: 'APPROVED',
+              defendStatus: 'NOT_SCHEDULED',
+              status: 'ASSIGNED',
+            },
+          });
+        }
+
+        const mentorMainRole = await prisma.role.findUnique({ where: { name: "mentor_main" } });
+        if (!mentorMainRole) throw new Error("Vai trò mentor_main không tồn tại.");
+
+        const creator = await prisma.user.findUnique({
+          where: { id: topic.createdBy },
+          select: { roles: { select: { role: true } } },
+        });
+        const isLecturer = creator?.roles.some(r => r.role.name.toLowerCase() === 'lecturer');
+
+        const hasMentorMain = topic.group?.mentors.some(gm => gm.roleId === mentorMainRole.id) || false;
+        if (isLecturer && !hasMentorMain) {
+          await prisma.groupMentor.upsert({
+            where: { groupId_mentorId: { groupId: topic.proposedGroupId, mentorId: topic.createdBy } },
+            update: {},
+            create: {
+              groupId: topic.proposedGroupId,
+              mentorId: topic.createdBy,
+              roleId: mentorMainRole.id,
+              addedBy: userId,
+            },
+          });
+        }
+
+        if (topic.subSupervisor) {
+          const mentorSubRole = await prisma.role.findUnique({ where: { name: "mentor_sub" } });
+          if (!mentorSubRole) throw new Error("Vai trò mentor_sub không tồn tại.");
+          const hasMentorSub = topic.group?.mentors.some(gm => gm.mentorId === topic.subSupervisor) || false;
+          if (!hasMentorSub) {
+            await prisma.groupMentor.create({
+              data: {
+                groupId: topic.proposedGroupId,
+                mentorId: topic.subSupervisor,
+                roleId: mentorSubRole.id,
+                addedBy: userId,
+              },
+            });
+          }
+        }
+
+        // KHÔNG reset proposedGroupId
+      }
+
+      return {
+        success: true,
+        status: HTTP_STATUS.OK,
+        message: status === 'APPROVED' ? 'Đề tài đã được duyệt thành công!' : status === 'REJECTED' ? 'Đề tài đã bị từ chối.' : 'Đề tài cần được cải thiện thêm.',
+        data: { topic: updatedTopic, group: updatedTopic.group },
+      };
+    } catch (error) {
+      console.error('Lỗi khi duyệt đề tài:', error);
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: 'Lỗi hệ thống khi duyệt đề tài!',
+      };
+    }
+  }
+
+  async approveTopicRegistrationByMentor(
+    registrationId: string,
+    data: { status: 'APPROVED' | 'REJECTED'; reason?: string },
+    userId: string
+  ) {
+    try {
+      // Kiểm tra dữ liệu đầu vào
+      if (!registrationId || !userId) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: 'Vui lòng cung cấp registrationId và userId hợp lệ!',
+        };
+      }
+  
+      if (!['APPROVED', 'REJECTED'].includes(data.status)) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: 'Trạng thái không hợp lệ! Chỉ chấp nhận APPROVED hoặc REJECTED.',
+        };
+      }
+  
       // Lấy thông tin đăng ký
       const registration = await prisma.topicRegistration.findUnique({
-          where: { id: registrationId },
-          include: {
-              topic: {
-                  select: {
-                      id: true,
-                      createdBy: true,
-                      submissionPeriodId: true,
-                      status: true,
-                      proposedGroupId: true,
-                  },
-              },
+        where: { id: registrationId },
+        include: {
+          topic: {
+            select: {
+              id: true,
+              topicCode: true,
+              nameVi: true,
+              createdBy: true,
+              status: true,
+              submissionPeriodId: true,
+            },
           },
+        },
       });
-
+  
       if (!registration) {
-          return {
-              success: false,
-              status: HTTP_STATUS.NOT_FOUND,
-              message: 'Không tìm thấy đăng ký đề tài!',
-          };
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: 'Không tìm thấy đăng ký đề tài!',
+        };
       }
-
+  
+      // Kiểm tra quyền hạn và trạng thái
       if (registration.topic.createdBy !== userId) {
-          return {
-              success: false,
-              status: HTTP_STATUS.FORBIDDEN,
-              message: 'Chỉ mentor tạo đề tài mới có quyền duyệt đăng ký!',
-          };
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: 'Chỉ mentor tạo đề tài mới có quyền duyệt đăng ký!',
+        };
       }
-
+  
       if (registration.topic.status !== 'APPROVED') {
-          return {
-              success: false,
-              status: HTTP_STATUS.FORBIDDEN,
-              message: 'Đề tài chưa được duyệt bởi Academic Officer!',
-          };
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: 'Đề tài chưa được duyệt bởi Academic Officer!',
+        };
       }
-
+  
       if (registration.status !== 'PENDING') {
-          return {
-              success: false,
-              status: HTTP_STATUS.FORBIDDEN,
-              message: 'Đăng ký này không ở trạng thái PENDING!',
-          };
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: 'Đăng ký này không ở trạng thái PENDING!',
+        };
       }
-
-      // Kiểm tra xem đề tài đã có nhóm được duyệt chưa
+  
+      // Kiểm tra thời gian nộp đăng ký
+      const submissionPeriod = await prisma.submissionPeriod.findUnique({
+        where: { id: registration.topic.submissionPeriodId || '' },
+        select: { startDate: true, endDate: true },
+      });
+  
+      if (!submissionPeriod) {
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: 'Không tìm thấy thời gian nộp đăng ký!',
+        };
+      }
+  
+      const currentDate = new Date();
+      const startDate = new Date(submissionPeriod.startDate);
+      const endDate = new Date(submissionPeriod.endDate);
+  
+      if (currentDate < startDate || currentDate > endDate) {
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: 'Thời gian nộp đăng ký đã hết hoặc chưa bắt đầu!',
+        };
+      }
+  
+      // Kiểm tra xem đề tài đã được gán cho nhóm nào khác chưa
       const existingApproved = await prisma.topicRegistration.findFirst({
-          where: { topicId: registration.topic.id, status: "APPROVED" },
+        where: { topicId: registration.topic.id, status: "APPROVED" },
       });
       if (existingApproved) {
-          return {
-              success: false,
-              status: HTTP_STATUS.FORBIDDEN,
-              message: 'Đề tài đã được gán cho một nhóm khác!',
-          };
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: 'Đề tài đã được gán cho một nhóm khác!',
+        };
       }
-
-      // Cập nhật trạng thái đăng ký
-      const updatedRegistration = await prisma.topicRegistration.update({
+  
+      // Sử dụng transaction để đảm bảo tính nhất quán
+      const result = await prisma.$transaction(async (tx) => {
+        // Cập nhật trạng thái đăng ký
+        const updatedRegistration = await tx.topicRegistration.update({
           where: { id: registrationId },
           data: {
-              status: data.status,
-              decisionFile: data.reason || null, // Sửa lỗi cú pháp từ sonidosreason
-              reviewedAt: new Date(),
-              reviewerId: userId,
+            status: data.status,
+            reason: data.reason || null,
+            reviewedAt: new Date(),
+            reviewerId: userId,
           },
-      });
-
-      if (data.status === 'REJECTED') {
+        });
+  
+        // Tạo thông báo cho người đăng ký
+        const notificationMessage =
+          data.status === 'APPROVED'
+            ? `Chúc mừng! Đăng ký đề tài "${registration.topic.nameVi}" của bạn đã được duyệt! ${data.reason ? `Lý do: ${data.reason}` : ''}`
+            : `Rất tiếc, đăng ký đề tài "${registration.topic.nameVi}" của bạn chưa được duyệt. Lý do: ${data.reason || 'Không có lý do cụ thể'}.`;
+  
+        const notification = await tx.notification.create({
+          data: {
+            title: data.status === 'APPROVED' ? 'Đăng ký đề tài được duyệt' : 'Đăng ký đề tài chưa được duyệt',
+            content: notificationMessage,
+            notificationType: 'TOPIC_REGISTRATION',
+            createdBy: userId,
+            isSystem: false,
+            createdAt: new Date(),
+          },
+        });
+  
+        await tx.notificationRecipient.create({
+          data: {
+            notificationId: notification.id,
+            userId: registration.userId,
+            isRead: false,
+            readAt: null,
+          },
+        });
+  
+        if (data.status === 'REJECTED') {
           return {
-              success: true,
-              status: HTTP_STATUS.OK,
-              message: 'Đã từ chối đăng ký đề tài!',
-              data: updatedRegistration,
+            success: true,
+            status: HTTP_STATUS.OK,
+            message: 'Đã từ chối đăng ký đề tài!',
+            data: {
+              registration: updatedRegistration,
+              reason: updatedRegistration.reason,
+            },
           };
-      }
-
-      // Xử lý khi APPROVED: Gán nhóm của leader vào đề tài
-      const student = await prisma.student.findFirst({
+        }
+  
+        // Xử lý khi APPROVED
+        const student = await tx.student.findFirst({
           where: { userId: registration.userId },
           select: { id: true },
-      });
-
-      const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
-      if (!leaderRole) throw new Error("Vai trò 'leader' không tồn tại.");
-
-      const leaderGroup = await prisma.groupMember.findFirst({
+        });
+  
+        if (!student) {
+          return {
+            success: false,
+            status: HTTP_STATUS.NOT_FOUND,
+            message: 'Không tìm thấy sinh viên!',
+          };
+        }
+  
+        const leaderRole = await tx.role.findUnique({ where: { name: "leader" } });
+        if (!leaderRole) throw new Error("Vai trò 'leader' không tồn tại.");
+  
+        const leaderGroup = await tx.groupMember.findFirst({
           where: {
-              OR: [{ studentId: student?.id }, { userId: registration.userId }],
-              roleId: leaderRole.id,
+            studentId: student.id,
+            roleId: leaderRole.id,
           },
           select: { groupId: true },
-      });
-
-      if (!leaderGroup) {
+        });
+  
+        if (!leaderGroup) {
           return {
-              success: false,
-              status: HTTP_STATUS.NOT_FOUND,
-              message: 'Không tìm thấy nhóm của leader!',
+            success: false,
+            status: HTTP_STATUS.NOT_FOUND,
+            message: 'Không tìm thấy nhóm của leader!',
           };
-      }
-
-      // Kiểm tra và tạo TopicAssignment
-      const existingAssignment = await prisma.topicAssignment.findFirst({
-          where: { topicId: registration.topic.id },
-      });
-
-      let groupInfo = null;
-      if (!existingAssignment) {
-          await prisma.topicAssignment.create({
-              data: {
-                  topicId: registration.topic.id,
-                  groupId: leaderGroup.groupId,
-                  assignedBy: userId,
-                  approvalStatus: 'APPROVED',
-                  defendStatus: 'NOT_SCHEDULED',
-                  status: 'ASSIGNED',
-              },
+        }
+  
+        // Kiểm tra số lượng thành viên trong nhóm
+        const groupMembers = await tx.groupMember.count({
+          where: { groupId: leaderGroup.groupId, isActive: true },
+        });
+  
+        const MIN_GROUP_SIZE = 3;
+        if (groupMembers < MIN_GROUP_SIZE) {
+          const autoRejectReason = 'Nhóm không đủ năng lực: Số lượng thành viên không đủ (ít nhất 3 thành viên).';
+          const autoRejectedRegistration = await tx.topicRegistration.update({
+            where: { id: registrationId },
+            data: {
+              status: 'REJECTED',
+              reason: autoRejectReason,
+              reviewedAt: new Date(),
+              reviewerId: userId,
+            },
           });
-
-          const mentorRole = await prisma.role.findUnique({ where: { name: "mentor_main" } });
-          if (!mentorRole) throw new Error("Vai trò mentor_main không tồn tại.");
-          await prisma.groupMentor.upsert({
-              where: { groupId_mentorId: { groupId: leaderGroup.groupId, mentorId: userId } },
-              update: {},
-              create: {
-                  groupId: leaderGroup.groupId,
-                  mentorId: userId,
-                  roleId: mentorRole.id,
-                  addedBy: userId,
-              },
+  
+          const autoRejectNotification = await tx.notification.create({
+            data: {
+              title: 'Đăng ký đề tài chưa được duyệt',
+              content: `Rất tiếc, đăng ký đề tài "${registration.topic.nameVi}" của bạn chưa được duyệt tự động. Lý do: ${autoRejectReason}`,
+              notificationType: 'TOPIC_REGISTRATION',
+              createdBy: userId,
+              isSystem: true,
+              createdAt: new Date(),
+            },
           });
-
-          // Lấy thông tin nhóm vừa gán
-          groupInfo = await prisma.group.findUnique({
-              where: { id: leaderGroup.groupId },
-              select: {
-                  id: true,
-                  groupCode: true,
-              },
+  
+          await tx.notificationRecipient.create({
+            data: {
+              notificationId: autoRejectNotification.id,
+              userId: registration.userId,
+              isRead: false,
+              readAt: null,
+            },
           });
-      }
-
-      // Từ chối các đăng ký PENDING khác của cùng đề tài
-      await prisma.topicRegistration.updateMany({
+  
+          return {
+            success: false,
+            status: HTTP_STATUS.FORBIDDEN,
+            message: autoRejectReason,
+            data: {
+              registration: autoRejectedRegistration,
+              reason: autoRejectReason,
+            },
+          };
+        }
+  
+        const MAX_GROUP_SIZE = 5;
+        if (groupMembers > MAX_GROUP_SIZE) {
+          return {
+            success: false,
+            status: HTTP_STATUS.FORBIDDEN,
+            message: `Nhóm đã vượt quá số lượng thành viên tối đa (${MAX_GROUP_SIZE})!`,
+          };
+        }
+  
+        // Kiểm tra xem nhóm đã được gán cho đề tài nào khác chưa
+        const existingGroupAssignment = await tx.topicAssignment.findFirst({
           where: {
-              topicId: registration.topic.id,
-              status: "PENDING",
+            groupId: leaderGroup.groupId,
+            approvalStatus: 'APPROVED',
           },
-          data: {
+          include: {
+            topic: {
+              select: {
+                topicCode: true,
+                nameVi: true,
+              },
+            },
+          },
+        });
+  
+        if (existingGroupAssignment) {
+          return {
+            success: false,
+            status: HTTP_STATUS.FORBIDDEN,
+            message: `Nhóm này đã được duyệt cho đề tài khác: "${existingGroupAssignment.topic.nameVi}" (Mã: ${existingGroupAssignment.topic.topicCode})!`,
+          };
+        }
+  
+        // Kiểm tra và tạo TopicAssignment
+        const existingAssignment = await tx.topicAssignment.findFirst({
+          where: { topicId: registration.topic.id },
+        });
+  
+        let groupInfo = null;
+        if (!existingAssignment) {
+          await tx.topicAssignment.create({
+            data: {
+              topicId: registration.topic.id,
+              groupId: leaderGroup.groupId,
+              assignedBy: userId,
+              approvalStatus: 'APPROVED',
+              defendStatus: 'NOT_SCHEDULED',
+              status: 'ASSIGNED',
+            },
+          });
+  
+          const mentorRole = await tx.role.findUnique({ where: { name: "mentor_main" } });
+          if (!mentorRole) throw new Error("Vai trò mentor_main không tồn tại.");
+          await tx.groupMentor.upsert({
+            where: { groupId_mentorId: { groupId: leaderGroup.groupId, mentorId: userId } },
+            update: {},
+            create: {
+              groupId: leaderGroup.groupId,
+              mentorId: userId,
+              roleId: mentorRole.id,
+              addedBy: userId,
+            },
+          });
+  
+          groupInfo = await tx.group.findUnique({
+            where: { id: leaderGroup.groupId },
+            select: { id: true, groupCode: true },
+          });
+        }
+  
+        // Từ chối các đăng ký PENDING khác
+        const pendingRegistrations = await tx.topicRegistration.findMany({
+          where: {
+            topicId: registration.topic.id,
+            status: "PENDING",
+          },
+          select: { id: true, userId: true },
+        });
+  
+        for (const pending of pendingRegistrations) {
+          await tx.topicRegistration.update({
+            where: { id: pending.id },
+            data: {
               status: "REJECTED",
               reviewedAt: new Date(),
               reviewerId: userId,
-          },
-      });
-
-      const userInfo = await prisma.user.findUnique({
+              reason: 'Đề tài đã được gán cho nhóm khác.',
+            },
+          });
+  
+          const rejectNotification = await tx.notification.create({
+            data: {
+              title: 'Đăng ký đề tài chưa được duyệt',
+              content: `Rất tiếc, đăng ký đề tài "${registration.topic.nameVi}" của bạn chưa được duyệt vì đề tài đã được gán cho một nhóm khác. Bạn có thể chọn một đề tài khác để tiếp tục hành trình của mình!`,
+              notificationType: 'TOPIC_REGISTRATION',
+              createdBy: userId,
+              isSystem: false,
+              createdAt: new Date(),
+            },
+          });
+  
+          await tx.notificationRecipient.create({
+            data: {
+              notificationId: rejectNotification.id,
+              userId: pending.userId,
+              isRead: false,
+              readAt: null,
+            },
+          });
+        }
+  
+        const userInfo = await tx.user.findUnique({
           where: { id: registration.userId },
           select: { fullName: true, email: true },
-      });
-
-      return {
+        });
+  
+        if (!userInfo) {
+          return {
+            success: false,
+            status: HTTP_STATUS.NOT_FOUND,
+            message: 'Không tìm thấy thông tin người đăng ký!',
+          };
+        }
+  
+        return {
           success: true,
           status: HTTP_STATUS.OK,
           message: 'Duyệt đăng ký đề tài thành công!',
           data: {
-              registration: updatedRegistration,
-              user: userInfo,
-              group: groupInfo,
+            registration: updatedRegistration,
+            user: userInfo,
+            group: groupInfo,
+            reason: updatedRegistration.reason,
           },
-      };
-  } catch (error: any) { // Thêm kiểu cho error
+        };
+      });
+  
+      return result;
+    } catch (error: any) {
       console.error('Lỗi khi duyệt đăng ký đề tài:', error);
       return {
-          success: false,
-          status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-          message: 'Lỗi hệ thống khi duyệt đăng ký đề tài!',
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: 'Lỗi hệ thống khi duyệt đăng ký đề tài!',
       };
+    }
   }
-}
   async deleteTopic(topicId: string, isSystemWide: boolean, userId: string) {
     try {
       // Tìm đề tài theo topicId và lấy các trường cần thiết
@@ -1035,7 +1266,6 @@ async approveTopicRegistrationByMentor(
       await prisma.$transaction(async (tx) => {
         await tx.topicRegistration.deleteMany({ where: { topicId } });
         await tx.topicAssignment.deleteMany({ where: { topicId } });
-        await tx.decision.deleteMany({ where: { topicId } });
         await tx.document.deleteMany({ where: { topicId } });
         await tx.topic.delete({ where: { id: topicId } });
       });
@@ -1087,7 +1317,6 @@ async approveTopicRegistrationByMentor(
         where: { submissionPeriodId, status: 'PENDING' },
         include: {
           group: { select: { groupCode: true, id: true } },
-          decisions: { select: { draftFileUrl: true } },
         },
       });
 
@@ -1498,173 +1727,173 @@ async approveTopicRegistrationByMentor(
   // Lấy danh sách đề tài đã duyệt cho sinh viên
   async getApprovedTopicsForStudent(userId: string) {
     try {
-        // 1. Kiểm tra sinh viên
-        const student = await prisma.student.findUnique({
-            where: { userId },
-            select: { id: true },
-        });
-
-        if (!student) {
-            return {
-                success: false,
-                status: HTTP_STATUS.FORBIDDEN,
-                message: "Bạn không phải là sinh viên!",
-            };
-        }
-
-        // Ngày hiện tại
-        const currentDate = new Date();
-
-        // 2. Lấy danh sách nhóm của sinh viên
-        const groupMemberships = await prisma.groupMember.findMany({
-            where: { studentId: student.id },
-            include: {
-                group: {
-                    select: {
-                        id: true,
-                        groupCode: true,
-                        semester: { select: { id: true, code: true, startDate: true, endDate: true } },
-                    },
-                },
-            },
-        });
-
-        if (groupMemberships.length === 0) {
-            return {
-                success: false,
-                status: HTTP_STATUS.NOT_FOUND,
-                message: "Bạn không thuộc nhóm nào!",
-            };
-        }
-
-        // 3. Xác định trạng thái thực tế của học kỳ
-        const semesters = groupMemberships.map(m => {
-            const semester = m.group.semester;
-            const startDate = new Date(semester.startDate);
-            const endDate = new Date(semester.endDate || Infinity);
-
-            let effectiveStatus = "COMPLETE";
-            if (currentDate < startDate) effectiveStatus = "UPCOMING";
-            else if (currentDate >= startDate && currentDate <= endDate) effectiveStatus = "ACTIVE";
-
-            return { ...semester, effectiveStatus, groupId: m.groupId };
-        });
-
-        const groupIds = groupMemberships.map(m => m.groupId);
-
-        // 4. Lấy danh sách đề tài liên quan đến các nhóm
-        const topics = await prisma.topic.findMany({
-            where: {
-                topicAssignments: {
-                    some: {
-                        groupId: { in: groupIds },
-                        approvalStatus: { in: ["PENDING", "APPROVED", "REJECTED"] },
-                    },
-                },
-            },
-            include: {
-                topicAssignments: {
-                    include: {
-                        group: {
-                            select: {
-                                id: true,
-                                groupCode: true,
-                                semester: { select: { id: true, code: true, startDate: true, endDate: true } },
-                                members: {
-                                    include: {
-                                        user: { select: { id: true, fullName: true, email: true } },
-                                        role: { select: { name: true } },
-                                    },
-                                },
-                            },
-                        },
-                    },
-                },
-                creator: { select: { fullName: true, email: true } },
-                subMentor: { select: { fullName: true, email: true } },
-                majors: { select: { id: true, name: true } },
-                semester: { select: { id: true, code: true, startDate: true, endDate: true } },
-            },
-        });
-
-        if (topics.length === 0) {
-            return {
-                success: false,
-                status: HTTP_STATUS.NOT_FOUND,
-                message: "Không tìm thấy đề tài nào liên quan đến nhóm của bạn!",
-            };
-        }
-
-        // 5. Định dạng dữ liệu trả về, xử lý trường hợp semester undefined
-        const formattedTopics = topics.map(topic => {
-            const assignment = topic.topicAssignments[0]; // Lấy assignment đầu tiên liên quan đến nhóm
-            const semester = semesters.find(s => s.id === assignment.group.semester.id);
-
-            // Nếu không tìm thấy semester, sử dụng thông tin từ assignment.group.semester
-            const semesterData = semester || {
-                id: assignment.group.semester.id,
-                code: assignment.group.semester.code,
-                startDate: assignment.group.semester.startDate,
-                endDate: assignment.group.semester.endDate,
-                effectiveStatus: "UNKNOWN", // Trạng thái mặc định nếu không tính được
-            };
-
-            return {
-                id: topic.id,
-                topicCode: topic.topicCode,
-                nameVi: topic.nameVi,
-                nameEn: topic.nameEn,
-                description: topic.description,
-                status: topic.status,
-                approvalStatus: assignment.approvalStatus,
-                semester: {
-                    id: semesterData.id,
-                    code: semesterData.code,
-                    startDate: semesterData.startDate,
-                    endDate: semesterData.endDate,
-                    effectiveStatus: semesterData.effectiveStatus,
-                },
-                createdBy: topic.creator,
-                subSupervisor: topic.subMentor,
-                majors: topic.majors,
-                group: {
-                    id: assignment.group.id,
-                    groupCode: assignment.group.groupCode,
-                    members: assignment.group.members,
-                },
-            };
-        });
-
-        return {
-            success: true,
-            status: HTTP_STATUS.OK,
-            message: "Lấy danh sách đề tài liên quan đến nhóm thành công!",
-            data: formattedTopics,
-        };
-    } catch (error) {
-        console.error("Lỗi khi lấy danh sách đề tài cho sinh viên:", error);
-        return {
-            success: false,
-            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-            message: "Lỗi hệ thống khi lấy danh sách đề tài!",
-        };
-    }
-}
-// Lấy danh sách tất cả đề tài đã duyệt cho sinh viên
-async getAllApprovedTopicsForStudent(userId: string) {
-  try {
       // 1. Kiểm tra sinh viên
       const student = await prisma.student.findUnique({
-          where: { userId },
-          select: { id: true, majorId: true },
+        where: { userId },
+        select: { id: true },
       });
 
       if (!student) {
-          return {
-              success: false,
-              status: HTTP_STATUS.FORBIDDEN,
-              message: "Bạn không phải là sinh viên!",
-          };
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: "Bạn không phải là sinh viên!",
+        };
+      }
+
+      // Ngày hiện tại
+      const currentDate = new Date();
+
+      // 2. Lấy danh sách nhóm của sinh viên
+      const groupMemberships = await prisma.groupMember.findMany({
+        where: { studentId: student.id },
+        include: {
+          group: {
+            select: {
+              id: true,
+              groupCode: true,
+              semester: { select: { id: true, code: true, startDate: true, endDate: true } },
+            },
+          },
+        },
+      });
+
+      if (groupMemberships.length === 0) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: "Bạn không thuộc nhóm nào!",
+        };
+      }
+
+      // 3. Xác định trạng thái thực tế của học kỳ
+      const semesters = groupMemberships.map(m => {
+        const semester = m.group.semester;
+        const startDate = new Date(semester.startDate);
+        const endDate = new Date(semester.endDate || Infinity);
+
+        let effectiveStatus = "COMPLETE";
+        if (currentDate < startDate) effectiveStatus = "UPCOMING";
+        else if (currentDate >= startDate && currentDate <= endDate) effectiveStatus = "ACTIVE";
+
+        return { ...semester, effectiveStatus, groupId: m.groupId };
+      });
+
+      const groupIds = groupMemberships.map(m => m.groupId);
+
+      // 4. Lấy danh sách đề tài liên quan đến các nhóm
+      const topics = await prisma.topic.findMany({
+        where: {
+          topicAssignments: {
+            some: {
+              groupId: { in: groupIds },
+              approvalStatus: { in: ["PENDING", "APPROVED", "REJECTED"] },
+            },
+          },
+        },
+        include: {
+          topicAssignments: {
+            include: {
+              group: {
+                select: {
+                  id: true,
+                  groupCode: true,
+                  semester: { select: { id: true, code: true, startDate: true, endDate: true } },
+                  members: {
+                    include: {
+                      user: { select: { id: true, fullName: true, email: true } },
+                      role: { select: { name: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          creator: { select: { fullName: true, email: true } },
+          subMentor: { select: { fullName: true, email: true } },
+          majors: { select: { id: true, name: true } },
+          semester: { select: { id: true, code: true, startDate: true, endDate: true } },
+        },
+      });
+
+      if (topics.length === 0) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: "Không tìm thấy đề tài nào liên quan đến nhóm của bạn!",
+        };
+      }
+
+      // 5. Định dạng dữ liệu trả về, xử lý trường hợp semester undefined
+      const formattedTopics = topics.map(topic => {
+        const assignment = topic.topicAssignments[0]; // Lấy assignment đầu tiên liên quan đến nhóm
+        const semester = semesters.find(s => s.id === assignment.group.semester.id);
+
+        // Nếu không tìm thấy semester, sử dụng thông tin từ assignment.group.semester
+        const semesterData = semester || {
+          id: assignment.group.semester.id,
+          code: assignment.group.semester.code,
+          startDate: assignment.group.semester.startDate,
+          endDate: assignment.group.semester.endDate,
+          effectiveStatus: "UNKNOWN", // Trạng thái mặc định nếu không tính được
+        };
+
+        return {
+          id: topic.id,
+          topicCode: topic.topicCode,
+          nameVi: topic.nameVi,
+          nameEn: topic.nameEn,
+          description: topic.description,
+          status: topic.status,
+          approvalStatus: assignment.approvalStatus,
+          semester: {
+            id: semesterData.id,
+            code: semesterData.code,
+            startDate: semesterData.startDate,
+            endDate: semesterData.endDate,
+            effectiveStatus: semesterData.effectiveStatus,
+          },
+          createdBy: topic.creator,
+          subSupervisor: topic.subMentor,
+          majors: topic.majors,
+          group: {
+            id: assignment.group.id,
+            groupCode: assignment.group.groupCode,
+            members: assignment.group.members,
+          },
+        };
+      });
+
+      return {
+        success: true,
+        status: HTTP_STATUS.OK,
+        message: "Lấy danh sách đề tài liên quan đến nhóm thành công!",
+        data: formattedTopics,
+      };
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách đề tài cho sinh viên:", error);
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: "Lỗi hệ thống khi lấy danh sách đề tài!",
+      };
+    }
+  }
+  // Lấy danh sách tất cả đề tài đã duyệt cho sinh viên
+  async getAllApprovedTopicsForStudent(userId: string) {
+    try {
+      // 1. Kiểm tra sinh viên
+      const student = await prisma.student.findUnique({
+        where: { userId },
+        select: { id: true, majorId: true },
+      });
+
+      if (!student) {
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: "Bạn không phải là sinh viên!",
+        };
       }
 
       // Ngày hiện tại
@@ -1672,74 +1901,79 @@ async getAllApprovedTopicsForStudent(userId: string) {
 
       // 2. Lấy tất cả đề tài đã duyệt
       const topics = await prisma.topic.findMany({
-          where: { status: "APPROVED" },
-          include: {
-              semester: { select: { id: true, code: true, startDate: true, endDate: true } },
-              topicAssignments: {
-                  include: {
-                      group: {
-                          select: {
-                              id: true,
-                              groupCode: true,
-                              semester: { select: { id: true, code: true } },
-                              members: {
-                                  include: {
-                                      user: { select: { id: true, fullName: true, email: true } },
-                                      role: { select: { name: true } },
-                                  },
-                              },
-                          },
+        where: { status: "APPROVED" },
+        include: {
+          semester: { select: { id: true, code: true, startDate: true, endDate: true } },
+          topicAssignments: {
+            include: {
+              group: {
+                select: {
+                  id: true,
+                  groupCode: true,
+                  semester: { select: { id: true, code: true } },
+                  members: {
+                    include: {
+                      user: { select: { id: true, fullName: true, email: true } }, // Lấy thông tin user
+                      role: { select: { name: true } },
+                      student: { // Lấy thông tin student để lấy ngành
+                        include: {
+                          major: { select: { id: true, name: true } }, // Lấy thông tin ngành
+                        },
                       },
+                    },
                   },
+                },
               },
-              creator: { select: { fullName: true, email: true } },
-              subMentor: { select: { fullName: true, email: true } },
-              majors: { select: { id: true, name: true } },
+            },
           },
+          creator: { select: { fullName: true, email: true } },
+          subMentor: { select: { fullName: true, email: true } },
+          majors: { select: { id: true, name: true } },
+        },
       });
 
       // 3. Xác định trạng thái thực tế của học kỳ
       const semesters = [...new Map(topics.map(t => [t.semester.id, t.semester])).values()];
       const semesterStatus = semesters.map(s => {
-          const startDate = new Date(s.startDate);
-          const endDate = new Date(s.endDate || Infinity);
+        const startDate = new Date(s.startDate);
+        const endDate = new Date(s.endDate || Infinity);
 
-          let effectiveStatus = "COMPLETE";
-          if (currentDate < startDate) effectiveStatus = "UPCOMING";
-          else if (currentDate >= startDate && currentDate <= endDate) effectiveStatus = "ACTIVE";
+        let effectiveStatus = "COMPLETE";
+        if (currentDate < startDate) effectiveStatus = "UPCOMING";
+        else if (currentDate >= startDate && currentDate <= endDate) effectiveStatus = "ACTIVE";
 
-          return { ...s, effectiveStatus };
+        return { ...s, effectiveStatus };
       });
 
       // 4. Lọc học kỳ UPCOMING
       const upcomingSemesters = semesterStatus.filter(s => s.effectiveStatus === "UPCOMING");
 
       if (upcomingSemesters.length === 0) {
-          const hasActive = semesterStatus.some(s => s.effectiveStatus === "ACTIVE");
-          const hasComplete = semesterStatus.some(s => s.effectiveStatus === "COMPLETE");
+        const hasActive = semesterStatus.some(s => s.effectiveStatus === "ACTIVE");
+        const hasComplete = semesterStatus.some(s => s.effectiveStatus === "COMPLETE");
 
-          if (hasActive) {
-              return {
-                  success: true,
-                  status: HTTP_STATUS.OK,
-                  message: "Hiện tại học kỳ đang diễn ra, bạn hãy tập trung vào đề tài của nhóm mình nhé!",
-                  data: [],
-              };
-          } else if (hasComplete) {
-              return {
-                  success: true,
-                  status: HTTP_STATUS.OK,
-                  message: "Học kỳ đã kết thúc, hãy chờ học kỳ mới để xem các đề tài sắp tới!",
-                  data: [],
-              };
-          } else {
-              return {
-                  success: true,
-                  status: HTTP_STATUS.OK,
-                  message: "Hiện tại chưa có đề tài nào cho học kỳ sắp tới, hãy quay lại sau nhé!",
-                  data: [],
-              };
-          }
+        if (hasActive) {
+          return {
+            success: true,
+            status: HTTP_STATUS.OK,
+            message: "Hiện tại học kỳ đang diễn ra, bạn hãy tập trung vào đề tài của nhóm mình nhé!",
+            data: [],
+          };
+        } else if (hasComplete) {
+          return {
+            success: true,
+            status: HTTP_STATUS.OK,
+            message: "Học kỳ đã kết thúc, hãy chờ học kỳ mới để xem các đề tài sắp tới!",
+            data: [],
+          };
+        } else {
+          return {
+            success: true,
+            status: HTTP_STATUS.OK,
+            message: "Hiện tại chưa có đề tài nào cho học kỳ sắp tới, hãy quay lại sau nhé!",
+            data: [],
+          };
+        }
       }
 
       // Chọn học kỳ UPCOMING có startDate sớm nhất
@@ -1747,43 +1981,56 @@ async getAllApprovedTopicsForStudent(userId: string) {
       const validTopics = topics.filter(t => t.semester.id === selectedSemester.id);
 
       if (validTopics.length === 0) {
-          return {
-              success: true,
-              status: HTTP_STATUS.OK,
-              message: "Chưa có đề tài nào được duyệt cho học kỳ sắp tới, hãy chờ thêm nhé!",
-              data: [],
-          };
+        return {
+          success: true,
+          status: HTTP_STATUS.OK,
+          message: "Chưa có đề tài nào được duyệt cho học kỳ sắp tới, hãy chờ thêm nhé!",
+          data: [],
+        };
       }
 
       // 5. Định dạng dữ liệu trả về
       const formattedTopics = validTopics.map(topic => ({
-          id: topic.id,
-          topicCode: topic.topicCode,
-          nameVi: topic.nameVi,
-          nameEn: topic.nameEn,
-          description: topic.description,
-          status: topic.status,
-          semester: topic.semester,
-          createdBy: topic.creator,
-          subSupervisor: topic.subMentor,
-          majors: topic.majors,
-          group: topic.topicAssignments[0]?.group || null,
+        id: topic.id,
+        topicCode: topic.topicCode,
+        nameVi: topic.nameVi,
+        nameEn: topic.nameEn,
+        description: topic.description,
+        status: topic.status,
+        semester: topic.semester,
+        createdBy: topic.creator,
+        subSupervisor: topic.subMentor,
+        majors: topic.majors,
+        group: topic.topicAssignments[0]?.group
+          ? {
+            id: topic.topicAssignments[0].group.id,
+            groupCode: topic.topicAssignments[0].group.groupCode,
+            semester: topic.topicAssignments[0].group.semester,
+            members: topic.topicAssignments[0].group.members.map(member => ({
+              id: member.id,
+              fullName: member.user?.fullName || 'Không có thông tin',
+              email: member.user?.email || 'Không có thông tin',
+              major: member.student?.major?.name || 'Không có thông tin',
+              role: member.role.name,
+            })),
+          }
+          : null,
       }));
 
       return {
-          success: true,
-          status: HTTP_STATUS.OK,
-          message: `Danh sách các đề tài đã duyệt cho học kỳ sắp tới (${selectedSemester.code}) đã sẵn sàng để bạn khám phá!`,
-          data: formattedTopics,
+        success: true,
+        status: HTTP_STATUS.OK,
+        message: `Danh sách các đề tài đã duyệt cho học kỳ sắp tới (${selectedSemester.code}) đã sẵn sàng để bạn khám phá!`,
+        data: formattedTopics,
       };
-  } catch (error) {
+    } catch (error) {
       console.error("Lỗi khi lấy danh sách tất cả đề tài đã duyệt cho sinh viên:", error);
       return {
-          success: false,
-          status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-          message: "Lỗi hệ thống khi lấy danh sách đề tài đã duyệt!",
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: "Lỗi hệ thống khi lấy danh sách đề tài đã duyệt!",
       };
+    }
   }
-}
 
 }

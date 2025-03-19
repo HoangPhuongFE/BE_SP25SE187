@@ -6,6 +6,8 @@ CREATE TABLE `users` (
     `passwordHash` VARCHAR(191) NOT NULL,
     `lecturerCode` VARCHAR(191) NULL,
     `fullName` VARCHAR(191) NULL,
+    `departmentPosition` VARCHAR(191) NULL,
+    `department` VARCHAR(191) NULL,
     `avatar` VARCHAR(191) NULL,
     `student_code` VARCHAR(191) NULL,
     `profession` VARCHAR(191) NULL,
@@ -183,6 +185,7 @@ CREATE TABLE `topic_registrations` (
     `reviewer_id` VARCHAR(191) NULL,
     `role` VARCHAR(191) NOT NULL,
     `status` VARCHAR(191) NOT NULL,
+    `reason` VARCHAR(191) NULL,
     `decision_file` VARCHAR(191) NULL,
     `rejection_reason` TEXT NULL,
     `registered_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -270,8 +273,6 @@ CREATE TABLE `topic_assignments` (
     `id` VARCHAR(191) NOT NULL,
     `topic_id` VARCHAR(191) NOT NULL,
     `group_id` VARCHAR(191) NOT NULL,
-    `decision_id` VARCHAR(191) NULL,
-    `decision_file` VARCHAR(191) NULL,
     `draft_file` VARCHAR(191) NULL,
     `approval_status` VARCHAR(191) NOT NULL,
     `defend_status` VARCHAR(191) NOT NULL,
@@ -456,13 +457,13 @@ CREATE TABLE `notifications` (
 -- CreateTable
 CREATE TABLE `decisions` (
     `id` VARCHAR(191) NOT NULL,
-    `decision_number` VARCHAR(191) NOT NULL,
-    `decision_title` VARCHAR(191) NOT NULL,
-    `group_id` VARCHAR(191) NULL,
-    `topic_id` VARCHAR(191) NOT NULL,
-    `draft_file_url` VARCHAR(191) NULL,
-    `final_file_url` VARCHAR(191) NULL,
+    `decision_name` VARCHAR(191) NOT NULL,
+    `decision_title` VARCHAR(191) NULL,
+    `draft_file` VARCHAR(191) NULL,
+    `final_file` VARCHAR(191) NULL,
+    `decisionURL` VARCHAR(191) NULL,
     `status` VARCHAR(191) NOT NULL,
+    `semesterId` VARCHAR(191) NULL,
     `created_by` VARCHAR(191) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
@@ -765,13 +766,10 @@ ALTER TABLE `semester_topic_major` ADD CONSTRAINT `semester_topic_major_major_id
 ALTER TABLE `email_logs` ADD CONSTRAINT `email_logs_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `decisions` ADD CONSTRAINT `decisions_topic_id_fkey` FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `decisions` ADD CONSTRAINT `decisions_semesterId_fkey` FOREIGN KEY (`semesterId`) REFERENCES `semesters`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `decisions` ADD CONSTRAINT `decisions_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `decisions` ADD CONSTRAINT `decisions_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `review_councils` ADD CONSTRAINT `review_councils_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -795,7 +793,7 @@ ALTER TABLE `documents` ADD CONSTRAINT `documents_council_id_fkey` FOREIGN KEY (
 ALTER TABLE `documents` ADD CONSTRAINT `documents_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `council_members` ADD CONSTRAINT `council_members_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `council_members` ADD CONSTRAINT `council_members_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `council_members` ADD CONSTRAINT `council_members_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
