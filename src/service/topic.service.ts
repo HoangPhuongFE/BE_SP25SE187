@@ -832,7 +832,7 @@ export class TopicService {
           message: 'Vui lòng cung cấp registrationId và userId hợp lệ!',
         };
       }
-
+  
       if (!['APPROVED', 'REJECTED'].includes(data.status)) {
         return {
           success: false,
@@ -840,7 +840,7 @@ export class TopicService {
           message: 'Trạng thái không hợp lệ! Chỉ chấp nhận APPROVED hoặc REJECTED.',
         };
       }
-
+  
       // Lấy thông tin đăng ký
       const registration = await prisma.topicRegistration.findUnique({
         where: { id: registrationId },
@@ -857,7 +857,7 @@ export class TopicService {
           },
         },
       });
-
+  
       if (!registration) {
         return {
           success: false,
@@ -865,7 +865,7 @@ export class TopicService {
           message: 'Không tìm thấy đăng ký đề tài!',
         };
       }
-
+  
       // Kiểm tra quyền hạn và trạng thái
       if (registration.topic.createdBy !== userId) {
         return {
@@ -874,7 +874,7 @@ export class TopicService {
           message: 'Chỉ mentor tạo đề tài mới có quyền duyệt đăng ký!',
         };
       }
-
+  
       if (registration.topic.status !== 'APPROVED') {
         return {
           success: false,
@@ -882,7 +882,7 @@ export class TopicService {
           message: 'Đề tài chưa được duyệt bởi Academic Officer!',
         };
       }
-
+  
       if (registration.status !== 'PENDING') {
         return {
           success: false,
@@ -890,13 +890,13 @@ export class TopicService {
           message: 'Đăng ký này không ở trạng thái PENDING!',
         };
       }
-
+  
       // Kiểm tra thời gian nộp đăng ký
       const submissionPeriod = await prisma.submissionPeriod.findUnique({
         where: { id: registration.topic.submissionPeriodId || '' },
         select: { startDate: true, endDate: true },
       });
-
+  
       if (!submissionPeriod) {
         return {
           success: false,
@@ -904,11 +904,11 @@ export class TopicService {
           message: 'Không tìm thấy thời gian nộp đăng ký!',
         };
       }
-
+  
       const currentDate = new Date();
       const startDate = new Date(submissionPeriod.startDate);
       const endDate = new Date(submissionPeriod.endDate);
-
+  
       if (currentDate < startDate || currentDate > endDate) {
         return {
           success: false,
@@ -916,7 +916,7 @@ export class TopicService {
           message: 'Thời gian nộp đăng ký đã hết hoặc chưa bắt đầu!',
         };
       }
-
+  
       // Kiểm tra xem đề tài đã được gán cho nhóm nào khác chưa
       const existingApproved = await prisma.topicRegistration.findFirst({
         where: { topicId: registration.topic.id, status: "APPROVED" },
@@ -928,7 +928,7 @@ export class TopicService {
           message: 'Đề tài đã được gán cho một nhóm khác!',
         };
       }
-
+  
       // Sử dụng transaction để đảm bảo tính nhất quán
       const result = await prisma.$transaction(async (tx) => {
         // Cập nhật trạng thái đăng ký
@@ -941,16 +941,16 @@ export class TopicService {
             reviewerId: userId,
           },
         });
-
+  
         // Tạo thông báo cho người đăng ký
         const notificationMessage =
           data.status === 'APPROVED'
-            ? `Đăng ký đề tài "${registration.topic.nameVi}" của bạn đã được duyệt! Lý do: ${data.reason || 'Không có lý do'}.`
-            : `Đăng ký đề tài "${registration.topic.nameVi}" của bạn đã bị từ chối. Lý do: ${data.reason || 'Không có lý do'}.`;
-
+            ? `Chúc mừng! Đăng ký đề tài "${registration.topic.nameVi}" của bạn đã được duyệt! ${data.reason ? `Lý do: ${data.reason}` : ''}`
+            : `Rất tiếc, đăng ký đề tài "${registration.topic.nameVi}" của bạn chưa được duyệt. Lý do: ${data.reason || 'Không có lý do cụ thể'}.`;
+  
         const notification = await tx.notification.create({
           data: {
-            title: data.status === 'APPROVED' ? 'Đăng ký đề tài được duyệt' : 'Đăng ký đề tài bị từ chối',
+            title: data.status === 'APPROVED' ? 'Đăng ký đề tài được duyệt' : 'Đăng ký đề tài chưa được duyệt',
             content: notificationMessage,
             notificationType: 'TOPIC_REGISTRATION',
             createdBy: userId,
@@ -958,7 +958,7 @@ export class TopicService {
             createdAt: new Date(),
           },
         });
-
+  
         await tx.notificationRecipient.create({
           data: {
             notificationId: notification.id,
@@ -967,7 +967,7 @@ export class TopicService {
             readAt: null,
           },
         });
-
+  
         if (data.status === 'REJECTED') {
           return {
             success: true,
@@ -975,17 +975,17 @@ export class TopicService {
             message: 'Đã từ chối đăng ký đề tài!',
             data: {
               registration: updatedRegistration,
-              reason: updatedRegistration.reason, // Thêm lý do từ chối vào response
+              reason: updatedRegistration.reason,
             },
           };
         }
-
+  
         // Xử lý khi APPROVED
         const student = await tx.student.findFirst({
           where: { userId: registration.userId },
           select: { id: true },
         });
-
+  
         if (!student) {
           return {
             success: false,
@@ -993,10 +993,10 @@ export class TopicService {
             message: 'Không tìm thấy sinh viên!',
           };
         }
-
+  
         const leaderRole = await tx.role.findUnique({ where: { name: "leader" } });
         if (!leaderRole) throw new Error("Vai trò 'leader' không tồn tại.");
-
+  
         const leaderGroup = await tx.groupMember.findFirst({
           where: {
             studentId: student.id,
@@ -1004,7 +1004,7 @@ export class TopicService {
           },
           select: { groupId: true },
         });
-
+  
         if (!leaderGroup) {
           return {
             success: false,
@@ -1012,12 +1012,56 @@ export class TopicService {
             message: 'Không tìm thấy nhóm của leader!',
           };
         }
-
+  
         // Kiểm tra số lượng thành viên trong nhóm
         const groupMembers = await tx.groupMember.count({
           where: { groupId: leaderGroup.groupId, isActive: true },
         });
-
+  
+        const MIN_GROUP_SIZE = 3;
+        if (groupMembers < MIN_GROUP_SIZE) {
+          const autoRejectReason = 'Nhóm không đủ năng lực: Số lượng thành viên không đủ (ít nhất 3 thành viên).';
+          const autoRejectedRegistration = await tx.topicRegistration.update({
+            where: { id: registrationId },
+            data: {
+              status: 'REJECTED',
+              reason: autoRejectReason,
+              reviewedAt: new Date(),
+              reviewerId: userId,
+            },
+          });
+  
+          const autoRejectNotification = await tx.notification.create({
+            data: {
+              title: 'Đăng ký đề tài chưa được duyệt',
+              content: `Rất tiếc, đăng ký đề tài "${registration.topic.nameVi}" của bạn chưa được duyệt tự động. Lý do: ${autoRejectReason}`,
+              notificationType: 'TOPIC_REGISTRATION',
+              createdBy: userId,
+              isSystem: true,
+              createdAt: new Date(),
+            },
+          });
+  
+          await tx.notificationRecipient.create({
+            data: {
+              notificationId: autoRejectNotification.id,
+              userId: registration.userId,
+              isRead: false,
+              readAt: null,
+            },
+          });
+  
+          return {
+            success: false,
+            status: HTTP_STATUS.FORBIDDEN,
+            message: autoRejectReason,
+            data: {
+              registration: autoRejectedRegistration,
+              reason: autoRejectReason,
+            },
+          };
+        }
+  
         const MAX_GROUP_SIZE = 5;
         if (groupMembers > MAX_GROUP_SIZE) {
           return {
@@ -1026,7 +1070,7 @@ export class TopicService {
             message: `Nhóm đã vượt quá số lượng thành viên tối đa (${MAX_GROUP_SIZE})!`,
           };
         }
-
+  
         // Kiểm tra xem nhóm đã được gán cho đề tài nào khác chưa
         const existingGroupAssignment = await tx.topicAssignment.findFirst({
           where: {
@@ -1042,7 +1086,7 @@ export class TopicService {
             },
           },
         });
-
+  
         if (existingGroupAssignment) {
           return {
             success: false,
@@ -1050,12 +1094,12 @@ export class TopicService {
             message: `Nhóm này đã được duyệt cho đề tài khác: "${existingGroupAssignment.topic.nameVi}" (Mã: ${existingGroupAssignment.topic.topicCode})!`,
           };
         }
-
+  
         // Kiểm tra và tạo TopicAssignment
         const existingAssignment = await tx.topicAssignment.findFirst({
           where: { topicId: registration.topic.id },
         });
-
+  
         let groupInfo = null;
         if (!existingAssignment) {
           await tx.topicAssignment.create({
@@ -1068,7 +1112,7 @@ export class TopicService {
               status: 'ASSIGNED',
             },
           });
-
+  
           const mentorRole = await tx.role.findUnique({ where: { name: "mentor_main" } });
           if (!mentorRole) throw new Error("Vai trò mentor_main không tồn tại.");
           await tx.groupMentor.upsert({
@@ -1081,13 +1125,13 @@ export class TopicService {
               addedBy: userId,
             },
           });
-
+  
           groupInfo = await tx.group.findUnique({
             where: { id: leaderGroup.groupId },
             select: { id: true, groupCode: true },
           });
         }
-
+  
         // Từ chối các đăng ký PENDING khác
         const pendingRegistrations = await tx.topicRegistration.findMany({
           where: {
@@ -1096,7 +1140,7 @@ export class TopicService {
           },
           select: { id: true, userId: true },
         });
-
+  
         for (const pending of pendingRegistrations) {
           await tx.topicRegistration.update({
             where: { id: pending.id },
@@ -1107,18 +1151,18 @@ export class TopicService {
               reason: 'Đề tài đã được gán cho nhóm khác.',
             },
           });
-
+  
           const rejectNotification = await tx.notification.create({
             data: {
-              title: 'Đăng ký đề tài bị từ chối',
-              content: `Đăng ký đề tài "${registration.topic.nameVi}" của bạn đã bị từ chối vì đề tài đã được gán cho nhóm khác.`,
+              title: 'Đăng ký đề tài chưa được duyệt',
+              content: `Rất tiếc, đăng ký đề tài "${registration.topic.nameVi}" của bạn chưa được duyệt vì đề tài đã được gán cho một nhóm khác. Bạn có thể chọn một đề tài khác để tiếp tục hành trình của mình!`,
               notificationType: 'TOPIC_REGISTRATION',
               createdBy: userId,
               isSystem: false,
               createdAt: new Date(),
             },
           });
-
+  
           await tx.notificationRecipient.create({
             data: {
               notificationId: rejectNotification.id,
@@ -1128,12 +1172,12 @@ export class TopicService {
             },
           });
         }
-
+  
         const userInfo = await tx.user.findUnique({
           where: { id: registration.userId },
           select: { fullName: true, email: true },
         });
-
+  
         if (!userInfo) {
           return {
             success: false,
@@ -1141,7 +1185,7 @@ export class TopicService {
             message: 'Không tìm thấy thông tin người đăng ký!',
           };
         }
-
+  
         return {
           success: true,
           status: HTTP_STATUS.OK,
@@ -1150,11 +1194,11 @@ export class TopicService {
             registration: updatedRegistration,
             user: userInfo,
             group: groupInfo,
-            reason: updatedRegistration.reason, // Thêm lý do duyệt vào response
+            reason: updatedRegistration.reason,
           },
         };
       });
-
+  
       return result;
     } catch (error: any) {
       console.error('Lỗi khi duyệt đăng ký đề tài:', error);
