@@ -1,9 +1,25 @@
 import { PrismaClient } from '@prisma/client';
 import { MESSAGES } from '../constants/message';
+import { AIService as CoreAIService } from '../ai/ai.service';
 
 const prisma = new PrismaClient();
+const aiService = new CoreAIService();
 
 export class AIService {
+  // Khởi tạo và train model
+  async initializeAndTrainModel() {
+    try {
+      await topicModel.initializeModel();
+      await topicModel.trainModel();
+      const modelJSON = await topicModel.saveModel();
+      // Lưu modelJSON vào memory hoặc database nếu cần
+      return { success: true, message: "Model đã được train thành công" };
+    } catch (error) {
+      console.error('Lỗi khi train model:', error);
+      return { success: false, message: "Lỗi khi train model" };
+    }
+  }
+
   // Kiểm tra tính hợp lệ của mã đề tài
   async validateTopicCode(topicCode: string): Promise<{ isValid: boolean; message: string }> {
     try {
@@ -41,27 +57,13 @@ export class AIService {
   // Kiểm tra tính hợp lệ của tên đề tài
   async validateTopicName(topicName: string): Promise<{ isValid: boolean; message: string }> {
     try {
-      // Kiểm tra độ dài tên đề tài
-      if (topicName.length < 10 || topicName.length > 200) {
+      const aiResult = await aiService.validateTopicName(topicName, "");
+      
+      if (!aiResult.isValid) {
         return {
           isValid: false,
-          message: MESSAGES.TOPIC.INVALID_TOPIC_NAME + "Tên đề tài phải có độ dài từ 10-200 ký tự"
+          message: MESSAGES.TOPIC.INVALID_TOPIC_NAME + aiResult.message
         };
-      }
-
-      // Kiểm tra trùng lặp tên đề tài (sử dụng AI để so sánh độ tương đồng)
-      const existingTopics = await prisma.topic.findMany({
-        select: { name: true }
-      });
-
-      for (const topic of existingTopics) {
-        const similarity = await this.calculateSimilarity(topicName, topic.name);
-        if (similarity > 0.8) { // Ngưỡng tương đồng 80%
-          return {
-            isValid: false,
-            message: MESSAGES.TOPIC.INVALID_TOPIC_NAME + "Tên đề tài có thể trùng lặp với đề tài đã tồn tại"
-          };
-        }
       }
 
       return { isValid: true, message: "Tên đề tài hợp lệ" };
@@ -111,47 +113,43 @@ export class AIService {
     }
   }
 
-  // Tính toán độ tương đồng giữa hai chuỗi văn bản
-  private async calculateSimilarity(text1: string, text2: string): Promise<number> {
+  // Kiểm tra toàn bộ thông tin đề tài
+  async validateTopic(topicCode: string, topicName: string, description: string, groupCode: string, semesterId: string): Promise<{ isValid: boolean; message: string }> {
     try {
-      // Có thể sử dụng các phương pháp sau:
-      // 1. Sử dụng API của bên thứ 3 (ví dụ: OpenAI API)
-      // 2. Sử dụng thư viện xử lý ngôn ngữ tự nhiên
-      // 3. Implement thuật toán so sánh văn bản đơn giản
+      const [codeResult, nameResult, groupResult] = await Promise.all([
+        this.validateTopicCode(topicCode),
+        this.validateTopicName(topicName),
+        this.validateGroupCode(groupCode, semesterId)
+      ]);
 
-      // Ví dụ implement đơn giản sử dụng Levenshtein Distance
-      const distance = this.levenshteinDistance(text1, text2);
-      const maxLength = Math.max(text1.length, text2.length);
-      return 1 - (distance / maxLength);
-    } catch (error) {
-      console.error('Lỗi khi tính độ tương đồng:', error);
-      return 0;
-    }
-  }
+      if (!codeResult.isValid || !nameResult.isValid || !groupResult.isValid) {
+        const messages = [];
+        if (!codeResult.isValid) messages.push(codeResult.message);
+        if (!nameResult.isValid) messages.push(nameResult.message);
+        if (!groupResult.isValid) messages.push(groupResult.message);
 
-  // Thuật toán Levenshtein Distance
-  private levenshteinDistance(str1: string, str2: string): number {
-    const m = str1.length;
-    const n = str2.length;
-    const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
-
-    for (let i = 0; i <= m; i++) dp[i][0] = i;
-    for (let j = 0; j <= n; j++) dp[0][j] = j;
-
-    for (let i = 1; i <= m; i++) {
-      for (let j = 1; j <= n; j++) {
-        if (str1[i - 1] === str2[j - 1]) {
-          dp[i][j] = dp[i - 1][j - 1];
-        } else {
-          dp[i][j] = Math.min(
-            dp[i - 1][j - 1] + 1,
-            dp[i - 1][j] + 1,
-            dp[i][j - 1] + 1
-          );
-        }
+        return {
+          isValid: false,
+          message: messages.join(", ")
+        };
       }
-    }
 
-    return dp[m][n];
+      // Kiểm tra với AI
+      const aiResult = await aiService.validateTopic(topicName, description);
+      if (!aiResult.isValid) {
+        return {
+          isValid: false,
+          message: aiResult.message
+        };
+      }
+
+      return { isValid: true, message: "Tất cả thông tin hợp lệ" };
+    } catch (error) {
+      console.error('Lỗi khi kiểm tra thông tin đề tài:', error);
+      return {
+        isValid: false,
+        message: MESSAGES.TOPIC.AI_VALIDATION_FAILED + "Lỗi hệ thống"
+      };
+    }
   }
 } 

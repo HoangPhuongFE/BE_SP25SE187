@@ -9,6 +9,24 @@ export class AIController {
     this.aiService = new AIService();
   }
 
+  // Train model AI
+  async trainModel(req: Request, res: Response) {
+    try {
+      const result = await this.aiService.initializeAndTrainModel();
+      
+      return res.status(result.success ? 200 : 500).json({
+        success: result.success,
+        message: result.message
+      });
+    } catch (error) {
+      console.error('Lỗi khi train model:', error);
+      return res.status(500).json({
+        success: false,
+        message: MESSAGES.TOPIC.AI_VALIDATION_FAILED + "Lỗi khi train model"
+      });
+    }
+  }
+
   // Kiểm tra mã đề tài
   async validateTopicCode(req: Request, res: Response) {
     try {
@@ -93,31 +111,26 @@ export class AIController {
   // Kiểm tra toàn bộ thông tin đề tài
   async validateTopic(req: Request, res: Response) {
     try {
-      const { topicCode, topicName, groupCode, semesterId } = req.body;
+      const { topicCode, topicName, description, groupCode, semesterId } = req.body;
 
-      if (!topicCode || !topicName || !groupCode || !semesterId) {
+      if (!topicCode || !topicName || !description || !groupCode || !semesterId) {
         return res.status(400).json({
           success: false,
           message: "Thiếu thông tin bắt buộc"
         });
       }
 
-      const [codeResult, nameResult, groupResult] = await Promise.all([
-        this.aiService.validateTopicCode(topicCode),
-        this.aiService.validateTopicName(topicName),
-        this.aiService.validateGroupCode(groupCode, semesterId)
-      ]);
+      const result = await this.aiService.validateTopic(
+        topicCode,
+        topicName,
+        description,
+        groupCode,
+        semesterId
+      );
 
-      const isValid = codeResult.isValid && nameResult.isValid && groupResult.isValid;
-      const messages = [];
-
-      if (!codeResult.isValid) messages.push(codeResult.message);
-      if (!nameResult.isValid) messages.push(nameResult.message);
-      if (!groupResult.isValid) messages.push(groupResult.message);
-
-      return res.status(isValid ? 200 : 400).json({
-        success: isValid,
-        message: isValid ? "Tất cả thông tin hợp lệ" : messages.join(", ")
+      return res.status(result.isValid ? 200 : 400).json({
+        success: result.isValid,
+        message: result.message
       });
     } catch (error) {
       console.error('Lỗi khi kiểm tra thông tin đề tài:', error);

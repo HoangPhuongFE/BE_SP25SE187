@@ -6,6 +6,12 @@ const router = Router();
 const aiController = new AIController();
 const aiMiddleware = new AIMiddleware();
 
+// Route train model AI
+router.post(
+  '/train-model',
+  aiController.trainModel
+);
+
 // Route kiểm tra mã đề tài
 router.post(
   '/validate-topic-code',
