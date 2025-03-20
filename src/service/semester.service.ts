@@ -72,19 +72,64 @@ export class SemesterService {
   }
 
 
-  // Xóa semester: Không ràng buộc theo trạng thái (cho phép xoá mọi trạng thái)
+  // Xóa semester: Xóa tất cả dữ liệu liên quan trước khi xóa semester
   async deleteSemester(id: string) {
     const semester = await prisma.semester.findUnique({
       where: { id },
+      include: {
+        semesterStudents: true,
+        reviewDefenseCouncils: true,
+        topics: true,
+        groups: true,
+        councils: true,
+        reviewCouncils: true,
+        decisions: true,
+        SubmissionPeriod: true,
+        userRoles: true
+      }
     });
 
     if (!semester) {
       throw new Error(SEMESTER_MESSAGE.SEMESTER_NOT_FOUND);
     }
 
-    return prisma.semester.delete({
-      where: { id },
-    });
+    // Xóa tất cả dữ liệu liên quan đến semester
+    await prisma.$transaction([
+      // Xóa các bảng liên quan đến semester
+      prisma.semesterStudent.deleteMany({
+        where: { semesterId: id }
+      }),
+      prisma.reviewDefenseCouncil.deleteMany({
+        where: { semesterId: id }
+      }),
+      prisma.topic.deleteMany({
+        where: { semesterId: id }
+      }),
+      prisma.group.deleteMany({
+        where: { semesterId: id }
+      }),
+      prisma.council.deleteMany({
+        where: { semesterId: id }
+      }),
+      prisma.reviewCouncil.deleteMany({
+        where: { semesterId: id }
+      }),
+      prisma.decision.deleteMany({
+        where: { semesterId: id }
+      }),
+      prisma.submissionPeriod.deleteMany({
+        where: { semesterId: id }
+      }),
+      prisma.userRole.deleteMany({
+        where: { semesterId: id }
+      }),
+      // Xóa semester
+      prisma.semester.delete({
+        where: { id }
+      })
+    ]);
+
+    return semester;
   }
 
   // Lấy tất cả semester
