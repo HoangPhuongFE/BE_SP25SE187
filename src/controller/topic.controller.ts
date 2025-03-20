@@ -567,5 +567,78 @@ export class TopicController {
     }
   }
 
+
+  // API gán mentor hoặc nhóm vào đề tài
+  async assignMentorsOrGroup(req: Request, res: Response) {
+    const { topicId } = req.params; // Lấy topicId từ URL
+    const { mainMentorEmail, subMentorEmail, groupId, groupCode, semesterId } = req.body; // Lấy dữ liệu từ body
+    const updatedBy = req.user?.id; // Giả định bạn lấy user ID từ middleware xác thực
+
+    try {
+      const result = await topicService.assignMentorsOrGroupToTopic(topicId, {
+        mainMentorEmail,
+        subMentorEmail,
+        groupId,
+        groupCode,
+        updatedBy,
+        semesterId,
+      });
+
+      if (!result.success) {
+        return res.status(result.status).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.data,
+      });
+    } catch (error) {
+      console.error('Lỗi trong assignMentorsOrGroup:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Lỗi hệ thống.',
+      });
+    }
+  }
+
+  // API xóa mentor hoặc nhóm khỏi đề tài
+  async removeMentorsOrGroup(req: Request, res: Response) {
+    const { topicId } = req.params; // Lấy topicId từ URL
+    const { removeMainMentor, removeSubMentor, removeGroup } = req.body; // Lấy dữ liệu từ body
+    const updatedBy = req.user?.id; // Giả định bạn lấy user ID từ middleware xác thực
+
+    try {
+      const result = await topicService.removeMentorsOrGroupFromTopic(topicId, {
+        removeMainMentor,
+        removeSubMentor,
+        removeGroup,
+        updatedBy,
+      });
+
+      if (!result.success) {
+        return res.status(result.status).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.data,
+      });
+    } catch (error) {
+      console.error('Lỗi trong removeMentorsOrGroup:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Lỗi hệ thống.',
+      });
+    }
+  }
+
 }
 
