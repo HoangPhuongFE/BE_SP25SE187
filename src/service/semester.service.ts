@@ -84,7 +84,7 @@ export class SemesterService {
         councils: true,
         reviewCouncils: true,
         decisions: true,
-        submissionPeriods: true,
+        SubmissionPeriod: true,
         userRoles: true
       }
     });
