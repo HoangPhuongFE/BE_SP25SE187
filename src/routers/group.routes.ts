@@ -182,9 +182,12 @@ router.get(
   groupController.getStudentsWithoutGroupForStudent.bind(groupController)
 );
 
+
+// Mentor thay đổi status của member trong học kì 
 router.post(
   "/toggle-member-status",
-  authenticateToken, // Middleware xác thực token
+  authenticateToken, 
+  checkRole (["lecturer"]),
   groupController.toggleMemberStatusByMentor.bind(groupController)
 );
 export default router;

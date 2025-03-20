@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { TOPIC_MESSAGE, GROUP_MESSAGE } from '../constants/message';
 import HTTP_STATUS from '../constants/httpStatus';
 import { SystemConfigService } from './system.config.service';
@@ -1925,15 +1925,14 @@ export class TopicService {
       };
     }
   }
-  // Lấy danh sách tất cả đề tài đã duyệt cho sinh viên
+
   async getAllApprovedTopicsForStudent(userId: string) {
     try {
-      // 1. Kiểm tra sinh viên
       const student = await prisma.student.findUnique({
         where: { userId },
         select: { id: true, majorId: true },
       });
-
+  
       if (!student) {
         return {
           success: false,
@@ -1941,29 +1940,41 @@ export class TopicService {
           message: "Bạn không phải là sinh viên!",
         };
       }
-
-      // Ngày hiện tại
+  
       const currentDate = new Date();
-
-      // 2. Lấy tất cả đề tài đã duyệt
+  
       const topics = await prisma.topic.findMany({
         where: { status: "APPROVED" },
-        include: {
-          semester: { select: { id: true, code: true, startDate: true, endDate: true } },
+        select: {
+          id: true,
+          topicCode: true,
+          nameVi: true,
+          nameEn: true,
+          description: true,
+          status: true,
+          createdBy: true,
+          subSupervisor: true,
+          mainSupervisor: true,
+          createdAt: true,
+          updatedAt: true,
+          semester: {
+            select: { id: true, code: true, startDate: true, endDate: true },
+          },
           topicAssignments: {
-            include: {
+            select: {
               group: {
                 select: {
                   id: true,
                   groupCode: true,
                   semester: { select: { id: true, code: true } },
                   members: {
-                    include: {
-                      user: { select: { id: true, fullName: true, email: true } }, // Lấy thông tin user
+                    select: {
+                      id: true,
+                      user: { select: { id: true, fullName: true, email: true } },
                       role: { select: { name: true } },
-                      student: { // Lấy thông tin student để lấy ngành
-                        include: {
-                          major: { select: { id: true, name: true } }, // Lấy thông tin ngành
+                      student: {
+                        select: {
+                          major: { select: { id: true, name: true } },
                         },
                       },
                     },
@@ -1977,27 +1988,36 @@ export class TopicService {
           majors: { select: { id: true, name: true } },
         },
       });
-
-      // 3. Xác định trạng thái thực tế của học kỳ
-      const semesters = [...new Map(topics.map(t => [t.semester.id, t.semester])).values()];
+  
+      // If you need mainMentor data, fetch it separately
+      const topicsWithMainMentor = await Promise.all(
+        topics.map(async (topic) => {
+          const mainMentor = topic.mainSupervisor
+            ? await prisma.user.findUnique({
+                where: { id: topic.mainSupervisor },
+                select: { fullName: true, email: true },
+              })
+            : null;
+          return { ...topic, mainMentor };
+        })
+      );
+  
+      // Rest of your logic (semester status, filtering, formatting) remains the same
+      // Use topicsWithMainMentor instead of topics
+      const semesters = [...new Map(topicsWithMainMentor.map(t => [t.semester.id, t.semester])).values()];
       const semesterStatus = semesters.map(s => {
         const startDate = new Date(s.startDate);
         const endDate = new Date(s.endDate || Infinity);
-
         let effectiveStatus = "COMPLETE";
         if (currentDate < startDate) effectiveStatus = "UPCOMING";
         else if (currentDate >= startDate && currentDate <= endDate) effectiveStatus = "ACTIVE";
-
         return { ...s, effectiveStatus };
       });
-
-      // 4. Lọc học kỳ UPCOMING
+  
       const upcomingSemesters = semesterStatus.filter(s => s.effectiveStatus === "UPCOMING");
-
       if (upcomingSemesters.length === 0) {
         const hasActive = semesterStatus.some(s => s.effectiveStatus === "ACTIVE");
         const hasComplete = semesterStatus.some(s => s.effectiveStatus === "COMPLETE");
-
         if (hasActive) {
           return {
             success: true,
@@ -2021,11 +2041,10 @@ export class TopicService {
           };
         }
       }
-
-      // Chọn học kỳ UPCOMING có startDate sớm nhất
+  
       const selectedSemester = upcomingSemesters.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0];
-      const validTopics = topics.filter(t => t.semester.id === selectedSemester.id);
-
+      const validTopics = topicsWithMainMentor.filter(t => t.semester.id === selectedSemester.id);
+  
       if (validTopics.length === 0) {
         return {
           success: true,
@@ -2034,8 +2053,7 @@ export class TopicService {
           data: [],
         };
       }
-
-      // 5. Định dạng dữ liệu trả về
+  
       const formattedTopics = validTopics.map(topic => ({
         id: topic.id,
         topicCode: topic.topicCode,
@@ -2045,24 +2063,25 @@ export class TopicService {
         status: topic.status,
         semester: topic.semester,
         createdBy: topic.creator,
+        mainSupervisor: topic.mainMentor, // Use the fetched mainMentor
         subSupervisor: topic.subMentor,
         majors: topic.majors,
         group: topic.topicAssignments[0]?.group
           ? {
-            id: topic.topicAssignments[0].group.id,
-            groupCode: topic.topicAssignments[0].group.groupCode,
-            semester: topic.topicAssignments[0].group.semester,
-            members: topic.topicAssignments[0].group.members.map(member => ({
-              id: member.id,
-              fullName: member.user?.fullName || 'Không có thông tin',
-              email: member.user?.email || 'Không có thông tin',
-              major: member.student?.major?.name || 'Không có thông tin',
-              role: member.role.name,
-            })),
-          }
+              id: topic.topicAssignments[0].group.id,
+              groupCode: topic.topicAssignments[0].group.groupCode,
+              semester: topic.topicAssignments[0].group.semester,
+              members: topic.topicAssignments[0].group.members.map(member => ({
+                id: member.id,
+                fullName: member.user?.fullName || 'Không có thông tin',
+                email: member.user?.email || 'Không có thông tin',
+                major: member.student?.major?.name || 'Không có thông tin',
+                role: member.role.name,
+              })),
+            }
           : null,
       }));
-
+  
       return {
         success: true,
         status: HTTP_STATUS.OK,
@@ -2080,8 +2099,12 @@ export class TopicService {
   }
 
 
-
   private systemConfigService = new SystemConfigService();
+
+  // Hàm kiểm tra email đơn giản
+  private isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
 
   async createTopicWithMentors(data: {
     nameVi: string;
@@ -2092,14 +2115,15 @@ export class TopicService {
     isBusiness?: boolean | string;
     businessPartner?: string;
     source?: string;
-    mainMentorId?: string;
-    subMentorId?: string;
+    mainMentorId?: string; // Là email của mentor chính
+    subMentorId?: string;  // Là email của mentor phụ
     createdBy: string;
     draftFileUrl?: string;
     groupId?: string;
     groupCode?: string;
   }) {
     try {
+      // Kiểm tra dữ liệu đầu vào bắt buộc
       if (!data.semesterId || !data.createdBy) {
         return {
           success: false,
@@ -2108,11 +2132,12 @@ export class TopicService {
         };
       }
 
+      // Kiểm tra quyền người tạo
       const userRole = await prisma.userRole.findFirst({
         where: { userId: data.createdBy, isActive: true },
         include: { role: true },
       });
-      if (!userRole || !['ACADEMIC_OFFICER', 'THESIS_MANAGER'].includes(userRole.role.name.toUpperCase())) {
+      if (!userRole || !['ACADEMIC_OFFICER', 'GRADUATION_THESIS_MANAGER'].includes(userRole.role.name.toUpperCase())) {
         return {
           success: false,
           status: HTTP_STATUS.FORBIDDEN,
@@ -2120,6 +2145,7 @@ export class TopicService {
         };
       }
 
+      // Kiểm tra học kỳ
       const semester = await prisma.semester.findUnique({
         where: { id: data.semesterId },
         select: { id: true, status: true, startDate: true, code: true },
@@ -2132,6 +2158,7 @@ export class TopicService {
         };
       }
 
+      // Kiểm tra chuyên ngành
       const major = await prisma.major.findUnique({ where: { id: data.majorId } });
       if (!major) {
         return {
@@ -2141,6 +2168,7 @@ export class TopicService {
         };
       }
 
+      // Tạo mã đề tài
       const semesterCode = semester.code.toUpperCase();
       const majorCode =
         major.name.length > 1
@@ -2149,6 +2177,7 @@ export class TopicService {
       const topicCount = await prisma.topic.count({ where: { semesterId: data.semesterId } });
       const topicCode = `${majorCode}-${semesterCode}-${(topicCount + 1).toString().padStart(3, '0')}`;
 
+      // Kiểm tra đợt xét duyệt
       const submissionPeriod = await prisma.submissionPeriod.findFirst({
         where: {
           semesterId: data.semesterId,
@@ -2165,8 +2194,10 @@ export class TopicService {
         };
       }
 
+      // Lấy cấu hình số lượng nhóm tối đa
       const maxGroupsPerMentor = await this.systemConfigService.getMaxGroupsPerMentor();
 
+      // Kiểm tra vai trò mentor_main
       const mentorMainRole = await prisma.role.findUnique({ where: { name: 'mentor_main' } });
       if (!mentorMainRole) {
         return {
@@ -2176,11 +2207,20 @@ export class TopicService {
         };
       }
 
+      // Kiểm tra mentor chính (mainMentorId) bằng email
       let mainMentorId = data.mainMentorId;
+      let mainMentorInfo = null;
       if (mainMentorId) {
+        if (!this.isValidEmail(mainMentorId)) {
+          return {
+            success: false,
+            status: HTTP_STATUS.BAD_REQUEST,
+            message: 'mainMentorId không hợp lệ (phải là email)!',
+          };
+        }
         const mainMentor = await prisma.user.findUnique({
-          where: { id: mainMentorId },
-          select: { id: true, fullName: true, roles: { select: { role: { select: { name: true } } } } },
+          where: { email: mainMentorId }, // Tìm bằng email thay vì id
+          select: { id: true, fullName: true, email: true, roles: { select: { role: { select: { name: true } } } } },
         });
         if (!mainMentor || !mainMentor.roles.some(r => r.role.name.toLowerCase() === 'lecturer')) {
           return {
@@ -2189,9 +2229,10 @@ export class TopicService {
             message: 'Mentor chính không tồn tại hoặc không phải giảng viên!',
           };
         }
+        mainMentorInfo = mainMentor;
 
         const mainMentorGroupCount = await prisma.groupMentor.count({
-          where: { mentorId: mainMentorId, roleId: mentorMainRole.id },
+          where: { mentorId: mainMentor.id, roleId: mentorMainRole.id }, // Dùng id thay vì email
         });
         if (mainMentorGroupCount >= maxGroupsPerMentor) {
           return {
@@ -2200,8 +2241,10 @@ export class TopicService {
             message: `Mentor "${mainMentor.fullName}" đã đạt số lượng nhóm tối đa (${maxGroupsPerMentor} nhóm)!`,
           };
         }
+        mainMentorId = mainMentor.id; // Chuyển sang dùng id trong các bước sau
       }
 
+      // Kiểm tra vai trò mentor_sub
       const mentorSubRole = await prisma.role.findUnique({ where: { name: 'mentor_sub' } });
       if (!mentorSubRole) {
         return {
@@ -2211,22 +2254,32 @@ export class TopicService {
         };
       }
 
+      // Kiểm tra mentor phụ (subMentorId) bằng email
       let subMentorId = data.subMentorId;
+      let subMentorInfo = null;
       if (subMentorId) {
+        if (!this.isValidEmail(subMentorId)) {
+          return {
+            success: false,
+            status: HTTP_STATUS.BAD_REQUEST,
+            message: 'subMentorId không hợp lệ (phải là email)!',
+          };
+        }
         const subMentor = await prisma.user.findUnique({
-          where: { id: subMentorId },
-          select: { id: true, fullName: true },
+          where: { email: subMentorId }, // Tìm bằng email thay vì id
+          select: { id: true, fullName: true, email: true, roles: { select: { role: { select: { name: true } } } } },
         });
-        if (!subMentor) {
+        if (!subMentor || !subMentor.roles.some(r => r.role.name.toLowerCase() === 'lecturer')) {
           return {
             success: false,
             status: HTTP_STATUS.NOT_FOUND,
-            message: 'Mentor phụ không tồn tại!',
+            message: 'Mentor phụ không tồn tại hoặc không phải giảng viên!',
           };
         }
+        subMentorInfo = subMentor;
 
         const subMentorGroupCount = await prisma.groupMentor.count({
-          where: { mentorId: subMentorId, roleId: mentorSubRole.id },
+          where: { mentorId: subMentor.id, roleId: mentorSubRole.id }, // Dùng id thay vì email
         });
         if (subMentorGroupCount >= maxGroupsPerMentor) {
           return {
@@ -2235,8 +2288,10 @@ export class TopicService {
             message: `Mentor "${subMentor.fullName}" đã đạt số lượng nhóm tối đa (${maxGroupsPerMentor} nhóm)!`,
           };
         }
+        subMentorId = subMentor.id; // Chuyển sang dùng id trong các bước sau
       }
 
+      // Xử lý nhóm (giữ nguyên logic)
       let groupIdToUse: string | undefined = data.groupId;
       if (!groupIdToUse && data.groupCode) {
         const group = await prisma.group.findUnique({
@@ -2312,6 +2367,7 @@ export class TopicService {
           ? data.isBusiness === 'true' || data.isBusiness === true
           : false;
 
+      // Tạo đề tài với trạng thái APPROVED
       const newTopic = await prisma.topic.create({
         data: {
           topicCode,
@@ -2323,11 +2379,12 @@ export class TopicService {
           isBusiness,
           businessPartner: data.businessPartner,
           source: data.source,
-          subSupervisor: subMentorId,
-          createdBy: data.createdBy,
-          status: 'PENDING',
+          mainSupervisor: mainMentorId, // Lưu ID thay vì email
+          subSupervisor: subMentorId,   // Lưu ID thay vì email
+          status: 'APPROVED',
           name: data.nameVi,
           proposedGroupId: groupIdToUse,
+          createdBy: data.createdBy,
           majors: { connect: { id: data.majorId } },
         },
         include: { majors: true },
@@ -2347,29 +2404,45 @@ export class TopicService {
         });
       }
 
-      if (groupIdToUse) {
-        if (mainMentorId) {
-          await prisma.groupMentor.upsert({
-            where: { groupId_mentorId: { groupId: groupIdToUse, mentorId: mainMentorId } },
-            update: {},
-            create: {
-              groupId: groupIdToUse,
-              mentorId: mainMentorId,
-              roleId: mentorMainRole.id,
-              addedBy: data.createdBy,
-            },
-          });
-        }
+      // Gán mentor vào nhóm và tạo TopicAssignment nếu có nhóm hoặc mentor
+      let assignment = null;
+      if (groupIdToUse || mainMentorId || subMentorId) {
+        if (groupIdToUse) {
+          if (mainMentorId) {
+            await prisma.groupMentor.upsert({
+              where: { groupId_mentorId: { groupId: groupIdToUse, mentorId: mainMentorId } },
+              update: {},
+              create: {
+                groupId: groupIdToUse,
+                mentorId: mainMentorId,
+                roleId: mentorMainRole.id,
+                addedBy: data.createdBy,
+              },
+            });
+          }
 
-        if (subMentorId) {
-          await prisma.groupMentor.upsert({
-            where: { groupId_mentorId: { groupId: groupIdToUse, mentorId: subMentorId } },
-            update: {},
-            create: {
+          if (subMentorId) {
+            await prisma.groupMentor.upsert({
+              where: { groupId_mentorId: { groupId: groupIdToUse, mentorId: subMentorId } },
+              update: {},
+              create: {
+                groupId: groupIdToUse,
+                mentorId: subMentorId,
+                roleId: mentorSubRole.id,
+                addedBy: data.createdBy,
+              },
+            });
+          }
+
+          // Tạo TopicAssignment nếu có nhóm
+          assignment = await prisma.topicAssignment.create({
+            data: {
+              topicId: newTopic.id,
               groupId: groupIdToUse,
-              mentorId: subMentorId,
-              roleId: mentorSubRole.id,
-              addedBy: data.createdBy,
+              assignedBy: data.createdBy,
+              approvalStatus: 'APPROVED',
+              defendStatus: 'NOT_SCHEDULED',
+              status: 'ASSIGNED',
             },
           });
         }
@@ -2387,8 +2460,9 @@ export class TopicService {
               select: { id: true, groupCode: true },
             })
             : null,
-          mainMentorId,
-          subMentorId,
+          mainMentor: mainMentorInfo ? { id: mainMentorInfo.id, fullName: mainMentorInfo.fullName, email: mainMentorInfo.email } : null,
+          subMentor: subMentorInfo ? { id: subMentorInfo.id, fullName: subMentorInfo.fullName, email: subMentorInfo.email } : null,
+          assignment: assignment ? { id: assignment.id, groupId: assignment.groupId } : null,
         },
       };
     } catch (error) {
@@ -2403,4 +2477,7 @@ export class TopicService {
       };
     }
   }
+
+
 }
+

@@ -1799,118 +1799,118 @@ export class GroupService {
         }
     }
 
-  
-  async toggleMemberStatusByMentor(
-    groupIdentifier: { groupId?: string; groupCode?: string },
-    memberIdentifier: { memberId?: string; memberEmail?: string },
-    newStatus: "ACTIVE" | "INACTIVE",
-    mentorId: string // Lấy từ token qua middleware
-  ) {
-    try {
-      // 1. Kiểm tra thông tin nhóm (dùng groupId hoặc groupCode)
-      const group = await prisma.group.findFirst({
-        where: {
-          OR: [
-            ...(groupIdentifier.groupId ? [{ id: groupIdentifier.groupId }] : []),
-            ...(groupIdentifier.groupCode ? [{ groupCode: groupIdentifier.groupCode }] : []),
-          ],
-        },
-        include: {
-          semester: true, // Bao gồm quan hệ semester để truy cập startDate, endDate, status
-        },
-      });
-      if (!group) {
-        throw new Error("Nhóm không tồn tại.");
-      }
+    // 23) // Mentor thay đổi status của member trong học kì 
+    async toggleMemberStatusByMentor(
+        groupIdentifier: { groupId?: string; groupCode?: string },
+        memberIdentifier: { memberId?: string; memberEmail?: string },
+        newStatus: "ACTIVE" | "INACTIVE",
+        mentorId: string // Lấy từ token qua middleware
+    ) {
+        try {
+            // 1. Kiểm tra thông tin nhóm (dùng groupId hoặc groupCode)
+            const group = await prisma.group.findFirst({
+                where: {
+                    OR: [
+                        ...(groupIdentifier.groupId ? [{ id: groupIdentifier.groupId }] : []),
+                        ...(groupIdentifier.groupCode ? [{ groupCode: groupIdentifier.groupCode }] : []),
+                    ],
+                },
+                include: {
+                    semester: true, // Bao gồm quan hệ semester để truy cập startDate, endDate, status
+                },
+            });
+            if (!group) {
+                throw new Error("Nhóm không tồn tại.");
+            }
 
-      // 2. Xác định trạng thái thực tế của học kỳ
-      const currentDate = new Date();
-      const startDate = new Date(group.semester.startDate);
-      const endDate = new Date(group.semester.endDate || Infinity);
+            // 2. Xác định trạng thái thực tế của học kỳ
+            const currentDate = new Date();
+            const startDate = new Date(group.semester.startDate);
+            const endDate = new Date(group.semester.endDate || Infinity);
 
-      let effectiveStatus = group.semester.status;
-      if (currentDate < startDate) effectiveStatus = "UPCOMING";
-      else if (currentDate >= startDate && currentDate <= endDate) effectiveStatus = "ACTIVE";
-      else if (currentDate > endDate) effectiveStatus = "COMPLETE";
+            let effectiveStatus = group.semester.status;
+            if (currentDate < startDate) effectiveStatus = "UPCOMING";
+            else if (currentDate >= startDate && currentDate <= endDate) effectiveStatus = "ACTIVE";
+            else if (currentDate > endDate) effectiveStatus = "COMPLETE";
 
-      // 3. Không cho phép thay đổi nếu học kỳ COMPLETE
-      if (effectiveStatus === "COMPLETE") {
-        throw new Error("Không thể thay đổi trạng thái thành viên trong học kỳ đã hoàn thành.");
-      }
+            // 3. Không cho phép thay đổi nếu học kỳ COMPLETE
+            if (effectiveStatus === "COMPLETE") {
+                throw new Error("Không thể thay đổi trạng thái thành viên trong học kỳ đã hoàn thành.");
+            }
 
-      // 4. Kiểm tra mentor có được gán trong nhóm không
-      const mentorInGroup = await prisma.groupMentor.findFirst({
-        where: { groupId: group.id, mentorId },
-      });
-      if (!mentorInGroup) {
-        throw new Error("Bạn không phải là mentor của nhóm này.");
-      }
+            // 4. Kiểm tra mentor có được gán trong nhóm không
+            const mentorInGroup = await prisma.groupMentor.findFirst({
+                where: { groupId: group.id, mentorId },
+            });
+            if (!mentorInGroup) {
+                throw new Error("Bạn không phải là mentor của nhóm này.");
+            }
 
-      // 5. Kiểm tra thành viên trong nhóm (dùng memberId hoặc memberEmail)
-      const member = await prisma.groupMember.findFirst({
-        where: {
-          groupId: group.id,
-          OR: [
-            ...(memberIdentifier.memberId ? [{ studentId: memberIdentifier.memberId }] : []),
-            ...(memberIdentifier.memberEmail
-              ? [{ student: { user: { email: memberIdentifier.memberEmail } } }]
-              : []),
-          ],
-        },
-        include: {
-          role: true, // Bao gồm quan hệ role để truy cập role.name
-          student: {
-            include: {
-              user: true, // Bao gồm user để truy cập email
-            },
-          },
-        },
-      });
-      if (!member) {
-        throw new Error("Thành viên không tồn tại trong nhóm.");
-      }
+            // 5. Kiểm tra thành viên trong nhóm (dùng memberId hoặc memberEmail)
+            const member = await prisma.groupMember.findFirst({
+                where: {
+                    groupId: group.id,
+                    OR: [
+                        ...(memberIdentifier.memberId ? [{ studentId: memberIdentifier.memberId }] : []),
+                        ...(memberIdentifier.memberEmail
+                            ? [{ student: { user: { email: memberIdentifier.memberEmail } } }]
+                            : []),
+                    ],
+                },
+                include: {
+                    role: true, // Bao gồm quan hệ role để truy cập role.name
+                    student: {
+                        include: {
+                            user: true, // Bao gồm user để truy cập email
+                        },
+                    },
+                },
+            });
+            if (!member) {
+                throw new Error("Thành viên không tồn tại trong nhóm.");
+            }
 
-      // 6. Không cho phép thay đổi trạng thái của leader
-      if (member.role.name.toLowerCase() === "leader") {
-        throw new Error("Không thể thay đổi trạng thái của trưởng nhóm. Hãy thay đổi leader trước.");
-      }
+            // 6. Không cho phép thay đổi trạng thái của leader
+            if (member.role.name.toLowerCase() === "leader") {
+                throw new Error("Không thể thay đổi trạng thái của trưởng nhóm. Hãy thay đổi leader trước.");
+            }
 
-      // 7. Kiểm tra trạng thái hiện tại
-      if (member.status === newStatus) {
-        return {
-          success: true,
-          status: HTTP_STATUS.OK,
-          message: `Thành viên đã ở trạng thái ${newStatus}. Không cần thay đổi.`,
-        };
-      }
+            // 7. Kiểm tra trạng thái hiện tại
+            if (member.status === newStatus) {
+                return {
+                    success: true,
+                    status: HTTP_STATUS.OK,
+                    message: `Thành viên đã ở trạng thái ${newStatus}. Không cần thay đổi.`,
+                };
+            }
 
-      // 8. Cập nhật trạng thái
-      const updatedMember = await prisma.groupMember.update({
-        where: { id: member.id },
-        data: { status: newStatus },
-      });
+            // 8. Cập nhật trạng thái
+            const updatedMember = await prisma.groupMember.update({
+                where: { id: member.id },
+                data: { status: newStatus },
+            });
 
-      // 9. Trả về kết quả
-      return {
-        success: true,
-        status: HTTP_STATUS.OK,
-        message: `Trạng thái của thành viên đã được cập nhật thành ${newStatus} thành công.`,
-        data: {
-          studentId: updatedMember.studentId,
-          email: member.student?.user?.email || null, // Truy cập email từ student.user, kiểm tra null
-          status: updatedMember.status,
-          role: member.role.name, // Truy cập role.name từ role
-        },
-      };
-    } catch (error) {
-      console.error("Lỗi khi thay đổi trạng thái thành viên:", error);
-      return {
-        success: false,
-        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        message: error instanceof Error ? error.message : "Lỗi hệ thống khi thay đổi trạng thái thành viên.",
-      };
+            // 9. Trả về kết quả
+            return {
+                success: true,
+                status: HTTP_STATUS.OK,
+                message: `Trạng thái của thành viên đã được cập nhật thành ${newStatus} thành công.`,
+                data: {
+                    studentId: updatedMember.studentId,
+                    email: member.student?.user?.email || null, // Truy cập email từ student.user, kiểm tra null
+                    status: updatedMember.status,
+                    role: member.role.name, // Truy cập role.name từ role
+                },
+            };
+        } catch (error) {
+            console.error("Lỗi khi thay đổi trạng thái thành viên:", error);
+            return {
+                success: false,
+                status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+                message: error instanceof Error ? error.message : "Lỗi hệ thống khi thay đổi trạng thái thành viên.",
+            };
+        }
     }
-  }
 
 
 

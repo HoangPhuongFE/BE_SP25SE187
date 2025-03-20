@@ -34,7 +34,7 @@ router.get(
 router.get(
   '/semester/:semesterId',
   authenticateToken,
-  checkRole( ['academic_officer', 'graduation_thesis_manager',  'lecturer']),
+  checkRole(['academic_officer', 'graduation_thesis_manager', 'lecturer']),
   topicController.getTopicsBySemester.bind(topicController)
 );
 
@@ -50,7 +50,7 @@ router.get(
 router.get(
   '/registered-topics',
   authenticateToken,
-  checkRole([ 'academic_officer', 'graduation_thesis_manager','lecturer']),
+  checkRole(['academic_officer', 'graduation_thesis_manager', 'lecturer']),
   topicController.getRegisteredTopicsByMentor.bind(topicController)
 );
 
@@ -130,7 +130,7 @@ router.delete(
 router.get(
   '/student/topics/approved',
   authenticateToken,
-  checkRole(['student', 'leader', 'member'],false),
+  checkRole(['student', 'leader', 'member'], false),
   topicController.getApprovedTopicsFortudent.bind(topicController)
 );
 
@@ -138,9 +138,16 @@ router.get(
 router.get(
   '/student/topics/approved/all',
   authenticateToken,
-  checkRole(['student', 'leader', 'member'],false),
+  checkRole(['student', 'leader', 'member'], false),
   topicController.getAllApprovedTopicsForStudent.bind(topicController)
 );
 
-router.post('/topics/create-with-mentors', authenticateToken, topicController.createTopicWithMentors.bind(topicController));
+
+router.post('/create-with-mentors',
+  authenticateToken,
+  topicController.createTopicWithMentors.bind(topicController));
+
+
+
+
 export default router;

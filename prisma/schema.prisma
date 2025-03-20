@@ -311,6 +311,7 @@ model Topic {
   status              String
   createdBy           String               @map("created_by")
   subSupervisor       String?              @map("sub_supervisor")
+  mainSupervisor      String?              @map("main_supervisor")
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @updatedAt @map("updated_at")
   reviewReason        String?              @db.Text
