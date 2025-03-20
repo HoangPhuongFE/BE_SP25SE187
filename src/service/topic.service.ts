@@ -288,6 +288,7 @@ export class TopicService {
           businessPartner: data.businessPartner,
           source: data.source,
           subSupervisor: subSupervisorId,
+          mainSupervisor: data.createdBy,
           createdBy: data.createdBy,
           status: 'PENDING',
           name: data.name,
@@ -2488,23 +2489,29 @@ export class TopicService {
       subMentorEmail?: string;
       groupId?: string;
       groupCode?: string;
-      updatedBy: string;
       semesterId?: string;
-    }
+    },
+    updatedBy: string 
   ) {
     try {
       // Kiểm tra đầu vào cơ bản
-      if (!topicId || !data.updatedBy) {
+      if (!topicId) {
         return {
           success: false,
           status: 400,
-          message: !topicId ? 'Thiếu `topicId`!' : 'Thiếu `updatedBy`!',
+          message: 'Thiếu `topicId`!',
         };
       }
-  
+      if (!updatedBy) {
+        return {
+          success: false,
+          status: 400,
+          message: 'Thiếu `updatedBy`!',
+        };
+      }
       // Kiểm tra quyền hạn của người dùng
       const userRole = await prisma.userRole.findFirst({
-        where: { userId: data.updatedBy, isActive: true },
+        where: { userId: updatedBy, isActive: true },
         include: { role: true },
       });
       if (!userRole || !['ACADEMIC_OFFICER', 'GRADUATION_THESIS_MANAGER'].includes(userRole.role.name.toUpperCase())) {
@@ -2704,14 +2711,14 @@ export class TopicService {
             await tx.groupMentor.upsert({
               where: { groupId_mentorId: { groupId: groupIdToUse, mentorId: mainMentorId } },
               update: {},
-              create: { groupId: groupIdToUse, mentorId: mainMentorId, roleId: mentorMainRole.id, addedBy: data.updatedBy },
+              create: { groupId: groupIdToUse, mentorId: mainMentorId, roleId: mentorMainRole.id, addedBy: updatedBy },
             });
           }
           if (subMentorId) {
             await tx.groupMentor.upsert({
               where: { groupId_mentorId: { groupId: groupIdToUse, mentorId: subMentorId } },
               update: {},
-              create: { groupId: groupIdToUse, mentorId: subMentorId, roleId: mentorSubRole.id, addedBy: data.updatedBy },
+              create: { groupId: groupIdToUse, mentorId: subMentorId, roleId: mentorSubRole.id, addedBy:updatedBy },
             });
           }
           const existingAssignment = await tx.topicAssignment.findFirst({ where: { topicId, groupId: groupIdToUse } });
@@ -2720,7 +2727,7 @@ export class TopicService {
               data: {
                 topicId,
                 groupId: groupIdToUse,
-                assignedBy: data.updatedBy,
+                assignedBy: updatedBy,
                 approvalStatus: 'APPROVED',
                 defendStatus: 'NOT_SCHEDULED',
                 status: 'ASSIGNED',
