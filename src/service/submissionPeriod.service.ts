@@ -33,7 +33,7 @@ export class SubmissionPeriodService {
         return {
           success: false,
           status: HTTP_STATUS.FORBIDDEN,
-          message: "Admin và Academic officer không được phép tạo đợt đề xuất.",
+          message: "Academic officer không được phép tạo đợt đề xuất.",
         };
       }
 

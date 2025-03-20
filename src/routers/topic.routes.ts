@@ -141,4 +141,6 @@ router.get(
   checkRole(['student', 'leader', 'member'],false),
   topicController.getAllApprovedTopicsForStudent.bind(topicController)
 );
+
+router.post('/topics/create-with-mentors', authenticateToken, topicController.createTopicWithMentors.bind(topicController));
 export default router;

@@ -181,4 +181,10 @@ router.get(
   checkRole(["student"],false), // Chỉ cho phép sinh viên truy cập
   groupController.getStudentsWithoutGroupForStudent.bind(groupController)
 );
+
+router.post(
+  "/toggle-member-status",
+  authenticateToken, // Middleware xác thực token
+  groupController.toggleMemberStatusByMentor.bind(groupController)
+);
 export default router;
