@@ -67,11 +67,30 @@ export class YearController {
   async deleteYear(req: Request, res: Response) {
     try {
       const { id } = req.params;
+
+      // Kiểm tra id hợp lệ (UUID format)
+      if (!id || typeof id !== 'string' || !id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+        return res.status(400).json({ message: "ID không hợp lệ" });
+      }
+
       const year = await this.yearService.deleteYear(id);
-      return res.status(200).json({ message: YEAR_MESSAGE.YEAR_DELETED, data: year });
+      return res.status(200).json({ 
+        message: YEAR_MESSAGE.YEAR_DELETED, 
+        data: year 
+      });
     } catch (error) {
       console.error("Error deleting year:", error);
-      return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
+      
+      // Xử lý các loại lỗi cụ thể
+      if ((error as Error).message === "YEAR_NOT_FOUND") {
+        return res.status(404).json({ message: YEAR_MESSAGE.YEAR_NOT_FOUND });
+      }
+
+      // Lỗi server
+      return res.status(500).json({ 
+        message: GENERAL_MESSAGE.SERVER_ERROR,
+        error: "Có lỗi xảy ra khi xóa năm học và dữ liệu liên quan"
+      });
     }
   }
 }
