@@ -1,4 +1,3 @@
-// system.config.service.ts
 import { PrismaClient, SystemConfig } from "@prisma/client";
 const prisma = new PrismaClient();
 
@@ -30,9 +29,13 @@ export class SystemConfigService {
     return this.getSystemConfigValue("MAX_GROUP_MENTORS", 2) as Promise<number>;
   }
 
-  // Thêm cấu hình số lượng nhóm tối đa mà một mentor có thể hướng dẫn
   async getMaxGroupsPerMentor(): Promise<number> {
     return this.getSystemConfigValue("MAX_GROUPS_PER_MENTOR", 4) as Promise<number>;
+  }
+
+  // Thêm cấu hình số lượng tối đa nhóm mà một hội đồng có thể chấm trong một lịch trình
+  async getMaxTopicsPerCouncilSchedule(): Promise<number> {
+    return this.getSystemConfigValue("MAX_TOPICS_PER_COUNCIL_SCHEDULE", 4) as Promise<number>;
   }
 
   // Các phương thức khác giữ nguyên...

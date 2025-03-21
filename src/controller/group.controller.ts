@@ -473,14 +473,14 @@ export class GroupController {
         newStatus,
         mentorId
       );
-      res.status(result.status).json(result);
+      return res.status(result.status).json(result);
     } catch (error) {
-      res.status(500).json({
+      console.error("Lỗi controller:", error);
+      return res.status(500).json({
         success: false,
         status: 500,
         message: "Lỗi server",
       });
     }
   }
-
 }

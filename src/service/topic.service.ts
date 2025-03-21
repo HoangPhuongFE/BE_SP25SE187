@@ -724,14 +724,25 @@ export class TopicService {
         include: {
           creator: { select: { fullName: true, email: true } },
           subMentor: { select: { fullName: true, email: true } },
-          majors: { select: { id: true, name: true } },
+          majors: { 
+            select: { 
+              id: true, 
+              name: true,
+            } 
+          },
           group: { select: { id: true, groupCode: true } },
-          topicAssignments: { include: { group: { select: { id: true, groupCode: true } } } },
+          topicAssignments: { 
+            include: { group: { select: { id: true, groupCode: true } } } 
+          },
           documents: { select: { fileName: true, fileUrl: true, fileType: true } },
         },
       });
       if (!topic) {
-        return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy đề tài.' };
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: 'Không tìm thấy đề tài.',
+        };
       }
       return {
         success: true,
@@ -741,9 +752,14 @@ export class TopicService {
       };
     } catch (error) {
       console.error('Lỗi khi lấy thông tin đề tài:', error);
-      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi khi lấy thông tin đề tài.' };
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: 'Lỗi khi lấy thông tin đề tài.',
+      };
     }
   }
+  
 
   async approveTopicByAcademic(
     topicId: string,
