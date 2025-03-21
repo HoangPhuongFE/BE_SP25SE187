@@ -570,27 +570,36 @@ export class TopicController {
 
   // API gán mentor hoặc nhóm vào đề tài
   async assignMentorsOrGroup(req: Request, res: Response) {
-    const { topicId } = req.params; // Lấy topicId từ URL
-    const { mainMentorEmail, subMentorEmail, groupId, groupCode, semesterId } = req.body; // Lấy dữ liệu từ body
-    const updatedBy = req.user?.id; // Giả định bạn lấy user ID từ middleware xác thực
-
+    const { topicId } = req.params;
+    const { mainMentorEmail, subMentorEmail, groupId, groupCode, semesterId } = req.body;
+  
     try {
-      const result = await topicService.assignMentorsOrGroupToTopic(topicId, {
-        mainMentorEmail,
-        subMentorEmail,
-        groupId,
-        groupCode,
-        updatedBy,
-        semesterId,
-      });
-
+      if (!req.user || !req.user.userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Không thể xác định người dùng từ token!',
+        });
+      }
+  
+      const result = await topicService.assignMentorsOrGroupToTopic(
+        topicId,
+        {
+          mainMentorEmail,
+          subMentorEmail,
+          groupId,
+          groupCode,
+          semesterId,
+        },
+        req.user.userId // Truyền updatedBy riêng
+      );
+  
       if (!result.success) {
         return res.status(result.status).json({
           success: false,
           message: result.message,
         });
       }
-
+  
       return res.status(200).json({
         success: true,
         message: result.message,
@@ -604,7 +613,5 @@ export class TopicController {
       });
     }
   }
-
-
 }
 
