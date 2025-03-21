@@ -150,19 +150,12 @@ router.post('/create-with-mentors',
 
 //  gán mentor hoặc nhóm vào đề tài
 router.post(
-  '/topics/:topicId/assign',
+  '/:topicId/assign',
   authenticateToken,
   checkRole(['academic_officer', 'graduation_thesis_manager']),
   topicController.assignMentorsOrGroup
 );
 
-//  xóa mentor hoặc nhóm khỏi đề tài
-router.delete(
-  '/topics/:topicId/remove',
-  checkRole(['academic_officer', 'graduation_thesis_manager']),
-  authenticateToken, 
-  topicController.removeMentorsOrGroup
-);
 
 
 export default router;
