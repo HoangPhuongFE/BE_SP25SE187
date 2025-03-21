@@ -71,7 +71,10 @@ export class ImportTopicUpdateService {
           
           // Tra cứu user theo updaterEmail để lấy user.id
           const updaterUser = await prisma.user.findUnique({
-            where: { email: updaterEmail },
+            where: { 
+              email: updaterEmail,
+              isDeleted: false 
+            },
             select: { id: true },
           });
           if (!updaterUser) {
@@ -80,7 +83,10 @@ export class ImportTopicUpdateService {
           
           // Tra cứu đề tài theo topicCode
           const topic = await prisma.topic.findUnique({
-            where: { topicCode },
+            where: { 
+              topicCode,
+              isDeleted: false 
+            },
           });
           if (!topic) {
             throw new Error(`Không tìm thấy đề tài với Mã đề tài: ${topicCode}`);
@@ -96,7 +102,10 @@ export class ImportTopicUpdateService {
           if (status === 'APPROVED' && topic.proposedGroupId) {
             // Tạo TopicAssignment nếu chưa tồn tại
             const existingAssignment = await prisma.topicAssignment.findFirst({
-              where: { topicId: topic.id },
+              where: { 
+                topicId: topic.id,
+                isDeleted: false 
+              },
             });
             if (!existingAssignment) {
               await prisma.topicAssignment.create({
@@ -112,7 +121,12 @@ export class ImportTopicUpdateService {
             }
             
             // Cập nhật GroupMentor: gán vai trò mentor_main cho người tạo đề tài
-            const mentorMainRole = await prisma.role.findUnique({ where: { name: 'mentor_main' } });
+            const mentorMainRole = await prisma.role.findUnique({ 
+              where: { 
+                name: 'mentor_main',
+                isDeleted: false 
+              } 
+            });
             if (mentorMainRole) {
               await prisma.groupMentor.upsert({
                 where: { groupId_mentorId: { groupId: topic.proposedGroupId, mentorId: topic.createdBy } },
@@ -127,7 +141,12 @@ export class ImportTopicUpdateService {
             }
             // Nếu đề tài có subSupervisor, tạo record cho mentor_sub
             if (topic.subSupervisor) {
-              const mentorSubRole = await prisma.role.findUnique({ where: { name: 'mentor_sub' } });
+              const mentorSubRole = await prisma.role.findUnique({ 
+                where: { 
+                  name: 'mentor_sub',
+                  isDeleted: false 
+                } 
+              });
               if (mentorSubRole) {
                 await prisma.groupMentor.create({
                   data: {

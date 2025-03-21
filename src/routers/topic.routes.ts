@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { TopicController } from '../controller/topic.controller'; // Đảm bảo đường dẫn đúng
 import { authenticateToken, checkRole } from '../middleware/user.middleware';
-import upload from '../middleware/upload'; // Middleware để xử lý upload file
 
 const router = Router();
 const topicController = new TopicController();
@@ -116,13 +115,12 @@ router.get(
 );
 
 //    e) Xóa đề tài
-router.delete(
-  '/:topicId',
+router.put(
+  '/:topicId/delete', // Thay đổi từ DELETE sang PUT để phù hợp với xóa mềm
   authenticateToken,
   checkRole(['admin', 'graduation_thesis_manager', 'academic_officer', 'lecturer']),
   topicController.deleteTopic.bind(topicController)
 );
-
 
 // 11. Các route liên quan đến đợt đăng ký đề tài
 //    a) Lấy danh sách đợt đăng ký đề tài

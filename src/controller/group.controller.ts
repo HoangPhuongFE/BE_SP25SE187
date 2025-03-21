@@ -245,28 +245,29 @@ export class GroupController {
   // Xóa nhóm
   async deleteGroup(req: Request, res: Response) {
     try {
-      // Kiểm tra groupId từ req.params
       const groupId = req.params.groupId;
       if (!groupId) {
-        console.error("GroupId missing in request");
-        return res.status(400).json({ message: "Thiếu groupId." });
+        console.error('GroupId missing in request');
+        return res.status(400).json({ message: 'Thiếu groupId.' });
       }
-
-      // Kiểm tra thông tin người dùng (được set qua middleware)
+  
       if (!req.user || !req.user.userId) {
-        console.error("User not found in request");
-        return res.status(401).json({ message: "Không tìm thấy thông tin người dùng." });
+        console.error('User not found in request');
+        return res.status(401).json({ message: 'Không tìm thấy thông tin người dùng.' });
       }
-
-      // Gọi service để xóa nhóm
-      const result = await groupService.deleteGroup(groupId, req.user.userId);
+  
+      const userId = req.user.userId;
+      const ipAddress = req.ip; // Lấy địa chỉ IP từ request
+  
+      const result = await groupService.deleteGroup(groupId, userId, ipAddress);
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Delete group error:", error);
-      return res.status(500).json({ message: error instanceof Error ? error.message : "Lỗi server khi xóa nhóm." });
+      console.error('Delete group error:', error);
+      return res.status(500).json({
+        message: error instanceof Error ? error.message : 'Lỗi server khi đánh dấu xóa nhóm.',
+      });
     }
   }
-
 
 
   // Rời nhóm
@@ -417,7 +418,10 @@ export class GroupController {
   async getStudentsWithoutGroupForStudent(req: AuthenticatedRequest, res: Response) {
     try {
       const result = await groupService.getStudentsWithoutGroupForStudent(req.user!.userId);
-      return res.status(result.status).json(result);
+      return res.status(HTTP_STATUS.OK).json({
+        success: true,
+        data: result
+      });
     } catch (error) {
       console.error("Lỗi trong getStudentsWithoutGroupForStudent:", error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({

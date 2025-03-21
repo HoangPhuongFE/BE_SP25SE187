@@ -38,10 +38,10 @@ router.put(
 );
 
 // Xóa hội đồng topic (chỉ cho phép admin, academic_officer, graduation_thesis_manager)
-router.delete(
-  '/:id',
+router.put(
+  '/:id/delete', 
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager"]),
+  checkRole(['examination_officer', 'graduation_thesis_manager']),
   councilTopicController.deleteCouncil.bind(councilTopicController)
 );
 // Thêm thành viên vào hội đồng (chỉ  academic_officer, graduation_thesis_manager)

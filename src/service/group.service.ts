@@ -13,7 +13,10 @@ export class GroupService {
         try {
             // 1. Kiểm tra học kỳ (bao gồm startDate để tạo mã nhóm)
             const semester = await prisma.semester.findUnique({
-                where: { id: semesterId },
+                where: { 
+                    id: semesterId,
+                    isDeleted: false 
+                },
                 select: { id: true, status: true, startDate: true },
             });
             if (!semester) {
@@ -541,7 +544,7 @@ export class GroupService {
 
         const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
 
-        if (userRoles.includes("graduation_thesis_manager")  || userRoles.includes("academic_officer")) {
+        if (userRoles.includes("graduation_thesis_manager") || userRoles.includes("academic_officer")) {
             return prisma.group.findMany({
                 where: { semesterId },
                 include: {
@@ -806,7 +809,10 @@ export class GroupService {
 
                 // 5. Tạo groupCode duy nhất cho nhóm này
                 const semester = await prisma.semester.findUnique({
-                    where: { id: semesterId },
+                    where: { 
+                        id: semesterId,
+                        isDeleted: false 
+                    },
                     select: { startDate: true },
                 });
                 if (!semester || !semester.startDate) {
@@ -1127,50 +1133,220 @@ export class GroupService {
         }
     }
 
-    // 11) deleteGroup
-    async deleteGroup(groupId: string, userId: string) {
-        const user = await prisma.user.findUnique({
+    async deleteGroup(groupId: string, userId: string, ipAddress?: string) {
+        try {
+          // Kiểm tra thông tin người dùng và vai trò
+          const user = await prisma.user.findUnique({
             where: { id: userId },
             include: { roles: { include: { role: true } } },
-        });
-        if (!user) throw new Error("Người dùng không tồn tại.");
-
-        const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
-        const isAdmin = userRoles.includes("admin");
-
-        const student = await prisma.student.findUnique({ where: { userId } });
-        let isLeader = false;
-        if (student) {
-            const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
-            if (!leaderRole) throw new Error("Vai trò 'leader' không tồn tại.");
-
+          });
+          if (!user) {
+            await prisma.systemLog.create({
+              data: {
+                userId,
+                action: 'DELETE_GROUP_ATTEMPT',
+                entityType: 'Group',
+                entityId: groupId,
+                description: 'Thử xóa nhóm nhưng người dùng không tồn tại',
+                severity: 'ERROR',
+                ipAddress: ipAddress || 'unknown',
+              },
+            });
+            throw new Error('Người dùng không tồn tại.');
+          }
+      
+          const userRoles = user.roles.map(r => r.role.name.toLowerCase());
+          const isAdmin = userRoles.includes('academic_officer') || userRoles.includes('graduation_thesis_manager');
+      
+          const student = await prisma.student.findUnique({ where: { userId } });
+          let isLeader = false;
+          if (student) {
+            const leaderRole = await prisma.role.findUnique({ where: { name: 'leader' } });
+            if (!leaderRole) {
+              await prisma.systemLog.create({
+                data: {
+                  userId,
+                  action: 'DELETE_GROUP_ATTEMPT',
+                  entityType: 'Group',
+                  entityId: groupId,
+                  description: 'Vai trò "leader" không tồn tại trong hệ thống',
+                  severity: 'ERROR',
+                  ipAddress: ipAddress || 'unknown',
+                },
+              });
+              throw new Error('Vai trò "leader" không tồn tại.');
+            }
             const leader = await prisma.groupMember.findFirst({
-                where: { groupId, studentId: student.id, roleId: leaderRole.id, isActive: true },
+              where: { groupId, studentId: student.id, roleId: leaderRole.id, isActive: true, isDeleted: false },
             });
             if (leader) isLeader = true;
+          }
+      
+          if (!isAdmin && !isLeader) {
+            await prisma.systemLog.create({
+              data: {
+                userId,
+                action: 'DELETE_GROUP_ATTEMPT',
+                entityType: 'Group',
+                entityId: groupId,
+                description: 'Thử xóa nhóm nhưng không có quyền (chỉ leader hoặc academic_officer)',
+                severity: 'WARNING',
+                ipAddress: ipAddress || 'unknown',
+                metadata: { userRoles },
+              },
+            });
+            throw new Error('Bạn không có quyền xóa nhóm (chỉ leader hoặc graduation_thesis_manager/academic_officer).');
+          }
+      
+          // Kiểm tra nhóm và các thành viên
+          const group = await prisma.group.findUnique({
+            where: { id: groupId, isDeleted: false },
+            include: { members: true, topicAssignments: true },
+          });
+          if (!group) {
+            await prisma.systemLog.create({
+              data: {
+                userId,
+                action: 'DELETE_GROUP_ATTEMPT',
+                entityType: 'Group',
+                entityId: groupId,
+                description: 'Thử xóa nhóm nhưng không tìm thấy hoặc đã bị đánh dấu xóa',
+                severity: 'WARNING',
+                ipAddress: ipAddress || 'unknown',
+              },
+            });
+            throw new Error('Nhóm không tồn tại.');
+          }
+      
+          if (!isAdmin && group.members.length > 1) {
+            await prisma.systemLog.create({
+              data: {
+                userId,
+                action: 'DELETE_GROUP_ATTEMPT',
+                entityType: 'Group',
+                entityId: groupId,
+                description: 'Thử xóa nhóm nhưng nhóm vẫn còn thành viên',
+                severity: 'WARNING',
+                ipAddress: ipAddress || 'unknown',
+                metadata: { memberCount: group.members.length },
+              },
+            });
+            throw new Error('Nhóm vẫn còn thành viên, chỉ graduation_thesis_manager hoặc academic_officer mới có thể xóa.');
+          }
+      
+          // Xóa mềm trong transaction
+          const updatedGroup = await prisma.$transaction(async (tx) => {
+            // 1. Đánh dấu xóa các ReviewSchedule liên quan
+            await tx.reviewSchedule.updateMany({
+              where: { groupId, isDeleted: false },
+              data: { isDeleted: true },
+            });
+      
+            // 2. Đánh dấu xóa các DefenseSchedule liên quan
+            await tx.defenseSchedule.updateMany({
+              where: { groupId, isDeleted: false },
+              data: { isDeleted: true },
+            });
+      
+            // 3. Đánh dấu xóa các ProgressReport liên quan
+            await tx.progressReport.updateMany({
+              where: { groupId, isDeleted: false },
+              data: { isDeleted: true },
+            });
+      
+            // 4. Đánh dấu xóa các TopicAssignment liên quan
+            await tx.topicAssignment.updateMany({
+              where: { groupId, isDeleted: false },
+              data: { isDeleted: true },
+            });
+      
+            // 5. Đánh dấu xóa các GroupMentor liên quan
+            await tx.groupMentor.updateMany({
+              where: { groupId, isDeleted: false },
+              data: { isDeleted: true },
+            });
+      
+            // 6. Đánh dấu xóa các GroupInvitation liên quan
+            await tx.groupInvitation.updateMany({
+              where: { groupId, isDeleted: false },
+              data: { isDeleted: true },
+            });
+      
+            // 7. Đánh dấu xóa các GroupMember liên quan
+            await tx.groupMember.updateMany({
+              where: { groupId, isDeleted: false },
+              data: { isDeleted: true },
+            });
+      
+            // 8. Đánh dấu xóa các MeetingSchedule liên quan
+            await tx.meetingSchedule.updateMany({
+              where: { groupId, isDeleted: false },
+              data: { isDeleted: true },
+            });
+      
+            // 9. Đánh dấu xóa các Document liên quan đến Group
+            await tx.document.updateMany({
+              where: { groupId, isDeleted: false },
+              data: { isDeleted: true },
+            });
+      
+            // 10. Đánh dấu xóa các Topic có proposedGroupId liên quan
+            await tx.topic.updateMany({
+              where: { proposedGroupId: groupId, isDeleted: false },
+              data: { isDeleted: true },
+            });
+      
+            // 11. Đánh dấu xóa Group
+            await tx.group.update({
+              where: { id: groupId },
+              data: { isDeleted: true },
+            });
+      
+            // 12. Ghi log hành động thành công
+            await tx.systemLog.create({
+              data: {
+                userId,
+                action: 'DELETE_GROUP',
+                entityType: 'Group',
+                entityId: groupId,
+                description: `Nhóm "${group.groupCode}" đã được đánh dấu xóa bởi ${isAdmin ? 'admin' : 'leader'}`,
+                severity: 'INFO',
+                ipAddress: ipAddress || 'unknown',
+                metadata: {
+                  deletedByRole: isAdmin ? 'admin' : 'leader',
+                  groupCode: group.groupCode,
+                  memberCount: group.members.length,
+                  topicAssignmentsCount: group.topicAssignments.length,
+                },
+                oldValues: JSON.stringify(group),
+              },
+            });
+      
+            // Trả về dữ liệu Group sau khi cập nhật
+            return await tx.group.findUnique({
+              where: { id: groupId },
+              include: { members: true, topicAssignments: true },
+            });
+          });
+      
+          return { message: 'Nhóm đã được đánh dấu xóa thành công.', data: updatedGroup };
+        } catch (error) {
+          await prisma.systemLog.create({
+            data: {
+              userId,
+              action: 'DELETE_GROUP_ERROR',
+              entityType: 'Group',
+              entityId: groupId,
+              description: 'Lỗi hệ thống khi đánh dấu xóa nhóm',
+              severity: 'ERROR',
+              error: error instanceof Error ? error.message : 'Unknown error',
+              stackTrace: (error as Error).stack || 'No stack trace',
+              ipAddress: ipAddress || 'unknown',
+            },
+          });
+          throw error;
         }
-
-        if (!isAdmin && !isLeader) {
-            throw new Error("Bạn không có quyền xoá nhóm (chỉ leader hoặc admin).");
-        }
-
-        const group = await prisma.group.findUnique({
-            where: { id: groupId },
-            include: { members: true },
-        });
-        if (!group) throw new Error("Nhóm không tồn tại.");
-
-        if (!isAdmin && group.members.length > 1) {
-            throw new Error("Nhóm vẫn còn thành viên, chỉ admin mới có thể xoá.");
-        }
-
-        await prisma.groupMentor.deleteMany({ where: { groupId } });
-        await prisma.groupInvitation.deleteMany({ where: { groupId } });
-        await prisma.groupMember.deleteMany({ where: { groupId } });
-        await prisma.group.delete({ where: { id: groupId } });
-
-        return { message: "Nhóm đã được xoá thành công." };
-    }
+      }
 
     // 12) leaveGroup
     async leaveGroup(groupId: string, userId: string) {
@@ -1595,8 +1771,11 @@ export class GroupService {
 
             // **2. Kiểm tra học kỳ (chỉ cần tồn tại, không quan tâm trạng thái)**
             const semester = await prisma.semester.findUnique({
-                where: { id: semesterId },
-                select: { id: true, startDate: true }, // Giữ startDate để tạo mã nhóm
+                where: { 
+                    id: semesterId,
+                    isDeleted: false 
+                },
+                select: { id: true, startDate: true },
             });
             if (!semester) {
                 return { success: false, status: 404, message: "Học kỳ không tồn tại." };
@@ -1691,112 +1870,68 @@ export class GroupService {
     }
     // 22) getStudentsWithoutGroupForStudent (by student)
     async getStudentsWithoutGroupForStudent(userId: string) {
-        try {
-            // 1. Tìm thông tin sinh viên hiện tại
-            const currentStudent = await prisma.student.findUnique({
-                where: { userId },
-                include: { major: true, semesterStudents: { include: { semester: true } } },
-            });
-
-            if (!currentStudent) {
-                throw new Error("Sinh viên không tồn tại.");
-            }
-
-            // Ngày hiện tại (dựa trên thời gian hệ thống, ở đây là 19-3-2025 theo giả định)
-            const currentDate = new Date(); // Ví dụ: new Date("2025-03-19") để kiểm tra
-
-            // 2. Xác định trạng thái thực tế của học kỳ dựa trên ngày hiện tại
-            const semesters = currentStudent.semesterStudents.map(ss => {
-                const semester = ss.semester;
-                const startDate = new Date(semester.startDate);
-                const endDate = new Date(semester.endDate || Infinity); // Nếu không có endDate, coi như chưa kết thúc
-
-                let effectiveStatus = semester.status;
-                if (currentDate < startDate) {
-                    effectiveStatus = "UPCOMING";
-                } else if (currentDate >= startDate && currentDate <= endDate) {
-                    effectiveStatus = "ACTIVE";
-                } else if (currentDate > endDate) {
-                    effectiveStatus = "COMPLETE";
-                }
-
-                return { ...semester, effectiveStatus };
-            });
-
-            // 3. Lấy học kỳ UPCOMING sớm nhất dựa trên startDate
-            const upcomingSemesters = semesters.filter(s => s.effectiveStatus === "UPCOMING");
-            const activeSemesters = semesters.filter(s => s.effectiveStatus === "ACTIVE");
-            const completeSemesters = semesters.filter(s => s.effectiveStatus === "COMPLETE");
-
-            // Nếu không có học kỳ nào phù hợp
-            if (upcomingSemesters.length === 0 && activeSemesters.length === 0 && completeSemesters.length > 0) {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.OK,
-                    message: "Tất cả học kỳ đã hoàn thành, không thể xem danh sách sinh viên chưa có nhóm.",
-                    data: null,
-                };
-            }
-
-            // Nếu chỉ có học kỳ ACTIVE
-            if (upcomingSemesters.length === 0 && activeSemesters.length > 0) {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.OK,
-                    message: "Học kỳ đang hoạt động, không thể xem danh sách sinh viên chưa có nhóm.",
-                    data: null,
-                };
-            }
-
-            // Nếu có UPCOMING, chọn học kỳ có startDate sớm nhất
-            const selectedSemester = upcomingSemesters.length > 0
-                ? upcomingSemesters.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0]
-                : null;
-
-            if (!selectedSemester) {
-                throw new Error("Không tìm thấy học kỳ sắp tới phù hợp.");
-            }
-
-            // 4. Lấy danh sách sinh viên chưa có nhóm trong học kỳ UPCOMING được chọn
-            const students = await prisma.student.findMany({
-                where: {
-                    majorId: currentStudent.majorId, // Lọc theo chuyên ngành
-                    semesterStudents: {
-                        some: {
-                            semesterId: selectedSemester.id,
-                            qualificationStatus: "qualified" // Chỉ lấy sinh viên đủ điều kiện
-                        },
+        const currentStudent = await prisma.student.findUnique({
+            where: { userId },
+            include: { 
+                major: true, 
+                semesterStudents: { 
+                    where: {
+                        semester: {
+                            isDeleted: false
+                        }
                     },
-                    groupMembers: { none: { group: { semesterId: selectedSemester.id } } }, // Chưa có nhóm trong học kỳ này
-                },
-                include: {
-                    user: { select: { fullName: true, email: true } },
-                    major: { select: { name: true } },
-                },
-            });
+                    include: { 
+                        semester: true
+                    } 
+                } 
+            } 
+        });
 
-            // 5. Format dữ liệu trả về
-            const formattedStudents = students.map(student => ({
-                studentId: student.id,
-                fullName: student.user?.fullName || "Không có tên",
-                email: student.user?.email || "Không có email",
-                major: student.major?.name || "Không có chuyên ngành",
-            }));
-
-            return {
-                success: true,
-                status: HTTP_STATUS.OK,
-                message: `Danh sách sinh viên chưa có nhóm trong học kỳ ${selectedSemester.id} (Bắt đầu: ${selectedSemester.startDate}).`,
-                data: formattedStudents,
-            };
-        } catch (error) {
-            console.error("Lỗi khi lấy danh sách sinh viên chưa có nhóm:", error);
-            return {
-                success: false,
-                status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-                message: "Lỗi hệ thống khi lấy danh sách sinh viên chưa có nhóm.",
-            };
+        if (!currentStudent) {
+            throw new Error("Không tìm thấy thông tin sinh viên.");
         }
+
+        const currentSemester = currentStudent.semesterStudents[0]?.semester;
+        if (!currentSemester) {
+            throw new Error("Không tìm thấy học kỳ hiện tại.");
+        }
+
+        const students = await prisma.student.findMany({
+            where: {
+                semesterStudents: {
+                    some: {
+                        semesterId: currentSemester.id,
+                        semester: {
+                            isDeleted: false
+                        }
+                    }
+                },
+                NOT: {
+                    groupMembers: {
+                        some: {
+                            group: {
+                                semesterId: currentSemester.id,
+                                isDeleted: false
+                            }
+                        }
+                    }
+                }
+            },
+            include: {
+                user: true,
+                major: true,
+                specialization: true
+            }
+        });
+
+        return students.map(student => ({
+            id: student.id,
+            studentCode: student.studentCode,
+            studentName: student.user?.fullName || "Không có tên",
+            email: student.user?.email || "",
+            major: student.major?.name || "",
+            specialization: student.specialization?.name || ""
+        }));
     }
 
     // 23) // Mentor thay đổi status của member trong học kì 

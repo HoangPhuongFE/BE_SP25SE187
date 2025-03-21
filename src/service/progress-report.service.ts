@@ -23,7 +23,8 @@ export class ProgressReportService {
         // Đầu tiên tìm student từ userId
         const student = await prisma.student.findFirst({
           where: {
-            userId: data.userId
+            userId: data.userId,
+            isDeleted: false
           }
         });
 
@@ -33,6 +34,10 @@ export class ProgressReportService {
             where: {
               userId: data.userId,
               isActive: true,
+              isDeleted: false,
+              group: {
+                isDeleted: false
+              }
             },
             include: {
               role: true,
@@ -73,7 +78,8 @@ export class ProgressReportService {
         // Đầu tiên tìm student từ userId
         const student = await prisma.student.findFirst({
           where: {
-            userId: data.userId
+            userId: data.userId,
+            isDeleted: false
           }
         });
 
@@ -129,17 +135,22 @@ export class ProgressReportService {
       const reportPeriod = await prisma.progressReport.findFirst({
         where: {
           groupId: groupId,
+          isDeleted: false,
           startDate: {
             lte: currentDate,
           },
           endDate: {
             gte: currentDate,
           },
-          status: "ACTIVE", // Chỉ lấy khoảng thời gian đang hoạt động
-          content: "", // Đây là khoảng thời gian báo cáo (không có nội dung)
+          status: "ACTIVE",
+          content: "",
         },
         include: {
-          mentors: true
+          mentors: {
+            where: {
+              isDeleted: false
+            }
+          }
         }
       });
 
@@ -155,6 +166,7 @@ export class ProgressReportService {
         where: {
           groupId: groupId,
           weekNumber: weekNumber,
+          isDeleted: false,
           content: {
             not: ""
           },
@@ -228,6 +240,7 @@ export class ProgressReportService {
             reportId,
             mentorId,
           },
+          isDeleted: false
         },
       });
 
@@ -236,7 +249,8 @@ export class ProgressReportService {
         const isGroupMentor = await prisma.groupMentor.findFirst({
           where: {
             groupId: report.groupId,
-            mentorId
+            mentorId,
+            isDeleted: false
           },
           include: {
             role: true
@@ -354,7 +368,10 @@ export class ProgressReportService {
 
       // Tìm student từ userId
       const student = await prisma.student.findFirst({
-        where: { userId }
+        where: { 
+            userId: userId,
+            isDeleted: false 
+        }
       });
       
       if (!student) {
@@ -367,7 +384,11 @@ export class ProgressReportService {
         where: {
           groupId: report.groupId,
           studentId: student.id,
-          isActive: true
+          isActive: true,
+          isDeleted: false,
+          group: {
+            isDeleted: false
+          }
         },
         include: {
           role: true
@@ -414,89 +435,130 @@ export class ProgressReportService {
   }
 
   // Xóa báo cáo tiến độ
-  async deleteProgressReport(reportId: string, userId: string) {
+  async deleteProgressReport(reportId: string, userId: string, ipAddress?: string): Promise<{ message: string; data: any }> {
     try {
-      console.log(`Xóa báo cáo ${reportId} bởi người dùng ${userId}`);
-      
+      // Kiểm tra xem ProgressReport có tồn tại và chưa bị đánh dấu xóa
       const report = await prisma.progressReport.findUnique({
-        where: { id: reportId },
+        where: { id: reportId, isDeleted: false },
         include: { group: true },
       });
-
       if (!report) {
-        console.log(`Không tìm thấy báo cáo với ID: ${reportId}`);
+        await prisma.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_PROGRESS_REPORT_ATTEMPT',
+            entityType: 'ProgressReport',
+            entityId: reportId,
+            description: 'Thử xóa báo cáo tiến độ nhưng không tìm thấy hoặc đã bị đánh dấu xóa',
+            severity: 'WARNING',
+            ipAddress: ipAddress || 'unknown',
+          },
+        });
         throw new Error(MESSAGES.PROGRESS_REPORT.REPORT_NOT_FOUND);
       }
-
-      // Kiểm tra quyền xóa (chỉ trưởng nhóm hoặc mentor chính)
+  
+      // Kiểm tra quyền của người dùng
       let hasPermission = false;
-      
-      // Kiểm tra nếu là trưởng nhóm
-      const student = await prisma.student.findFirst({
-        where: { userId }
-      });
-      
+      const student = await prisma.student.findFirst({ where: { userId } });
       if (student) {
         const groupMember = await prisma.groupMember.findFirst({
-          where: { 
+          where: {
             groupId: report.groupId,
             studentId: student.id,
-            role: {
-              name: { in: ["group_leader", "leader"] }
-            },
-            isActive: true 
+            role: { name: { in: ['group_leader', 'leader'] } },
+            isActive: true,
+            isDeleted: false,
           },
-          include: { role: true }
+          include: { role: true },
         });
-        
-        if (groupMember) {
-          hasPermission = true;
-          console.log(`Người dùng ${userId} là trưởng nhóm của nhóm ${report.groupId}`);
-        }
+        if (groupMember) hasPermission = true;
       }
-      
-      // Kiểm tra nếu là mentor chính
+  
       if (!hasPermission) {
         const mentorRole = await prisma.groupMentor.findFirst({
           where: {
             groupId: report.groupId,
             mentorId: userId,
-            role: {
-              name: { in: ["mentor_main", "lecturer"] }
-            }
+            role: { name: { in: ['mentor_main', 'lecturer'] } },
+            isDeleted: false,
           },
-          include: { role: true }
+          include: { role: true },
         });
-        
-        if (mentorRole) {
-          hasPermission = true;
-          console.log(`Người dùng ${userId} là mentor chính của nhóm ${report.groupId}`);
-        }
+        if (mentorRole) hasPermission = true;
       }
-
+  
       if (!hasPermission) {
-        console.log(`Người dùng ${userId} không có quyền xóa báo cáo ${reportId}`);
+        await prisma.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_PROGRESS_REPORT_ATTEMPT',
+            entityType: 'ProgressReport',
+            entityId: reportId,
+            description: 'Thử xóa báo cáo tiến độ nhưng không có quyền',
+            severity: 'WARNING',
+            ipAddress: ipAddress || 'unknown',
+            metadata: { userId, requiredRoles: 'group_leader or mentor_main' },
+          },
+        });
         throw new Error(MESSAGES.PROGRESS_REPORT.UNAUTHORIZED);
       }
-
-      // Xóa tất cả các liên kết với mentor
-      await prisma.progressReportMentor.deleteMany({
-        where: { reportId },
+  
+      // Xóa mềm trong transaction
+      const updatedReport = await prisma.$transaction(async (tx) => {
+        // 1. Đánh dấu xóa các ProgressReportMentor liên quan
+        await tx.progressReportMentor.updateMany({
+          where: { reportId, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 2. Đánh dấu xóa ProgressReport
+        await tx.progressReport.update({
+          where: { id: reportId },
+          data: { isDeleted: true },
+        });
+  
+        // 3. Ghi log hành động thành công
+        await tx.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_PROGRESS_REPORT',
+            entityType: 'ProgressReport',
+            entityId: reportId,
+            description: `Báo cáo tiến độ tuần ${report.weekNumber} của nhóm ${report.groupId} đã được đánh dấu xóa`,
+            severity: 'INFO',
+            ipAddress: ipAddress || 'unknown',
+            metadata: {
+              weekNumber: report.weekNumber,
+              groupId: report.groupId,
+              deletedBy: hasPermission && student ? 'group_leader' : 'mentor',
+            },
+            oldValues: JSON.stringify(report),
+          },
+        });
+  
+        // Trả về dữ liệu ProgressReport sau khi cập nhật
+        return await tx.progressReport.findUnique({
+          where: { id: reportId },
+          include: { group: true },
+        });
       });
-      
-      console.log(`Đã xóa liên kết mentor cho báo cáo ${reportId}`);
-
-      // Xóa báo cáo
-      const deletedReport = await prisma.progressReport.delete({
-        where: { id: reportId },
+  
+      return { message: MESSAGES.PROGRESS_REPORT.REPORT_DELETED, data: updatedReport };
+    } catch (error) {
+      await prisma.systemLog.create({
+        data: {
+          userId,
+          action: 'DELETE_PROGRESS_REPORT_ERROR',
+          entityType: 'ProgressReport',
+          entityId: reportId,
+          description: 'Lỗi hệ thống khi đánh dấu xóa báo cáo tiến độ',
+          severity: 'ERROR',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stackTrace: (error as Error).stack || 'No stack trace',
+          ipAddress: ipAddress || 'unknown',
+        },
       });
-      
-      console.log(`Đã xóa báo cáo ${reportId}`);
-      
-      return deletedReport;
-    } catch (error: any) {
-      console.error(`Lỗi khi xóa báo cáo:`, error);
-      throw new Error(error.message || MESSAGES.GENERAL.ACTION_FAILED);
+      throw error;
     }
   }
 
@@ -810,7 +872,10 @@ export class ProgressReportService {
       
       // Tìm student từ userId
       const student = await prisma.student.findFirst({
-        where: { userId }
+        where: { 
+            userId: userId,
+            isDeleted: false 
+        }
       });
       
       if (!student) {
@@ -833,7 +898,10 @@ export class ProgressReportService {
       
       // Lấy danh sách báo cáo của nhóm
       const reports = await prisma.progressReport.findMany({
-        where: { groupId: groupMember.groupId },
+        where: { 
+          groupId: groupMember.groupId,
+          isDeleted: false
+        },
         orderBy: { weekNumber: 'desc' },
         include: {
           mentors: {
@@ -963,6 +1031,7 @@ export class ProgressReportService {
       const mentors = await prisma.groupMentor.findMany({
         where: {
           groupId: data.groupId,
+          isDeleted: false
         },
         select: {
           mentorId: true,
@@ -1018,6 +1087,7 @@ export class ProgressReportService {
       const allReports = await prisma.progressReport.findMany({
         where: {
           groupId: groupId,
+          isDeleted: false
         },
         orderBy: {
           weekNumber: 'asc',
@@ -1073,16 +1143,14 @@ export class ProgressReportService {
       const period = await prisma.progressReport.findFirst({
         where: {
           groupId: groupId,
+          isDeleted: false,
           startDate: {
             lte: currentDate,
           },
           endDate: {
             gte: currentDate,
           },
-          content: {
-            // Thay đổi từ null sang không kiểm tra content
-            // null, // Chỉ lấy khoảng thời gian, không lấy báo cáo
-          },
+          content: "",
           status: "ACTIVE",
         },
       });

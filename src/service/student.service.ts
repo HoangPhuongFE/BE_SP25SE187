@@ -8,24 +8,45 @@ export class StudentService {
   // Lấy danh sách sinh viên toàn bộ (nếu cần)
   async fetchStudentList() {
     const students = await prisma.semesterStudent.findMany({
+      where: {
+        isDeleted: false,
+      },
       include: {
         student: {
-          include: {
-            user: true,
-            major: true,
-            specialization: true,
-          },
-        },
-      },
+          select: {
+            id: true,
+            studentCode: true,
+            user: {
+              select: {
+                email: true,
+                isDeleted: false
+              }
+            },
+            major: {
+              select: {
+                name: true,
+                isDeleted: false
+              }
+            },
+            specialization: {
+              select: {
+                name: true,
+                isDeleted: false
+              }
+            },
+            isDeleted: false
+          }
+        }
+      }
     });
   
     return students.map((entry) => ({
-      id: entry.student.id,
-      email: entry.student.user?.email || "",
-      major: entry.student.major?.name || "",
-      specialization: entry.student.specialization?.name || "",
+      id: entry.student?.id,
+      email: entry.student?.user?.email || "",
+      major: entry.student?.major?.name || "",
+      specialization: entry.student?.specialization?.name || "",
       status: entry.status,
-      student_code: entry.student.studentCode,
+      student_code: entry.student?.studentCode,
       qualificationStatus: entry.qualificationStatus,
       semesterId: entry.semesterId,
     }));
@@ -36,18 +57,27 @@ export class StudentService {
   // Lấy danh sách sinh viên phân trang
   async getPaginatedStudents(page: number, pageSize: number) {
     return paginate(prisma.semesterStudent, { page, pageSize }, {
+      where: {
+        isDeleted: false,
+        student: {
+          isDeleted: false
+        }
+      },
       select: {
         student: {
           select: {
             id: true,
             studentCode: true, 
             user: {
+              where: { isDeleted: false },
               select: { email: true }
             },
             major: {
+              where: { isDeleted: false },
               select: { name: true }
             },
             specialization: {
+              where: { isDeleted: false },
               select: { name: true }
             },
           }
@@ -83,32 +113,12 @@ export class StudentService {
 
   // Xoá student
   async deleteStudent(studentId: string) {
-    try {
-      // Xóa các bản ghi liên quan trong các bảng khác trước
-      await prisma.semesterStudent.deleteMany({
-        where: { studentId },
-      });
-  
-      await prisma.groupMember.deleteMany({
-        where: { studentId },
-      });
-  
-      await prisma.groupInvitation.deleteMany({
-        where: { studentId },
-      });
-  
-      // Cuối cùng, xóa bản ghi student
-      return await prisma.student.delete({
-        where: { id: studentId },
-      });
-    } catch (error) {
-      if ((error as any).code === "P2025") {
-        throw new Error("Student not found");
-      } else if ((error as any).code === "P2003") {
-        throw new Error("Cannot delete student due to related records in other tables.");
-      }
-      throw error;
-    }
+    await prisma.$transaction([
+      prisma.semesterStudent.deleteMany({ where: { studentId } }),
+      prisma.groupMember.deleteMany({ where: { studentId } }),
+      prisma.groupInvitation.deleteMany({ where: { studentId } }),
+      prisma.student.delete({ where: { id: studentId } }),
+    ]);
   }
   
   
@@ -116,31 +126,59 @@ export class StudentService {
   // Lấy danh sách student theo Semester
   async getStudentsBySemester(semesterId: string) {
     const students = await prisma.semesterStudent.findMany({
-      where: { semesterId },
+      where: { 
+        semesterId,
+        isDeleted: false,
+      },
       include: {
         semester: {    
           select: {
             code: true,  
-            year: { select: { year: true } },  
+            year: { 
+              select: { 
+                year: true,
+                isDeleted: false
+              }
+            },
+            isDeleted: false  
           },
         },
         student: {
-          include: {
-            user: true,
-            major: true,
-            specialization: true,
-          },
-        },
-      },
+          select: {
+            id: true,
+            studentCode: true,
+            user: {
+              select: {
+                fullName: true,
+                email: true,
+                isDeleted: false
+              }
+            },
+            major: {
+              select: {
+                name: true,
+                isDeleted: false
+              }
+            },
+            specialization: {
+              select: {
+                name: true,
+                isDeleted: false
+              }
+            },
+            isDeleted: false
+          }
+        }
+      }
     });
   
     return students.map((entry) => ({
-      id: entry.student.id,
-      studentCode: entry.student.studentCode, 
-      studentName: entry.student.user?.fullName || "Không có tên",
-      email: entry.student.user?.email || "",
-      major: entry.student.major?.name || "",
-      specialization: entry.student.specialization?.name || "",
+      id: entry.student?.id,
+      studentCode: entry.student?.studentCode, 
+      studentName: entry.student?.user?.fullName || "Không có tên",
+      email: entry.student?.user?.email || "",
+      major: entry.student?.major?.name || "",
+      specialization: entry.student?.specialization?.name || "",
       status: entry.status,
       qualificationStatus: entry.qualificationStatus,
     }));

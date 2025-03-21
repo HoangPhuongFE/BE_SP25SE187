@@ -13,12 +13,12 @@ router.get("/gets", studentController.getStudentList.bind(studentController));
 router.put("/:studentId", studentController.updateStudentHandler.bind(studentController));
 
 router.delete("/delete/:studentId", authenticateToken,
-    checkRole(['admin',"graduation_thesis_manager", "examination_officer"]), studentController.deleteStudentHandler.bind(studentController));
+    checkRole(['admin', "graduation_thesis_manager", "examination_officer"]), studentController.deleteStudentHandler.bind(studentController));
 
 router.get("/:semesterId", studentController.getStudentsBySemester.bind(studentController));
 
 router.delete("/semester/:semesterId", authenticateToken,
-    checkRole(['admin',"graduation_thesis_manager", "examination_officer"]), studentController.deleteAllStudentsBySemesterHandler.bind(studentController));
+    checkRole(['admin', "graduation_thesis_manager", "examination_officer"]), studentController.deleteAllStudentsBySemesterHandler.bind(studentController));
 
 
 export default router;

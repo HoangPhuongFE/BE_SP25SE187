@@ -37,7 +37,10 @@ export class TopicService {
 
       // **Kiểm tra học kỳ**
       const semester = await prisma.semester.findUnique({
-        where: { id: data.semesterId },
+        where: { 
+            id: data.semesterId,
+            isDeleted: false 
+        },
         select: { id: true, status: true, startDate: true, code: true },
       });
       if (!semester || !semester.code) {
@@ -610,7 +613,10 @@ export class TopicService {
   async getTopicsBySemester(semesterId: string, round?: number) {
     try {
       const semester = await prisma.semester.findUnique({
-        where: { id: semesterId },
+        where: { 
+            id: semesterId,
+            isDeleted: false 
+        },
         select: { id: true },
       });
       if (!semester) {
@@ -664,6 +670,12 @@ export class TopicService {
             },
             take: 1, // Lấy assignment đầu tiên
           },
+          majors: { // Thêm để lấy majorId và majorCode
+            select: {
+              id: true,    // majorId
+              name: true,  // majorCode
+            },
+          },
         },
       });
 
@@ -671,9 +683,10 @@ export class TopicService {
       const formattedTopics = topics.map(topic => ({
         ...topic,
         group: topic.topicAssignments.length > 0
-          ? topic.topicAssignments[0].group // Ưu tiên nhóm từ TopicAssignment
-          : topic.group, // Nếu không có TopicAssignment, dùng nhóm từ proposedGroupId
-        topicAssignments: undefined, // Loại bỏ nếu không cần trả về
+          ? topic.topicAssignments[0].group 
+          : topic.group, 
+        topicAssignments: undefined, 
+        majors: topic.majors, 
       }));
 
       if (formattedTopics.length === 0) {
@@ -1256,84 +1269,223 @@ export class TopicService {
       };
     }
   }
-  async deleteTopic(topicId: string, isSystemWide: boolean, userId: string) {
+  async deleteTopic(topicId: string, isSystemWide: boolean, userId: string, ipAddress?: string) {
     try {
-      // Tìm đề tài theo topicId và lấy các trường cần thiết
+      // Tìm đề tài và các thông tin liên quan
       const topic = await prisma.topic.findUnique({
-        where: { id: topicId },
+        where: { id: topicId, isDeleted: false }, // Chỉ tìm đề tài chưa bị xóa
         select: {
           status: true,
           createdBy: true,
           topicAssignments: true,
           topicRegistrations: true,
           proposedGroupId: true,
+          name: true,
         },
       });
-
+  
       if (!topic) {
-        return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: 'Không tìm thấy đề tài!',
-        };
+        await prisma.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_TOPIC_ATTEMPT',
+            entityType: 'Topic',
+            entityId: topicId,
+            description: 'Thử xóa đề tài nhưng không tìm thấy hoặc đã bị đánh dấu xóa',
+            severity: 'WARNING',
+            ipAddress: ipAddress || 'unknown',
+          },
+        });
+        return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy đề tài!' };
       }
-
-      // Nếu không có quyền system-wide, kiểm tra xem user có phải là người tạo đề tài hay không
-      if (!isSystemWide && topic.createdBy !== userId) {
-        return {
-          success: false,
-          status: HTTP_STATUS.FORBIDDEN,
-          message: 'Chỉ người tạo đề tài mới được phép xóa!',
-        };
-      }
-
-      // Nếu không có quyền system-wide, áp dụng các điều kiện ràng buộc khác
-      if (!isSystemWide) {
-        if (topic.status !== 'PENDING') {
-          return {
-            success: false,
-            status: HTTP_STATUS.FORBIDDEN,
-            message: 'Chỉ có thể xóa đề tài ở trạng thái PENDING!',
-          };
-        }
-        if (
-          topic.topicAssignments.length > 0 ||
-          topic.topicRegistrations.length > 0 ||
-          topic.proposedGroupId
-        ) {
-          return {
-            success: false,
-            status: HTTP_STATUS.FORBIDDEN,
-            message: 'Không thể xóa đề tài đã có nhóm đăng ký hoặc đề xuất!',
-          };
-        }
-      }
-
-      // Xoá thủ công các bản ghi liên quan bằng transaction
-      await prisma.$transaction(async (tx) => {
-        await tx.topicRegistration.deleteMany({ where: { topicId } });
-        await tx.topicAssignment.deleteMany({ where: { topicId } });
-        await tx.document.deleteMany({ where: { topicId } });
-        await tx.topic.delete({ where: { id: topicId } });
+  
+      // Kiểm tra vai trò của người dùng
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { roles: { include: { role: true } } },
       });
-
-      return {
-        success: true,
-        status: HTTP_STATUS.OK,
-        message: 'Xóa đề tài thành công!',
-      };
+      if (!user) {
+        await prisma.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_TOPIC_ATTEMPT',
+            entityType: 'Topic',
+            entityId: topicId,
+            description: 'Thử xóa đề tài nhưng người dùng không tồn tại',
+            severity: 'ERROR',
+            ipAddress: ipAddress || 'unknown',
+          },
+        });
+        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Người dùng không tồn tại!' };
+      }
+  
+      const userRoles = user.roles.map(r => r.role.name.toLowerCase());
+      const isAcademic = userRoles.includes('academic_officer');
+  
+      // Kiểm tra quyền xóa
+      if (!isSystemWide && !isAcademic && topic.createdBy !== userId) {
+        await prisma.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_TOPIC_ATTEMPT',
+            entityType: 'Topic',
+            entityId: topicId,
+            description: 'Thử xóa đề tài nhưng không có quyền',
+            severity: 'WARNING',
+            ipAddress: ipAddress || 'unknown',
+            metadata: { attemptedBy: userId, required: 'creator, academic, or system-wide' },
+          },
+        });
+        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Chỉ người tạo, academic hoặc admin mới được phép xóa!' };
+      }
+  
+      // Kiểm tra ràng buộc nếu không phải system-wide hoặc academic
+      if (!isSystemWide && !isAcademic) {
+        if (topic.status !== 'PENDING') {
+          await prisma.systemLog.create({
+            data: {
+              userId,
+              action: 'DELETE_TOPIC_ATTEMPT',
+              entityType: 'Topic',
+              entityId: topicId,
+              description: 'Thử xóa đề tài nhưng trạng thái không phải PENDING',
+              severity: 'WARNING',
+              ipAddress: ipAddress || 'unknown',
+              metadata: { currentStatus: topic.status },
+            },
+          });
+          return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Chỉ có thể xóa đề tài ở trạng thái PENDING!' };
+        }
+        if (topic.topicAssignments.length > 0 || topic.topicRegistrations.length > 0 || topic.proposedGroupId) {
+          await prisma.systemLog.create({
+            data: {
+              userId,
+              action: 'DELETE_TOPIC_ATTEMPT',
+              entityType: 'Topic',
+              entityId: topicId,
+              description: 'Thử xóa đề tài nhưng đã có nhóm đăng ký hoặc đề xuất',
+              severity: 'WARNING',
+              ipAddress: ipAddress || 'unknown',
+              metadata: {
+                assignmentsCount: topic.topicAssignments.length,
+                registrationsCount: topic.topicRegistrations.length,
+                proposedGroupId: topic.proposedGroupId,
+              },
+            },
+          });
+          return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Không thể xóa đề tài đã có nhóm đăng ký hoặc đề xuất!' };
+        }
+      }
+  
+      // Xóa mềm toàn bộ dữ liệu liên quan trong giao dịch
+      const updatedTopic = await prisma.$transaction(async (tx) => {
+        // 1. Đánh dấu xóa các ReviewSchedule liên quan
+        await tx.reviewSchedule.updateMany({
+          where: { topicId, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 2. Đánh dấu xóa các ReviewAssignment liên quan
+        await tx.reviewAssignment.updateMany({
+          where: { topicId, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 3. Đánh dấu xóa các Document liên quan
+        await tx.document.updateMany({
+          where: { topicId, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 4. Đánh dấu xóa các SemesterTopicMajor liên quan
+        await tx.semesterTopicMajor.updateMany({
+          where: { topicId, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 5. Đánh dấu xóa các DetailMajorTopic liên quan
+        await tx.detailMajorTopic.updateMany({
+          where: { topicId, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 6. Đánh dấu xóa các TopicAssignment liên quan
+        await tx.topicAssignment.updateMany({
+          where: { topicId, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 7. Đánh dấu xóa các TopicRegistration liên quan
+        await tx.topicRegistration.updateMany({
+          where: { topicId, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 8. Đánh dấu xóa các AIVerificationLog liên quan
+      
+  
+        // 9. Đánh dấu xóa Topic
+        await tx.topic.update({
+          where: { id: topicId },
+          data: { isDeleted: true },
+        });
+  
+        // 10. Ghi log hành động xóa thành công
+        await tx.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_TOPIC',
+            entityType: 'Topic',
+            entityId: topicId,
+            description: `Đề tài "${topic.name}" đã được đánh dấu xóa bởi ${isAcademic ? 'academic_officer' : isSystemWide ? 'admin' : 'người tạo'}`,
+            severity: 'INFO',
+            ipAddress: ipAddress || 'unknown',
+            metadata: {
+              deletedByRole: isAcademic ? 'academic_officer' : isSystemWide ? 'admin' : 'creator',
+              topicName: topic.name,
+              status: topic.status,
+              assignmentsCount: topic.topicAssignments.length,
+              registrationsCount: topic.topicRegistrations.length,
+              proposedGroupId: topic.proposedGroupId,
+            },
+            oldValues: JSON.stringify(topic),
+          },
+        });
+  
+        // Trả về dữ liệu Topic sau khi cập nhật
+        return await tx.topic.findUnique({
+          where: { id: topicId },
+          select: {
+            status: true,
+            createdBy: true,
+            topicAssignments: true,
+            topicRegistrations: true,
+            proposedGroupId: true,
+            name: true,
+            isDeleted: true,
+          },
+        });
+      });
+  
+      return { success: true, status: HTTP_STATUS.OK, message: 'Đề tài đã được đánh dấu xóa thành công!', data: updatedTopic };
     } catch (error) {
-      console.error('Lỗi khi xóa đề tài:', error);
-      return {
-        success: false,
-        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        message: 'Lỗi khi xóa đề tài!',
-      };
+      await prisma.systemLog.create({
+        data: {
+          userId,
+          action: 'DELETE_TOPIC_ERROR',
+          entityType: 'Topic',
+          entityId: topicId,
+          description: 'Lỗi hệ thống khi đánh dấu xóa đề tài',
+          severity: 'ERROR',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stackTrace: (error as Error).stack || 'No stack trace',
+          ipAddress: ipAddress || 'unknown',
+        },
+      });
+      console.error('Lỗi khi đánh dấu xóa đề tài:', error);
+      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi đánh dấu xóa đề tài!' };
     }
   }
-
-
-
 
   async getTopicsForApprovalBySubmission(query: { submissionPeriodId?: string; round?: number; semesterId?: string }) {
     try {
@@ -1345,15 +1497,20 @@ export class TopicService {
           return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy đợt xét duyệt!' };
         }
       } else if (query.round !== undefined && query.semesterId) {
-        const semester = await prisma.semester.findUnique({ where: { id: query.semesterId } });
+        const semester = await prisma.semester.findUnique({ 
+            where: { 
+                id: query.semesterId,
+                isDeleted: false 
+            } 
+        });
         if (!semester) {
-          return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy học kỳ!' };
+            return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy học kỳ!' };
         }
         const submissionPeriod = await prisma.submissionPeriod.findFirst({
-          where: { semesterId: query.semesterId, roundNumber: query.round },
+            where: { semesterId: query.semesterId, roundNumber: query.round },
         });
         if (!submissionPeriod) {
-          return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy đợt xét duyệt!' };
+            return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy đợt xét duyệt!' };
         }
         submissionPeriodId = submissionPeriod.id;
       } else {
@@ -1473,11 +1630,6 @@ export class TopicService {
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống!' };
     }
   }
-
-
-
-
-
 
   async getTopicRegistrations(topicId: string, mentorId: string) {
     try {
@@ -1837,6 +1989,9 @@ export class TopicService {
               approvalStatus: { in: ["PENDING", "APPROVED", "REJECTED"] },
             },
           },
+          semester: {
+            isDeleted: false
+          }
         },
         include: {
           topicAssignments: {
@@ -1945,48 +2100,53 @@ export class TopicService {
       const currentDate = new Date();
   
       const topics = await prisma.topic.findMany({
-        where: { status: "APPROVED" },
+        where: { 
+            status: "APPROVED",
+            semester: {
+                isDeleted: false
+            }
+        },
         select: {
-          id: true,
-          topicCode: true,
-          nameVi: true,
-          nameEn: true,
-          description: true,
-          status: true,
-          createdBy: true,
-          subSupervisor: true,
-          mainSupervisor: true,
-          createdAt: true,
-          updatedAt: true,
-          semester: {
-            select: { id: true, code: true, startDate: true, endDate: true },
-          },
-          topicAssignments: {
-            select: {
-              group: {
-                select: {
-                  id: true,
-                  groupCode: true,
-                  semester: { select: { id: true, code: true } },
-                  members: {
-                    select: {
-                      id: true,
-                      user: { select: { id: true, fullName: true, email: true } },
-                      role: { select: { name: true } },
-                      student: {
-                        select: {
-                          major: { select: { id: true, name: true } },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
+            id: true,
+            topicCode: true,
+            nameVi: true,
+            nameEn: true,
+            description: true,
+            status: true,
+            createdBy: true,
+            subSupervisor: true,
+            mainSupervisor: true,
+            createdAt: true,
+            updatedAt: true,
+            semester: {
+                select: { id: true, code: true, startDate: true, endDate: true },
             },
-          },
-          creator: { select: { fullName: true, email: true } },
-          subMentor: { select: { fullName: true, email: true } },
-          majors: { select: { id: true, name: true } },
+            topicAssignments: {
+                select: {
+                    group: {
+                        select: {
+                            id: true,
+                            groupCode: true,
+                            semester: { select: { id: true, code: true } },
+                            members: {
+                                select: {
+                                    id: true,
+                                    user: { select: { id: true, fullName: true, email: true } },
+                                    role: { select: { name: true } },
+                                    student: {
+                                        select: {
+                                            major: { select: { id: true, name: true } },
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            creator: { select: { fullName: true, email: true } },
+            subMentor: { select: { fullName: true, email: true } },
+            majors: { select: { id: true, name: true } },
         },
       });
   
@@ -2148,7 +2308,10 @@ export class TopicService {
 
       // Kiểm tra học kỳ
       const semester = await prisma.semester.findUnique({
-        where: { id: data.semesterId },
+        where: { 
+            id: data.semesterId,
+            isDeleted: false 
+        },
         select: { id: true, status: true, startDate: true, code: true },
       });
       if (!semester || !semester.code) {

@@ -80,9 +80,17 @@ export class AdminController {
   async deleteUser(req: AuthenticatedRequest, res: Response) {
     try {
       const { userId } = req.params;
-      await adminService.deleteUser(userId);
-      res.status(200).json({ message: ADMIN_MESSAGE.DELETE_USER_SUCCESS });
+      const deletedByUserId = req.user?.userId; // Người thực hiện xóa (admin)
+      const ipAddress = req.ip; // Lấy địa chỉ IP từ request
+  
+      if (!deletedByUserId) {
+        return res.status(401).json({ message: 'Không tìm thấy thông tin người dùng thực hiện xóa.' });
+      }
+  
+      const result = await adminService.deleteUser(userId, deletedByUserId, ipAddress);
+      res.status(200).json(result);
     } catch (error) {
+      console.error('Error marking user as deleted:', error);
       res.status(500).json({ message: (error as Error).message });
     }
   }

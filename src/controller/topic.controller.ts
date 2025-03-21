@@ -250,16 +250,17 @@ export class TopicController {
           .status(HTTP_STATUS.BAD_REQUEST)
           .json({ success: false, message: 'Thiếu ID đề tài!' });
       }
-      const isSystemWide = req.user.roles.some((role: { isSystemWide: any; }) => role.isSystemWide);
+      const isSystemWide = req.user.roles.some((role: { isSystemWide: any }) => role.isSystemWide);
       const userId = req.user.userId; // Lấy userId từ thông tin đăng nhập
-
-      const result = await topicService.deleteTopic(topicId, isSystemWide, userId);
+      const ipAddress = req.ip; // Lấy địa chỉ IP từ request
+  
+      const result = await topicService.deleteTopic(topicId, isSystemWide, userId, ipAddress);
       return res.status(result.status).json(result);
     } catch (error) {
-      console.error('Lỗi khi xóa đề tài:', error);
+      console.error('Lỗi khi đánh dấu xóa đề tài:', error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: 'Lỗi hệ thống khi xóa đề tài!',
+        message: 'Lỗi hệ thống khi đánh dấu xóa đề tài!',
       });
     }
   }

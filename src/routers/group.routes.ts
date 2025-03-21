@@ -72,11 +72,10 @@ router.post(
 );
 
 // 9️ Xóa nhóm
-router.delete( 
-  "/delete/:groupId",
-    authenticateToken,
-  checkRole(["leader", "student",  "graduation_thesis_manager", "academic_officer"]),
-
+router.put(
+  '/delete/:groupId', 
+  authenticateToken,
+  checkRole(['leader', 'student', 'graduation_thesis_manager', 'academic_officer']),
   groupController.deleteGroup.bind(groupController)
 );
 

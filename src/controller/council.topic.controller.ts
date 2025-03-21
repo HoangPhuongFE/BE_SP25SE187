@@ -88,17 +88,26 @@ export class CouncilTopicController {
   async deleteCouncil(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const result = await councilTopicService.deleteTopicCouncil(id);
+      const userId = req.user?.userId; // Lấy userId từ thông tin đăng nhập
+      const ipAddress = req.ip; // Lấy địa chỉ IP từ request
+  
+      if (!userId) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: 'Không tìm thấy thông tin người dùng.',
+        });
+      }
+  
+      const result = await councilTopicService.deleteTopicCouncil(id, userId, ipAddress);
       return res.status(result.status).json(result);
     } catch (error) {
-      console.error("Lỗi trong deleteCouncil:", error);
+      console.error('Lỗi trong deleteCouncil:', error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: "Lỗi hệ thống khi xóa hội đồng."
+        message: 'Lỗi hệ thống khi đánh dấu xóa hội đồng.',
       });
     }
   }
-
   async addMemberToCouncil(req: Request, res: Response) {
     try {
       const { councilId } = req.params; //  Đổi từ req.params -> req.query

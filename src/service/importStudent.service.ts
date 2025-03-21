@@ -27,7 +27,12 @@ export class ImportStudentService {
     const DEFAULT_PASSWORD = '123456';
     const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
-    const studentRole = await prisma.role.findUnique({ where: { name: 'student' } });
+    const studentRole = await prisma.role.findUnique({ 
+      where: { 
+        name: 'student',
+        isDeleted: false 
+      } 
+    });
     if (!studentRole) {
       throw new Error('Vai trò "student" không tồn tại. Vui lòng tạo trước.');
     }
@@ -68,8 +73,18 @@ export class ImportStudentService {
     let successCount = 0;
     try {
       for (const { studentCode, email, profession, specialty, rowIndex } of dataToImport) {
-        let existingUser = await prisma.user.findUnique({ where: { email } });
-        let existingStudent = await prisma.student.findUnique({ where: { studentCode } });
+        let existingUser = await prisma.user.findUnique({ 
+          where: { 
+            email,
+            isDeleted: false 
+          } 
+        });
+        let existingStudent = await prisma.student.findUnique({ 
+          where: { 
+            studentCode,
+            isDeleted: false 
+          } 
+        });
 
         if (!existingUser) {
           // Nếu user chưa tồn tại, tạo mới user
@@ -87,14 +102,23 @@ export class ImportStudentService {
 
         if (!existingStudent) {
           // Kiểm tra hoặc tạo ngành học (major)
-          let major = await prisma.major.findUnique({ where: { name: profession } });
+          let major = await prisma.major.findUnique({ 
+            where: { 
+              name: profession,
+              isDeleted: false 
+            } 
+          });
           if (!major) {
             major = await prisma.major.create({ data: { name: profession } });
           }
 
           // Kiểm tra hoặc tạo chuyên ngành (specialization)
           let specialization = await prisma.specialization.findFirst({
-            where: { name: specialty, majorId: major.id },
+            where: { 
+              name: specialty, 
+              majorId: major.id,
+              isDeleted: false 
+            },
           });
           if (!specialization) {
             specialization = await prisma.specialization.create({
@@ -116,7 +140,10 @@ export class ImportStudentService {
 
         // Kiểm tra xem sinh viên đã có trong học kỳ chưa
         const existingSemesterStudent = await prisma.semesterStudent.findUnique({
-          where: { semesterId_studentId: { semesterId, studentId: existingStudent.id } },
+          where: { 
+            semesterId_studentId: { semesterId, studentId: existingStudent.id },
+            isDeleted: false 
+          },
         });
 
         if (!existingSemesterStudent) {
@@ -134,6 +161,7 @@ export class ImportStudentService {
             userId: existingUser.id,
             roleId: studentRole.id,
             semesterId: semesterId,
+            isDeleted: false
           },
         });
 
