@@ -14,7 +14,7 @@ model User {
   passwordHash           String
   lecturerCode           String?
   fullName               String?
-  departmentPosition     String?   
+  departmentPosition     String?
   department             String?
   avatar                 String?
   student_code           String?
@@ -39,7 +39,6 @@ model User {
   createdGroups          Group[]                 @relation("GroupCreator")
   systemLogs             SystemLog[]
   emailLogs              EmailLog[]
-  reviewCouncils         ReviewCouncil[]         @relation("ReviewCouncilCreator")
   documents              Document[]
   notificationRecipients NotificationRecipient[]
   createdEmailTemplates  EmailTemplate[]         @relation("UserEmailTemplates")
@@ -50,6 +49,7 @@ model User {
   SubmissionPeriod       SubmissionPeriod[]
   progressReportMentors  ProgressReportMentor[]  @relation("MentorProgressReports")
   Decision               Decision[]
+  reviewAssignments      ReviewAssignment[] // Added for relation with ReviewAssignment
 
   @@map("users")
 }
@@ -123,13 +123,13 @@ model Semester {
   topics                Topic[]
   groups                Group[]
   councils              Council[]
-  reviewCouncils        ReviewCouncil[]
   semesterTopicMajors   SemesterTopicMajor[]
   yearId                String
   year                  Year                   @relation("YearSemesters", fields: [yearId], references: [id], onDelete: Cascade)
   SubmissionPeriod      SubmissionPeriod[]
   userRoles             UserRole[]             @relation(name: "UserRoleToSemester")
   decisions             Decision[]             @relation
+
   @@map("semesters")
 }
 
@@ -264,6 +264,7 @@ model Council {
   type                  String?
   round                 Int?
   semesterId            String?                @map("semester_id")
+  isActive              Boolean                @default(true) 
   semester              Semester?              @relation(fields: [semesterId], references: [id])
   topicAssignment       TopicAssignment?       @relation(fields: [topicAssId], references: [id])
   members               CouncilMember[]
@@ -275,6 +276,7 @@ model Council {
   councilEndDate        DateTime?              @map("council_end_date")
   submissionPeriodId    String?                @map("submission_period_id")
   submissionPeriod      SubmissionPeriod?      @relation(name: "SubmissionPeriodCouncils", fields: [submissionPeriodId], references: [id], onDelete: Cascade)
+  sessions              ReviewSchedule[]
 
   @@map("councils")
 }
@@ -311,6 +313,7 @@ model Topic {
   status              String
   createdBy           String               @map("created_by")
   subSupervisor       String?              @map("sub_supervisor")
+  mainSupervisor      String?              @map("main_supervisor")
   createdAt           DateTime             @default(now()) @map("created_at")
   updatedAt           DateTime             @updatedAt @map("updated_at")
   reviewReason        String?              @db.Text
@@ -327,25 +330,24 @@ model Topic {
   semesterTopicMajors SemesterTopicMajor[]
   documents           Document[]           @relation("TopicDocuments")
   SubmissionPeriod    SubmissionPeriod?    @relation(fields: [submissionPeriodId], references: [id], onDelete: Cascade)
+  sessions            ReviewSchedule[]
+  reviewAssignments   ReviewAssignment[] // Added for relation with ReviewAssignment
 
   @@map("topics")
 }
 
 model TopicAssignment {
-  id              String    @id @default(uuid())
-  topicId         String    @map("topic_id")
-  groupId         String    @map("group_id")
-  draftFile       String?   @map("draft_file")
-  approvalStatus  String    @map("approval_status")
-  defendStatus    String    @map("defend_status")
-  status          String    @default("ASSIGNED") // ASSIGNED, COMPLETED, CANCELLED
-  url             String?   @map("URL")
-  assignedBy      String    @map("assigned_by")
-  reviewCouncilId String?   @map("review_council_id")
-  assignedAt      DateTime  @default(now()) @map("assigned_at")
-  approvalAt      DateTime? @map("approval_at")
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id             String   @id @default(uuid())
+  topicId        String   @map("topic_id")
+  groupId        String   @map("group_id")
+  status         String   @default("ASSIGNED") // ASSIGNED, COMPLETED, CANCELLED
+  approvalStatus String   @map("approval_status")
+  defendStatus   String?
+  url            String?  @map("URL")
+  assignedBy     String   @map("assigned_by")
+  assignedAt     DateTime @default(now()) @map("assigned_at")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Quan hệ
   topic    Topic     @relation(fields: [topicId], references: [id])
@@ -353,6 +355,22 @@ model TopicAssignment {
   councils Council[]
 
   @@map("topic_assignments")
+}
+
+model ReviewSchedule {
+  id         String   @id @default(uuid())
+  councilId  String   @map("council_id")
+  groupId    String   @map("group_id")
+  reviewTime DateTime @map("review_time")
+  room       String
+  status     String // VD: ASSIGNED, COMPLETED,…
+  reviewRound Int      
+  notes       String?  
+  council Council @relation(fields: [councilId], references: [id])
+  group   Group   @relation(fields: [groupId], references: [id])
+  topicId String // Added scalar field for the relation
+  topic   Topic   @relation(fields: [topicId], references: [id])
+  @@map("review_schedules")
 }
 
 model Group {
@@ -366,8 +384,6 @@ model Group {
   isMultiMajor     Boolean           @default(false) @map("is_multi_major")
   createdAt        DateTime          @default(now()) @map("created_at")
   updatedAt        DateTime          @updatedAt @map("updated_at")
-  topicEnglish     String?
-  topicTiengViet   String?
   semester         Semester          @relation(fields: [semesterId], references: [id])
   creator          User              @relation("GroupCreator", fields: [createdBy], references: [id])
   invitations      GroupInvitation[]
@@ -379,6 +395,7 @@ model Group {
   topicAssignments TopicAssignment[]
   documents        Document[]        @relation("GroupDocuments")
   proposedTopics   Topic[]           @relation("ProposedGroup")
+  reviewSchedules  ReviewSchedule[] // Added for relation with ReviewSchedule
 
   @@unique([semesterId, groupCode], name: "semesterId_groupCode")
   @@map("groups")
@@ -391,6 +408,7 @@ model GroupMentor {
   roleId      String   @map("role_id") // Thay role bằng roleId
   addedBy     String   @map("added_by")
   addedAt     DateTime @default(now()) @map("added_at")
+  defenseRoundDecision String? // ROUND_1, ROUND_2,...
   group       Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   mentor      User     @relation(name: "MentorGroupRelation", fields: [mentorId], references: [id])
   addedByUser User?    @relation(name: "AddedByUserRelation", fields: [addedBy], references: [id])
@@ -539,54 +557,37 @@ model Notification {
 }
 
 model Decision {
-  id             String   @id @default(uuid())
-  decisionName   String   @map("decision_name")
-  decisionTitle  String?   @map("decision_title")
-  draftFile   String?  @map("draft_file")
-  finalFile   String?  @map("final_file")
-  decisionURL    String?   @map("decisionURL")
-  status         String
-  semesterId     String?         // Liên kết với học kỳ (nếu cần)
-  semester       Semester?       @relation(fields: [semesterId], references: [id])
-  createdBy      String   @map("created_by")
-  createdAt      DateTime @default(now()) @map("created_at")
-  creator        User     @relation(fields: [createdBy], references: [id])
+  id            String    @id @default(uuid())
+  decisionName  String    @map("decision_name")
+  decisionTitle String?   @map("decision_title")
+  draftFile     String?   @map("draft_file")
+  finalFile     String?   @map("final_file")
+  decisionURL   String?   @map("decisionURL")
+  status        String
+  semesterId    String? // Liên kết với học kỳ (nếu cần)
+  semester      Semester? @relation(fields: [semesterId], references: [id])
+  createdBy     String    @map("created_by")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  creator       User      @relation(fields: [createdBy], references: [id])
 
   @@map("decisions")
 }
 
-model ReviewCouncil {
-  id          String   @id @default(uuid())
-  semesterId  String   @map("semester_id")
-  reviewType  String   @map("review_type")
-  room        String
-  councilCode String   @unique @map("council_code")
-  startDate   DateTime @map("start_date")
-  endDate     DateTime @map("end_date")
-  status      String
-  url         String   @map("URL")
-  createdBy   String   @map("created_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  semester    Semester @relation(fields: [semesterId], references: [id])
-  creator     User     @relation("ReviewCouncilCreator", fields: [createdBy], references: [id])
-
-  @@map("review_councils")
-}
-
 model ReviewAssignment {
-  id               String    @id @default(uuid())
-  councilId        String    @map("council_id")
-  topicId          String    @map("topic_id")
-  reviewerId       String    @map("reviewer_id")
-  score            Float?
-  feedback         String?   @db.Text
-  status           String
-  assignedAt       DateTime  @default(now()) @map("assigned_at")
-  reviewedAt       DateTime? @map("reviewed_at")
-  assignmentStatus String    @map("assignment_status")
-  council          Council   @relation(fields: [councilId], references: [id])
-
-  @@map("review_assignments")
+  id         String    @id @default(uuid())
+  councilId  String    @map("council_id")
+  topicId    String    @map("topic_id")
+  reviewerId String    @map("reviewer_id")
+  score      Float?
+  feedback   String?   @db.Text
+  status     String
+  reviewRound Int
+  assignedAt DateTime  @default(now()) @map("assigned_at")
+  reviewedAt DateTime? @map("reviewed_at")
+  council    Council   @relation(fields: [councilId], references: [id])
+  topic      Topic     @relation(fields: [topicId], references: [id])
+  reviewer   User      @relation(fields: [reviewerId], references: [id])
+  @@map("review_assignment")
 }
 
 model Document {
@@ -596,6 +597,7 @@ model Document {
   fileType     String   @map("file_type") //  Định dạng file (pdf, docx, xlsx,...)
   uploadedAt   DateTime @default(now()) @map("uploaded_at")
   uploadedBy   String   @map("uploaded_by")
+  description  String?
   documentType String?  @map("document_type")
   //  Liên kết đến các bảng khác nhau
   topicId      String?  @map("topic_id")
@@ -614,17 +616,16 @@ model Document {
 }
 
 model CouncilMember {
-  id                String   @id @default(uuid())
-  councilId         String   @map("council_id")
-  defenseCouncilsId String?  @map("defensecouncils_id")
-  roleId            String   @map("role_id") // Thay role bằng roleId
-  assignedAt        DateTime @default(now()) @map("assigned_at")
-  status            String
-  council           Council  @relation(fields: [councilId], references: [id], onDelete: Cascade)
-  userId            String   @map("user_id")
-  semesterId        String   @map("semester_id")
-  user              User     @relation(fields: [userId], references: [id])
-  role              Role     @relation(fields: [roleId], references: [id]) // Quan hệ với Role
+  id         String   @id @default(uuid())
+  councilId  String   @map("council_id")
+  roleId     String   @map("role_id") // Thay role bằng roleId
+  assignedAt DateTime @default(now()) @map("assigned_at")
+  status     String
+  council    Council  @relation(fields: [councilId], references: [id], onDelete: Cascade)
+  userId     String   @map("user_id")
+  semesterId String   @map("semester_id")
+  user       User     @relation(fields: [userId], references: [id])
+  role       Role     @relation(fields: [roleId], references: [id]) // Quan hệ với Role
 
   @@map("council_members")
 }
@@ -641,21 +642,27 @@ model Feedback {
   @@map("feedback")
 }
 
+enum CouncilType {
+  TOPIC
+  REVIEW
+  DEFENSE
+}
+
 model DefenseSchedule {
   id                 String   @id @default(uuid())
   councilId          String   @map("council_id")
   groupId            String   @map("group_id")
   defenseTime        DateTime @map("defense_time")
-  location           String
+  room               String
   defenseRound       Int      @map("defense_round")
   status             String
   notes              String?  @db.Text
+  result             String?  
+  feedback           String?  
   createdAt          DateTime @default(now()) @map("created_at")
   confirmationStatus String   @map("confirmation_status")
-  group              Group    @relation(fields: [groupId], references: [id])
   council            Council  @relation(fields: [councilId], references: [id])
-
-  @@map("defense_schedules")
+  group              Group    @relation(fields: [groupId], references: [id])
 }
 
 model NotificationRecipient {

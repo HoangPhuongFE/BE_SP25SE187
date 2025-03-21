@@ -127,54 +127,6 @@ export const authenticateToken = async (req: AuthenticatedRequest, res: Response
 };
 
 
-/*
-export const checkRole = (allowedRoles: string[]) => {
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    // Kiểm tra xem người dùng đã được xác thực hay chưa
-    if (!req.user || !req.user.userId) {
-      return res.status(401).json({ message: 'Unauthorized' });
-    }
-    // Nếu người dùng có bất kỳ vai trò nào là system-wide, cho phép truy cập ngay
-    const hasSystemWideRole = req.user.roles.some((role) => role.isSystemWide);
-    if (hasSystemWideRole) {
-      console.log('User has system-wide role, granting full access');
-      return next();
-    }
-    // Kiểm tra xem có vai trò nào của người dùng có tên nằm trong allowedRoles không
-    const hasRequiredRole = req.user.roles.some((role) =>
-      allowedRoles.includes(role.name)
-    );
-    if (!hasRequiredRole) {
-      return res
-        .status(403)
-        .json({ message: 'Forbidden: Insufficient permissions' });
-    }
-    // Lấy semesterId từ query hoặc body
-    const semesterId =
-      (req.params.semesterId as string) || (req.body.semesterId as string);
-    if (!semesterId) {
-      return res
-        .status(400)
-        .json({ message: 'Missing semesterId for semester-specific action' });
-    }
-    // Kiểm tra xem người dùng có vai trò nào hợp lệ cho học kỳ hiện tại không
-    const hasValidSemesterRole = req.user.roles.some(
-      (role) =>
-        allowedRoles.includes(role.name) &&
-        role.semesterId === semesterId &&
-        role.semesterId !== null
-    );
-    if (!hasValidSemesterRole) {
-      return res.status(403).json({
-        message: `Forbidden: Role not valid for semester ${semesterId}`,
-      });
-    }
-    console.log(`Access granted for semester ${semesterId}`);
-    next();
-  }
-}
-*/
-
 
 
 export const checkRole = (allowedRoles: string[], requireSemester: boolean = true) => {
