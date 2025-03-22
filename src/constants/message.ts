@@ -111,36 +111,48 @@ export const SEMESTER_MESSAGE = {
 
 //  
 export const COUNCIL_MESSAGE = {
+  // Create
   COUNCIL_CREATED: "Tạo hội đồng thành công",
   COUNCIL_CREATION_FAILED: "Tạo hội đồng thất bại",
+  CREATED: "Tạo hội đồng thành công",
+  CREATE_FAILED: "Tạo hội đồng thất bại",
+
+  // Read
   COUNCIL_NOT_FOUND: "Không tìm thấy hội đồng",
-  COUNCIL_UPDATED: "Cập nhật hội đồng thành công",
-  COUNCIL_DELETED: "Xóa hội đồng thành công",
-  COUNCIL_DELETE_FAILED: "Không thể xóa hội đồng, vui lòng thử lại",
-  COUNCIL_MEMBERS_ADDED: "Thêm thành viên vào hội đồng thành công",
-  COUNCIL_MEMBERS_FAILED: "Thêm thành viên vào hội đồng thất bại",
-  COUNCIL_LIST_FETCHED: "Lấy danh sách hội đồng thành công",
+  NOT_FOUND: "Không tìm thấy hội đồng",
+  GET_FAILED: "Lấy thông tin hội đồng thất bại",
+  LIST_FAILED: "Lấy danh sách hội đồng thất bại",
   COUNCIL_LIST_FAILED: "Lấy danh sách hội đồng thất bại",
-  LECTURERS_ROLES_FETCHED: "Lấy danh sách giảng viên và vai trò thành công",
-  LECTURERS_ROLES_FAILED: "Không thể lấy danh sách giảng viên và vai trò",
-  INVALID_SEMESTER_ID: "ID học kỳ không hợp lệ",
-  COUNCIL_MEMBER_REMOVED: "Xóa thành viên khỏi hội đồng thành công",
-  COUNCIL_MEMBER_REMOVE_FAILED: "Không thể xóa thành viên khỏi hội đồng",
-  COUNCIL_MEMBER_NOT_FOUND: "Không tìm thấy thành viên trong hội đồng",
-  INVALID_REQUEST: "Yêu cầu không hợp lệ",
-  MIN_MEMBERS_REQUIRED: "Không thể xóa, số lượng thành viên còn lại không đủ theo quy định",
-  MAX_MEMBERS_EXCEEDED: "Số lượng thành viên vượt quá quy định",
-  CHAIRMAN_LIMIT: "Số lượng chủ tịch vượt quá giới hạn",
-  SECRETARY_LIMIT: "Số lượng thư ký vượt quá giới hạn",
-  REVIEWER_LIMIT: "Số lượng reviewer vượt quá giới hạn",
-  MEMBER_ALREADY_EXISTS: "Thành viên đã có trong hội đồng",
-  USER_NOT_FOUND: "Người dùng không tồn tại trong hệ thống",
-  EMAIL_REQUIRED: "Email không hợp lệ hoặc chưa được cung cấp",
-  USER_ADDED_BY_EMAIL: "Thành viên đã được thêm vào hội đồng bằng Email",
-  USER_ADDED_BY_ID: "Thành viên đã được thêm vào hội đồng bằng ID",
-  COUNCIL_STATUS_UPDATED: "Trạng thái hội đồng đã được cập nhật",
+  COUNCIL_LIST_FETCHED: "Lấy danh sách hội đồng thành công",
+
+  // Update
+  COUNCIL_UPDATED: "Cập nhật hội đồng thành công",
+  UPDATED: "Cập nhật hội đồng thành công",
+  UPDATE_FAILED: "Cập nhật hội đồng thất bại",
   COUNCIL_UPDATE_FAILED: "Không thể cập nhật trạng thái hội đồng",
+
+  // Delete
+  COUNCIL_DELETED: "Xóa hội đồng thành công",
+  DELETED: "Xóa hội đồng thành công",
+  DELETE_FAILED: "Xóa hội đồng thất bại",
+  COUNCIL_DELETE_FAILED: "Không thể xóa hội đồng",
+
+  // Member
+  MEMBER_ADDED: "Thêm thành viên thành công",
+  MEMBER_ADD_FAILED: "Thêm thành viên thất bại",
+  MEMBER_REMOVED: "Xóa thành viên thành công",
+  MEMBER_REMOVE_FAILED: "Xóa thành viên thất bại",
+  MEMBER_NOT_FOUND: "Không tìm thấy thành viên",
+  MEMBER_EXISTS: "Thành viên đã tồn tại trong hội đồng",
+
+  // Validation
+  INVALID_LECTURER: "Người dùng không phải là giảng viên",
+  INVALID_DATE_RANGE: "Thời gian không hợp lệ",
+  SUBMISSION_PERIOD_NOT_FOUND: "Không tìm thấy đợt đề xuất",
+
+  // Success
   COUNCIL_FETCHED: "Lấy thông tin hội đồng thành công",
+  COUNCIL_GET_FAILED: "Lấy thông tin hội đồng thất bại"
 } as const;
 
 export default COUNCIL_MESSAGE;

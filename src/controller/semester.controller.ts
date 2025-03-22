@@ -91,16 +91,28 @@ export class SemesterController {
   async deleteSemester(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const semester = await this.semesterService.deleteSemester(id);
-
+      const userId = req.user?.userId || "";
+      const ipAddress = req.ip;
+  
+      if (!userId) {
+        return res.status(401).json({ message: "Không tìm thấy thông tin người dùng." });
+      }
+  
+      console.log("ID nhận được:", id);
+      const semester = await this.semesterService.deleteSemester(id, userId, ipAddress);
+  
       return res.status(200).json({
-        message: SEMESTER_MESSAGE.SEMESTER_DELETED,
+        message: "Học kỳ đã được đánh dấu là xóa.",
         data: semester,
       });
     } catch (error) {
-      console.error("Error deleting semester:", error);
+      console.error("Error marking semester as deleted:", error);
+      if ((error as Error).message === 'SEMESTER_NOT_FOUND') {
+        return res.status(404).json({ message: "Không tìm thấy học kỳ." });
+      }
       return res.status(500).json({
-        message: GENERAL_MESSAGE.SERVER_ERROR,
+        message: "Có lỗi xảy ra trên server.",
+        error: "Có lỗi xảy ra khi đánh dấu xóa học kỳ và dữ liệu liên quan",
       });
     }
   }

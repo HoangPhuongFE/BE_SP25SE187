@@ -33,13 +33,35 @@ export class SubmissionPeriodService {
         return {
           success: false,
           status: HTTP_STATUS.FORBIDDEN,
-          message: "Admin và Academic officer không được phép tạo đợt đề xuất.",
+          message: "Academic officer không được phép tạo đợt đề xuất.",
+        };
+      }
+
+      // Kiểm tra học kỳ tồn tại và chưa bị xóa
+      const semester = await prisma.semester.findUnique({
+        where: { 
+          id: data.semesterId,
+          isDeleted: false 
+        }
+      });
+
+      if (!semester) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: "Học kỳ không tồn tại hoặc đã bị xóa!",
         };
       }
 
       // Kiểm tra xem đợt này đã tồn tại chưa
       const existingPeriod = await prisma.submissionPeriod.findFirst({
-        where: { semesterId: data.semesterId, roundNumber: data.roundNumber },
+        where: { 
+          semesterId: data.semesterId, 
+          roundNumber: data.roundNumber,
+          semester: {
+            isDeleted: false
+          }
+        },
       });
 
       if (existingPeriod) {
@@ -98,7 +120,18 @@ export class SubmissionPeriodService {
     data: Partial<{ startDate: Date; endDate: Date; description?: string }>
   ) {
     try {
-      const existingPeriod = await prisma.submissionPeriod.findUnique({ where: { id: periodId } });
+      const existingPeriod = await prisma.submissionPeriod.findFirst({ 
+        where: { 
+          id: periodId,
+          semester: {
+            isDeleted: false
+          }
+        },
+        include: {
+          semester: true
+        }
+      });
+      
       if (!existingPeriod) {
         return {
           success: false,
@@ -150,7 +183,12 @@ export class SubmissionPeriodService {
   async getSubmissionPeriods(semesterId: string) {
     try {
       const periods = await prisma.submissionPeriod.findMany({
-        where: { semesterId },
+        where: { 
+          semesterId,
+          semester: {
+            isDeleted: false
+          }
+        },
         orderBy: { roundNumber: "asc" },
       });
 
@@ -179,7 +217,14 @@ export class SubmissionPeriodService {
   //  Lấy thông tin một đợt đề xuất theo ID
   async getSubmissionPeriodById(periodId: string) {
     try {
-      const period = await prisma.submissionPeriod.findUnique({ where: { id: periodId } });
+      const period = await prisma.submissionPeriod.findFirst({ 
+        where: { 
+          id: periodId,
+          semester: {
+            isDeleted: false
+          }
+        } 
+      });
       
       if (!period) {
         return {
@@ -210,56 +255,161 @@ export class SubmissionPeriodService {
 
 
   //  Xóa đợt đề xuất
-  async deleteSubmissionPeriod(periodId: string) {
+  async deleteSubmissionPeriod(periodId: string, userId: string, ipAddress?: string) {
     try {
-      const period = await prisma.submissionPeriod.findUnique({
-        where: { id: periodId },
-        include: {
-          topics: true,
-          councils: true,
-          topicRegistrations: true
-        }
+      // Kiểm tra xem SubmissionPeriod có tồn tại và chưa bị đánh dấu xóa
+      const period = await prisma.submissionPeriod.findFirst({
+        where: { 
+            id: periodId, 
+            isDeleted: false,
+            semester: {
+                isDeleted: false
+            }
+        },
+        include: { topics: true, councils: true },
       });
-    
+  
       if (!period) {
-        return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: TOPIC_SUBMISSION_PERIOD_MESSAGE.NOT_FOUND,
-        };
+        await prisma.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_SUBMISSION_PERIOD_ATTEMPT',
+            entityType: 'SubmissionPeriod',
+            entityId: periodId,
+            description: 'Thử xóa đợt đề xuất nhưng không tìm thấy hoặc đã bị đánh dấu xóa',
+            severity: 'WARNING',
+            ipAddress: ipAddress || 'unknown',
+          },
+        });
+        return { success: false, status: HTTP_STATUS.NOT_FOUND, message: TOPIC_SUBMISSION_PERIOD_MESSAGE.NOT_FOUND };
       }
-
-      // Xóa tất cả dữ liệu liên quan đến submission period
-      await prisma.$transaction([
-        // Xóa các bảng liên quan đến submission period
-        prisma.topic.deleteMany({
-          where: { submissionPeriodId: periodId }
-        }),
-        prisma.council.deleteMany({
-          where: { submissionPeriodId: periodId }
-        }),
-        prisma.topicRegistration.deleteMany({
-          where: { submissionPeriodId: periodId }
-        }),
-        // Xóa submission period
-        prisma.submissionPeriod.delete({
-          where: { id: periodId }
-        })
-      ]);
-    
-      return { 
-        success: true, 
-        status: HTTP_STATUS.OK, 
-        message: TOPIC_SUBMISSION_PERIOD_MESSAGE.DELETED,
-        data: period
-      };
-    } catch (error: any) {
-      console.error("Lỗi khi xóa đợt đề xuất:", error);
-      return { 
-        success: false, 
-        status: HTTP_STATUS.INTERNAL_SERVER_ERROR, 
-        message: error.message || "Lỗi hệ thống!"
-      };
+  
+      const topicIds = period.topics.map(t => t.id);
+      const councilIds = period.councils.map(c => c.id);
+  
+      // Thực hiện xóa mềm trong transaction
+      const updatedPeriod = await prisma.$transaction(async (tx) => {
+        // 1. Đánh dấu xóa các ReviewSchedule liên quan đến Topic
+        await tx.reviewSchedule.updateMany({
+          where: { topicId: { in: topicIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 2. Đánh dấu xóa các ReviewAssignment liên quan đến Topic
+        await tx.reviewAssignment.updateMany({
+          where: { topicId: { in: topicIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 3. Đánh dấu xóa các DefenseSchedule liên quan đến Council
+        await tx.defenseSchedule.updateMany({
+          where: { councilId: { in: councilIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 4. Đánh dấu xóa các CouncilMember liên quan đến Council
+        await tx.councilMember.updateMany({
+          where: { councilId: { in: councilIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 5. Đánh dấu xóa các Document liên quan đến Topic và Council
+        await tx.document.updateMany({
+          where: {
+            OR: [
+              { topicId: { in: topicIds } },
+              { councilId: { in: councilIds } },
+            ],
+            isDeleted: false,
+          },
+          data: { isDeleted: true },
+        });
+  
+        // 6. Đánh dấu xóa các SemesterTopicMajor liên quan đến Topic
+        await tx.semesterTopicMajor.updateMany({
+          where: { topicId: { in: topicIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 7. Đánh dấu xóa các DetailMajorTopic liên quan đến Topic
+        await tx.detailMajorTopic.updateMany({
+          where: { topicId: { in: topicIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 8. Đánh dấu xóa các TopicAssignment liên quan đến Topic
+        await tx.topicAssignment.updateMany({
+          where: { topicId: { in: topicIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        
+        // 10. Đánh dấu xóa các Topic liên quan đến SubmissionPeriod
+        await tx.topic.updateMany({
+          where: { submissionPeriodId: periodId, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 11. Đánh dấu xóa các Council liên quan đến SubmissionPeriod
+        await tx.council.updateMany({
+          where: { submissionPeriodId: periodId, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 12. Đánh dấu xóa các TopicRegistration liên quan đến SubmissionPeriod
+        await tx.topicRegistration.updateMany({
+          where: { submissionPeriodId: periodId, isDeleted: false },
+          data: { isDeleted: true },
+        });
+  
+        // 13. Đánh dấu xóa SubmissionPeriod
+        await tx.submissionPeriod.update({
+          where: { id: periodId },
+          data: { isDeleted: true },
+        });
+  
+        // 14. Ghi log hành động thành công
+        await tx.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_SUBMISSION_PERIOD',
+            entityType: 'SubmissionPeriod',
+            entityId: periodId,
+            description: `Đợt đề xuất "${period.description || periodId}" đã được đánh dấu xóa cùng các dữ liệu liên quan`,
+            severity: 'INFO',
+            ipAddress: ipAddress || 'unknown',
+            metadata: {
+              topicCount: period.topics.length,
+              councilCount: period.councils.length,
+            },
+            oldValues: JSON.stringify(period),
+          },
+        });
+  
+        // Trả về dữ liệu SubmissionPeriod sau khi cập nhật
+        return await tx.submissionPeriod.findUnique({
+          where: { id: periodId },
+          include: { topics: true, councils: true },
+        });
+      });
+  
+      return { success: true, status: HTTP_STATUS.OK, message: TOPIC_SUBMISSION_PERIOD_MESSAGE.DELETED, data: updatedPeriod };
+    } catch (error) {
+      await prisma.systemLog.create({
+        data: {
+          userId,
+          action: 'DELETE_SUBMISSION_PERIOD_ERROR',
+          entityType: 'SubmissionPeriod',
+          entityId: periodId,
+          description: 'Lỗi hệ thống khi đánh dấu xóa đợt đề xuất',
+          severity: 'ERROR',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stackTrace: (error as Error).stack || 'No stack trace',
+          ipAddress: ipAddress || 'unknown',
+        },
+      });
+      console.error('Lỗi khi đánh dấu xóa đợt đề xuất:', error);
+      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi đánh dấu xóa đợt đề xuất!' };
     }
   }
   

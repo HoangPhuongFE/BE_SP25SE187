@@ -26,6 +26,7 @@ import exportTopicRoutes from './routers/export-topic.routes';
 import usersemesterroleRouter from './routers/user-semester-role.routes';
 import importTopicRoutes from './routers/import-topic.routes';
 import progressReportRouter from './routers/progress-report.router';
+import councilReivewRotuer from './routers/council.review.routes';
 config();
 const app = express();
 
@@ -66,6 +67,12 @@ app.use('/api', exportTopicRoutes);
 app.use('/api/semester-role', usersemesterroleRouter);
 app.use('/api', importTopicRoutes);
 app.use('/api/progress-report', progressReportRouter);
+app.use('/api/council-review', councilReivewRotuer);
+
+
+
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

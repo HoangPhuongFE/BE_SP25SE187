@@ -74,10 +74,10 @@ router.put(
 );
 
 // Xóa báo cáo tiến độ
-router.delete(
-  "/:id",
+router.put(
+  '/:id/delete', 
   authenticateToken,
-  checkRole(["lecturer", "student"]),
+  checkRole(['lecturer', 'student']),
   progressReportController.deleteProgressReport.bind(progressReportController)
 );
 

@@ -30,11 +30,11 @@ router.put(
 );
 
 
-router.delete(
-  '/users/:userId',
+router.put(
+  '/users/:userId/delete', 
   authenticateToken,
   checkRole(['admin']),
-  adminController.deleteUser
+  adminController.deleteUser.bind(adminController)
 );
 
 router.get(

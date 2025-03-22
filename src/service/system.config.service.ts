@@ -1,4 +1,3 @@
-// system.config.service.ts
 import { PrismaClient, SystemConfig } from "@prisma/client";
 const prisma = new PrismaClient();
 
@@ -30,7 +29,16 @@ export class SystemConfigService {
     return this.getSystemConfigValue("MAX_GROUP_MENTORS", 2) as Promise<number>;
   }
 
-  // Cấu hình số lượng thành viên hội đồng
+  async getMaxGroupsPerMentor(): Promise<number> {
+    return this.getSystemConfigValue("MAX_GROUPS_PER_MENTOR", 4) as Promise<number>;
+  }
+
+  // Thêm cấu hình số lượng tối đa nhóm mà một hội đồng có thể chấm trong một lịch trình
+  async getMaxTopicsPerCouncilSchedule(): Promise<number> {
+    return this.getSystemConfigValue("MAX_TOPICS_PER_COUNCIL_SCHEDULE", 4) as Promise<number>;
+  }
+
+  // Các phương thức khác giữ nguyên...
   async getMaxReviewMembers(): Promise<number> {
     return this.getSystemConfigValue("MAX_REVIEW_MEMBERS", 2) as Promise<number>;
   }
@@ -51,12 +59,10 @@ export class SystemConfigService {
     return this.getSystemConfigValue("MAX_DEFENSE_REVIEWERS", 2) as Promise<number>;
   }
 
-  // Cấu hình số lượng thành viên hội đồng xét duyệt đề tài
   async getMaxCouncilMembers(): Promise<number> {
     return this.getSystemConfigValue("MAX_COUNCIL_MEMBERS", 2) as Promise<number>;
   }
 
-  // Cấu hình số lượng hội đồng tối đa trong mỗi học kỳ
   async getMaxCouncilsPerSemester(): Promise<number> {
     return this.getSystemConfigValue("MAX_COUNCILS_PER_SEMESTER", 5) as Promise<number>;
   }

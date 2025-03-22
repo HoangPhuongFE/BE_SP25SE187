@@ -1,17 +1,16 @@
 import { Request, Response } from 'express';
 import HTTP_STATUS from '../constants/httpStatus';
 import COUNCIL_MESSAGE from '../constants/message';
-import { CouncilTopicService } from '../service/council.topic.service';
+import { CouncilReviewService } from '../service/council.review.service';
 
-const councilTopicService = new CouncilTopicService();
+const councilReviewService = new CouncilReviewService();
 
-export class CouncilTopicController {
-
+export class CouncilReviewController {
   async createCouncil(req: Request, res: Response) {
     const { name, semesterId, submissionPeriodId, startDate, endDate, status, type, round } = req.body;
     const createdBy = req.user!.userId;
 
-    const result = await councilTopicService.createCouncil({
+    const result = await councilReviewService.createCouncil({
       name,
       semesterId,
       submissionPeriodId,
@@ -30,7 +29,7 @@ export class CouncilTopicController {
     try {
       const { id } = req.params;
       const { name, code, round, status, councilStartDate, councilEndDate } = req.body;
-      const result = await councilTopicService.updateTopicCouncil(id, {
+      const result = await councilReviewService.updateReviewCouncil(id, {
         name,
         code,
         round,
@@ -43,62 +42,57 @@ export class CouncilTopicController {
       console.error("Lỗi trong updateCouncil:", error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: COUNCIL_MESSAGE.COUNCIL_UPDATE_FAILED
+        message: COUNCIL_MESSAGE.COUNCIL_UPDATE_FAILED,
       });
     }
   }
 
-
-  // Lấy danh sách hội đồng topic
   async getCouncils(req: Request, res: Response) {
     try {
       const { semesterId, submissionPeriodId, round } = req.query;
-      const result = await councilTopicService.getTopicCouncils({
+      const result = await councilReviewService.getReviewCouncils({
         semesterId: semesterId as string,
         submissionPeriodId: submissionPeriodId as string,
-        round: round ? Number(round) : undefined
+        round: round ? Number(round) : undefined,
       });
       return res.status(result.status).json(result);
     } catch (error) {
       console.error("Lỗi trong getCouncils:", error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: COUNCIL_MESSAGE.COUNCIL_LIST_FAILED
+        message: COUNCIL_MESSAGE.COUNCIL_LIST_FAILED,
       });
     }
   }
 
-  // Lấy chi tiết hội đồng topic theo id
   async getCouncilById(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const result = await councilTopicService.getTopicCouncilById(id);
+      const result = await councilReviewService.getReviewCouncilById(id);
       return res.status(result.status).json(result);
     } catch (error) {
       console.error("Lỗi trong getCouncilById:", error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: COUNCIL_MESSAGE.COUNCIL_LIST_FAILED
+        message: COUNCIL_MESSAGE.COUNCIL_LIST_FAILED,
       });
     }
   }
 
-
-  // Xóa hội đồng topic
   async deleteCouncil(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const userId = req.user?.userId; // Lấy userId từ thông tin đăng nhập
-      const ipAddress = req.ip; // Lấy địa chỉ IP từ request
-  
+      const userId = req.user?.userId;
+      const ipAddress = req.ip;
+
       if (!userId) {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json({
           success: false,
           message: 'Không tìm thấy thông tin người dùng.',
         });
       }
-  
-      const result = await councilTopicService.deleteTopicCouncil(id, userId, ipAddress);
+
+      const result = await councilReviewService.deleteReviewCouncil(id, userId, ipAddress);
       return res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi trong deleteCouncil:', error);
@@ -108,9 +102,10 @@ export class CouncilTopicController {
       });
     }
   }
+
   async addMemberToCouncil(req: Request, res: Response) {
     try {
-      const { councilId } = req.params; 
+      const { councilId } = req.params;
       const { email, role } = req.body;
       const addedBy = req.user!.userId;
 
@@ -118,8 +113,7 @@ export class CouncilTopicController {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: "Thiếu councilId!" });
       }
 
-      const result = await councilTopicService.addMemberToCouncil(councilId as string, { email, role, addedBy });
-
+      const result = await councilReviewService.addMemberToCouncil(councilId, { email, role, addedBy });
       return res.status(result.status).json(result);
     } catch (error) {
       console.error("Lỗi khi thêm thành viên vào hội đồng:", error);
@@ -127,39 +121,91 @@ export class CouncilTopicController {
     }
   }
 
-
   async removeMemberFromCouncil(req: Request, res: Response) {
     try {
-      const { councilId, userId } = req.params; //  Đổi từ req.params -> req.query
+      const { councilId, userId } = req.params;
 
       if (!councilId || !userId) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: "Thiếu councilId hoặc userId!" });
       }
 
-      const result = await councilTopicService.removeMemberFromCouncil(councilId as string, userId as string);
-
+      const result = await councilReviewService.removeMemberFromCouncil(councilId, userId);
       return res.status(result.status).json(result);
     } catch (error) {
+      console.error("Lỗi khi xóa thành viên:", error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ success: false, message: "Lỗi hệ thống!" });
     }
   }
 
-
-
-  // Trong CouncilTopicController
   async getCouncilDetailsForLecturer(req: Request, res: Response) {
     try {
-      const { id } = req.params; // councilId từ URL
-      const userId = req.user!.userId; // Lấy từ token
+      const { id } = req.params;
+      const userId = req.user!.userId;
 
-      // Gọi service để lấy chi tiết hội đồng
-      const result = await councilTopicService.getCouncilDetailsForLecturer(id, userId);
+      const result = await councilReviewService.getCouncilDetailsForLecturer(id, userId);
       return res.status(result.status).json(result);
     } catch (error) {
       console.error("Lỗi trong getCouncilDetailsForLecturer:", error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: COUNCIL_MESSAGE.COUNCIL_LIST_FAILED,
+      });
+    }
+  }
+
+
+  async createReviewSchedule(req: Request, res: Response) {
+    try {
+      const { councilId, groups, room } = req.body; // Đổi topics thành groups
+      const createdBy = req.user!.userId;
+
+      const formattedGroups = groups.map((g: { groupId: string; reviewTime: string }) => ({
+        groupId: g.groupId,
+        reviewTime: new Date(g.reviewTime),
+      }));
+
+      const result = await councilReviewService.createReviewSchedule({
+        councilId,
+        groups: formattedGroups,
+        room,
+        createdBy,
+      });
+
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error("Lỗi trong createReviewSchedule:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Lỗi hệ thống khi tạo lịch chấm điểm!",
+      });
+    }
+  }
+  // API cho mentor xem lịch nhóm
+  async getReviewScheduleForMentor(req: Request, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const result = await councilReviewService.getReviewScheduleForMentor(userId);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error("Lỗi trong getReviewScheduleForMentor:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Lỗi hệ thống khi lấy lịch chấm điểm!",
+      });
+    }
+  }
+
+  // API cho student xem lịch nhóm
+  async getReviewScheduleForStudent(req: Request, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const result = await councilReviewService.getReviewScheduleForStudent(userId);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error("Lỗi trong getReviewScheduleForStudent:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Lỗi hệ thống khi lấy lịch chấm điểm!",
       });
     }
   }

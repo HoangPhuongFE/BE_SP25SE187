@@ -35,7 +35,7 @@ export class TopicController {
           status: HTTP_STATUS.UNAUTHORIZED,
         });
       }
-  
+
       const {
         nameVi,
         nameEn,
@@ -52,7 +52,7 @@ export class TopicController {
         groupCode,
         draftFileUrl,
       } = req.body;
-  
+
       const result = await topicService.createTopic({
         nameVi,
         nameEn,
@@ -70,7 +70,7 @@ export class TopicController {
         groupId,
         groupCode,
       });
-  
+
       return res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi trong createTopic:', error);
@@ -85,9 +85,9 @@ export class TopicController {
     try {
       const { topicId } = req.params;
       if (!topicId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({ 
-          success: false, 
-          message: TOPIC_MESSAGE.INVALID_ID 
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: TOPIC_MESSAGE.INVALID_ID
         });
       }
 
@@ -201,13 +201,13 @@ export class TopicController {
     try {
       const { topicId } = req.params;
       const { status } = req.body;
-      const  reviewReason = req.body.reviewReason; 
+      const reviewReason = req.body.reviewReason;
       const userId = req.user!.userId;
-  
+
       if (!topicId || !status) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Thiếu ID đề tài hoặc trạng thái!' });
       }
-  
+
       const result = await topicService.approveTopicByAcademic(topicId, status, userId, reviewReason);
       return res.status(result.status).json(result);
     } catch (error) {
@@ -250,21 +250,22 @@ export class TopicController {
           .status(HTTP_STATUS.BAD_REQUEST)
           .json({ success: false, message: 'Thiếu ID đề tài!' });
       }
-      const isSystemWide = req.user.roles.some((role: { isSystemWide: any; }) => role.isSystemWide);
+      const isSystemWide = req.user.roles.some((role: { isSystemWide: any }) => role.isSystemWide);
       const userId = req.user.userId; // Lấy userId từ thông tin đăng nhập
+      const ipAddress = req.ip; // Lấy địa chỉ IP từ request
   
-      const result = await topicService.deleteTopic(topicId, isSystemWide, userId);
+      const result = await topicService.deleteTopic(topicId, isSystemWide, userId, ipAddress);
       return res.status(result.status).json(result);
     } catch (error) {
-      console.error('Lỗi khi xóa đề tài:', error);
+      console.error('Lỗi khi đánh dấu xóa đề tài:', error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: 'Lỗi hệ thống khi xóa đề tài!',
+        message: 'Lỗi hệ thống khi đánh dấu xóa đề tài!',
       });
     }
   }
-  
-  
+
+
 
   async registerTopic(req: Request, res: Response) {
     try {
@@ -330,7 +331,7 @@ export class TopicController {
     }
   }
 
- 
+
 
   async getRegisteredTopicsByMentor(req: Request, res: Response) {
     try {
@@ -338,7 +339,7 @@ export class TopicController {
       if (!mentorId) {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: 'Không tìm thấy thông tin người dùng!' });
       }
-  
+
       const result = await topicService.getRegisteredTopicsByMentor(mentorId);
       return res.status(result.status).json(result);
     } catch (error) {
@@ -349,9 +350,9 @@ export class TopicController {
       });
     }
   }
- 
 
-  
+
+
   async getTopicRegistrations(req: Request, res: Response) {
     try {
       const { topicId } = req.params; // Lấy topicId từ URL
@@ -394,91 +395,224 @@ export class TopicController {
   }
 
 
-  
-    async getAllRegistrations(req: Request, res: Response) {
-      try {
-        const result = await topicService.getAllRegistrations();
-        return res.status(result.status).json(result);
-      } catch (error) {
-        console.error('Lỗi trong controller getAllRegistrations:', error);
-        return res.status(500).json({
-          success: false,
-          message: 'Lỗi hệ thống khi lấy danh sách đăng ký!',
-        });
-      }
-    }
-  
-   
-    async getGroupRegistrations(req: Request, res: Response) {
-      try {
-        const { groupId } = req.params; // Lấy groupId từ URL
-        const semesterId = req.query.semesterId as string; // Lấy semesterId từ query
-        const userId = (req as any).user.userId; // Lấy userId từ thông tin xác thực
-    
-        if (!userId) {
-          return res.status(401).json({
-            success: false,
-            message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
-          });
-        }
-    
-        const result = await topicService.getGroupRegistrations(groupId, userId, semesterId);
-        return res.status(result.status).json(result);
-      } catch (error) {
-        console.error('Lỗi trong controller getGroupRegistrations:', error);
-        return res.status(500).json({
-          success: false,
-          message: 'Lỗi hệ thống khi lấy thông tin đăng ký của nhóm!',
-        });
-      }
-    }
-    
 
-// Lấy danh sách đề tài đã duyệt cho nhóm sinh viên 
-async getApprovedTopicsFortudent(req: Request, res: Response) {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+  async getAllRegistrations(req: Request, res: Response) {
+    try {
+      const result = await topicService.getAllRegistrations();
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error('Lỗi trong controller getAllRegistrations:', error);
+      return res.status(500).json({
         success: false,
-        message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
+        message: 'Lỗi hệ thống khi lấy danh sách đăng ký!',
       });
     }
-
-    // Gọi service mà không cần truyền semesterId
-    const result = await topicService.getApprovedTopicsForStudent(userId);
-    return res.status(result.status).json(result);
-  } catch (error) {
-    console.error('Lỗi trong getApprovedTopicsForStudent:', error);
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: 'Lỗi hệ thống khi lấy danh sách đề tài đã duyệt!',
-    });
   }
-}
 
 
+  async getGroupRegistrations(req: Request, res: Response) {
+    try {
+      const { groupId } = req.params; // Lấy groupId từ URL
+      const semesterId = req.query.semesterId as string; // Lấy semesterId từ query
+      const userId = (req as any).user.userId; // Lấy userId từ thông tin xác thực
 
-// Lấy danh sách tất cả  đề tài đã duyệt cho sinh viên xem 
-async getAllApprovedTopicsForStudent(req: Request, res: Response) {
-  try {
-    const userId = req.user?.userId;
-    if (!userId) {
-      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
+        });
+      }
+
+      const result = await topicService.getGroupRegistrations(groupId, userId, semesterId);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error('Lỗi trong controller getGroupRegistrations:', error);
+      return res.status(500).json({
         success: false,
-        message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
+        message: 'Lỗi hệ thống khi lấy thông tin đăng ký của nhóm!',
       });
     }
-
-    const result = await topicService.getAllApprovedTopicsForStudent(userId);
-    return res.status(result.status).json(result);
-  } catch (error) {
-    console.error('Lỗi trong getAllApprovedTopicsForStudent:', error);
-    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-      success: false,
-      message: 'Lỗi hệ thống khi lấy danh sách tất cả đề tài đã duyệt!',
-    });
   }
-}
+
+
+  // Lấy danh sách đề tài đã duyệt cho nhóm sinh viên 
+  async getApprovedTopicsFortudent(req: Request, res: Response) {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
+        });
+      }
+
+      // Gọi service mà không cần truyền semesterId
+      const result = await topicService.getApprovedTopicsForStudent(userId);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error('Lỗi trong getApprovedTopicsForStudent:', error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: 'Lỗi hệ thống khi lấy danh sách đề tài đã duyệt!',
+      });
+    }
+  }
+
+
+
+  // Lấy danh sách tất cả  đề tài đã duyệt cho sinh viên xem 
+  async getAllApprovedTopicsForStudent(req: Request, res: Response) {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: 'Không tìm thấy thông tin người dùng. Vui lòng đăng nhập!',
+        });
+      }
+
+      const result = await topicService.getAllApprovedTopicsForStudent(userId);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error('Lỗi trong getAllApprovedTopicsForStudent:', error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: 'Lỗi hệ thống khi lấy danh sách tất cả đề tài đã duyệt!',
+      });
+    }
+  }
+
+
+  async createTopicWithMentors(
+    req: Request<
+      any,
+      any,
+      {
+        nameVi: string;
+        nameEn: string;
+        description: string;
+        semesterId: string;
+        majorId: string;
+        isBusiness?: string | boolean;
+        businessPartner?: string;
+        source?: string;
+        mainMentorId?: string;
+        subMentorId?: string;
+        draftFileUrl?: string;
+        groupId?: string;
+        groupCode?: string;
+      }
+    > & { user?: { userId: string } },
+    res: Response
+  ) {
+    try {
+      const createdBy = req.user?.userId;
+      if (!createdBy) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: 'Không xác định được người dùng!',
+          status: HTTP_STATUS.UNAUTHORIZED,
+        });
+      }
+
+      const {
+        nameVi,
+        nameEn,
+        description,
+        semesterId,
+        majorId,
+        isBusiness,
+        businessPartner,
+        source,
+        mainMentorId,
+        subMentorId,
+        draftFileUrl,
+        groupId,
+        groupCode,
+      } = req.body;
+
+      // Kiểm tra các trường bắt buộc
+      if (!nameVi || !nameEn || !description || !semesterId || !majorId) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'Thiếu thông tin bắt buộc: nameVi, nameEn, description, semesterId, hoặc majorId!',
+          status: HTTP_STATUS.BAD_REQUEST,
+        });
+      }
+
+      const result = await topicService.createTopicWithMentors({
+        nameVi,
+        nameEn,
+        description,
+        semesterId,
+        majorId,
+        isBusiness: isBusiness === 'true' || isBusiness === true,
+        businessPartner,
+        source,
+        mainMentorId,
+        subMentorId,
+        createdBy,
+        draftFileUrl,
+        groupId,
+        groupCode,
+      });
+
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error('Lỗi trong createTopicWithMentors:', error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: 'Lỗi hệ thống khi tạo đề tài với mentor!',
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      });
+    }
+  }
+
+
+  // API gán mentor hoặc nhóm vào đề tài
+  async assignMentorsOrGroup(req: Request, res: Response) {
+    const { topicId } = req.params;
+    const { mainMentorEmail, subMentorEmail, groupId, groupCode, semesterId } = req.body;
+  
+    try {
+      if (!req.user || !req.user.userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Không thể xác định người dùng từ token!',
+        });
+      }
+  
+      const result = await topicService.assignMentorsOrGroupToTopic(
+        topicId,
+        {
+          mainMentorEmail,
+          subMentorEmail,
+          groupId,
+          groupCode,
+          semesterId,
+        },
+        req.user.userId // Truyền updatedBy riêng
+      );
+  
+      if (!result.success) {
+        return res.status(result.status).json({
+          success: false,
+          message: result.message,
+        });
+      }
+  
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.data,
+      });
+    } catch (error) {
+      console.error('Lỗi trong assignMentorsOrGroup:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Lỗi hệ thống.',
+      });
+    }
+  }
 }
 

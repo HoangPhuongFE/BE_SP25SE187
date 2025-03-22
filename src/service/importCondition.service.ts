@@ -64,7 +64,10 @@ export class ImportConditionService {
     try {
       for (const { studentCode, email, status, rowIndex } of dataToImport) {
         const student = await prisma.student.findUnique({
-          where: { studentCode },
+          where: { 
+            studentCode,
+            isDeleted: false 
+          },
         });
 
         if (!student) {
@@ -78,6 +81,7 @@ export class ImportConditionService {
         const existingSemesterStudent = await prisma.semesterStudent.findUnique({
           where: {
             semesterId_studentId: { semesterId, studentId: student.id },
+            isDeleted: false
           },
         });
 
@@ -109,7 +113,12 @@ export class ImportConditionService {
         successCount++;
 
         // Kiểm tra xem sinh viên đã có vai trò 'student' trong học kỳ chưa
-        const studentRole = await prisma.role.findUnique({ where: { name: 'student' } });
+        const studentRole = await prisma.role.findUnique({ 
+          where: { 
+            name: 'student',
+            isDeleted: false 
+          } 
+        });
 
         if (studentRole) {
           const existingUserRole = await prisma.userRole.findFirst({
@@ -117,6 +126,7 @@ export class ImportConditionService {
               userId: student.userId!,
               roleId: studentRole.id,
               semesterId,
+              isDeleted: false
             },
           });
 

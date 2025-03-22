@@ -91,17 +91,20 @@ export class MeetingController {
     try {
       const { id } = req.params;
       const mentorId = req.user!.userId;
-
-      //  Xóa meeting
-      await this.meetingService.deleteMeeting(id, mentorId);
-
-      res.status(HTTP_STATUS.OK).json({
-        message: MEETING_MESSAGE.MEETING_DELETED,
-      });
+      const ipAddress = req.ip; // Lấy địa chỉ IP từ request
+  
+      if (!id) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          message: 'Thiếu ID cuộc họp.',
+        });
+      }
+  
+      const result = await this.meetingService.deleteMeeting(id, mentorId, ipAddress);
+      res.status(HTTP_STATUS.OK).json(result);
     } catch (error) {
-      console.error("Error deleting meeting:", error);
+      console.error('Error marking meeting as deleted:', error);
       res.status(HTTP_STATUS.BAD_REQUEST).json({
-        message: (error as Error).message,
+        message: error instanceof Error ? error.message : 'Lỗi khi đánh dấu xóa cuộc họp.',
       });
     }
   }

@@ -18,10 +18,20 @@ export class ImportLecturerService {
     const worksheet = workbook.getWorksheet(1);
     if (!worksheet) throw new Error('Không tìm thấy worksheet');
 
-    const lecturerRole = await prisma.role.findUnique({ where: { name: 'lecturer' } });
+    const lecturerRole = await prisma.role.findUnique({ 
+      where: { 
+        name: 'lecturer',
+        isDeleted: false 
+      } 
+    });
     if (!lecturerRole) throw new Error('Vai trò "lecturer" không tồn tại.');
 
-    const semester = await prisma.semester.findUnique({ where: { id: semesterId } });
+    const semester = await prisma.semester.findUnique({ 
+      where: { 
+        id: semesterId,
+        isDeleted: false 
+      } 
+    });
     if (!semester) throw new Error(`Học kỳ với ID ${semesterId} không tồn tại.`);
 
     const errors: string[] = [];
@@ -63,7 +73,12 @@ export class ImportLecturerService {
     let successCount = 0;
     try {
       for (const { lecturerCode, email, fullName, departmentPosition, department, rowIndex } of dataToImport) {
-        let existingUser = await prisma.user.findUnique({ where: { email } });
+        let existingUser = await prisma.user.findUnique({ 
+          where: { 
+            email,
+            isDeleted: false 
+          } 
+        });
 
         if (existingUser && existingUser.lecturerCode !== lecturerCode) {
           errors.push(`Dòng ${rowIndex}: Email ${email} đã được sử dụng cho mã giảng viên khác.`);
@@ -90,7 +105,12 @@ export class ImportLecturerService {
         }
 
         const existingUserRole = await prisma.userRole.findFirst({
-          where: { userId: existingUser.id, roleId: lecturerRole.id, semesterId },
+          where: { 
+            userId: existingUser.id, 
+            roleId: lecturerRole.id, 
+            semesterId,
+            isDeleted: false 
+          },
         });
 
         if (!existingUserRole) {
@@ -134,29 +154,63 @@ export class ImportLecturerService {
       const lecturers = await prisma.user.findMany({
         where: {
           lecturerCode: { not: null },
-          roles: { some: { role: { name: 'lecturer' }, semesterId } },
+          isDeleted: false,
+          roles: { 
+            some: { 
+              role: { 
+                name: 'lecturer',
+                isDeleted: false 
+              }, 
+              semesterId,
+              isDeleted: false 
+            } 
+          },
         },
         include: {
-          roles: { where: { semesterId }, include: { role: true, semester: true } },
+          roles: {
+            where: { 
+              semesterId,
+              isDeleted: false 
+            },
+            select: {
+              isActive: true,
+              role: {
+                select: {
+                  name: true,
+                  isDeleted: false
+                }
+              },
+              semester: {
+                select: {
+                  id: true,
+                  code: true,
+                  isDeleted: false
+                }
+              }
+            }
+          }
         },
         orderBy: { createdAt: 'desc' },
       });
 
-      const formattedLecturers = lecturers.map(lecturer => ({
-        id: lecturer.id,
-        email: lecturer.email,
-        username: lecturer.username,
-        lecturerCode: lecturer.lecturerCode || '',
-        fullName: lecturer.fullName || '',
-        departmentPosition: lecturer.departmentPosition || '',
-        department: lecturer.department || '',
-        isActive: lecturer.roles[0]?.isActive ?? false,
-        semesterId: lecturer.roles[0]?.semester?.id,
-        semesterCode: lecturer.roles[0]?.semester?.code,
-        role: lecturer.roles[0]?.role.name,
-        createdAt: lecturer.createdAt,
-        updatedAt: lecturer.updatedAt,
-      }));
+      const formattedLecturers = lecturers.map(lecturer => {
+        const role = lecturer.roles?.[0];
+        return {
+          id: lecturer.id,
+          email: lecturer.email,
+          username: lecturer.username,
+          lecturerCode: lecturer.lecturerCode || '',
+          fullName: lecturer.fullName || '',
+          departmentPosition: lecturer.departmentPosition || '',
+          department: lecturer.department || '',
+          isActive: role?.isActive ?? false,
+          semesterId: role?.semester?.id,
+          semesterCode: role?.semester?.code,
+          role: role?.role?.name,
+          createdAt: lecturer.createdAt,
+          updatedAt: lecturer.updatedAt,
+        };
+      });
 
       return { status: 'success', data: formattedLecturers, total: formattedLecturers.length };
     } catch (error) {
@@ -170,18 +224,50 @@ export class ImportLecturerService {
       const lecturer = await prisma.user.findUnique({
         where: {
           id: userId,
+          isDeleted: false,
           lecturerCode: { not: null },
-          roles: { some: { role: { name: 'lecturer' }, semesterId } },
+          roles: { 
+            some: { 
+              role: { 
+                name: 'lecturer',
+                isDeleted: false 
+              }, 
+              semesterId,
+              isDeleted: false 
+            } 
+          },
         },
         include: {
-          roles: { where: { semesterId }, include: { role: true, semester: true } },
-        },
+          roles: {
+            where: { 
+              semesterId,
+              isDeleted: false 
+            },
+            select: {
+              isActive: true,
+              role: {
+                select: {
+                  name: true,
+                  isDeleted: false
+                }
+              },
+              semester: {
+                select: {
+                  id: true,
+                  code: true,
+                  isDeleted: false
+                }
+              }
+            }
+          }
+        }
       });
 
       if (!lecturer) {
         throw new Error('Không tìm thấy giảng viên với ID này hoặc không phải giảng viên trong học kỳ được chỉ định');
       }
 
+      const role = lecturer.roles?.[0];
       const formattedLecturer = {
         id: lecturer.id,
         email: lecturer.email,
@@ -190,10 +276,10 @@ export class ImportLecturerService {
         fullName: lecturer.fullName || '',
         departmentPosition: lecturer.departmentPosition || '',
         department: lecturer.department || '',
-        isActive: lecturer.roles[0]?.isActive ?? false,
-        semesterId: lecturer.roles[0]?.semester?.id,
-        semesterName: lecturer.roles[0]?.semester?.code,
-        role: lecturer.roles[0]?.role.name,
+        isActive: role?.isActive ?? false,
+        semesterId: role?.semester?.id,
+        semesterName: role?.semester?.code,
+        role: role?.role?.name,
         createdAt: lecturer.createdAt,
         updatedAt: lecturer.updatedAt,
       };

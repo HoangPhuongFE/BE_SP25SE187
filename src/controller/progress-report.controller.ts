@@ -158,37 +158,39 @@ export class ProgressReportController {
   async deleteProgressReport(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      
+  
       if (!req.user) {
         return res.status(401).json({
           success: false,
           message: MESSAGES.USER.UNAUTHORIZED,
         });
       }
-      
+  
       const userId = req.user.userId;
-
+      const ipAddress = req.ip; // Lấy địa chỉ IP từ request
+  
       if (!userId) {
         return res.status(401).json({
           success: false,
           message: MESSAGES.USER.UNAUTHORIZED,
         });
       }
-
+  
       console.log(`API deleteProgressReport được gọi bởi userId: ${userId} cho báo cáo: ${id}`);
-      
-      await this.progressReportService.deleteProgressReport(id, userId);
-
+  
+      const result = await this.progressReportService.deleteProgressReport(id, userId, ipAddress);
+  
       return res.status(200).json({
         success: true,
-        message: MESSAGES.PROGRESS_REPORT.REPORT_DELETED,
+        message: result.message,
+        data: result.data,
       });
     } catch (error: any) {
-      console.error("Error deleting progress report:", error);
+      console.error('Error marking progress report as deleted:', error);
       return res.status(400).json({
         success: false,
         message: error.message || MESSAGES.GENERAL.ACTION_FAILED,
-        error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        error: process.env.NODE_ENV === 'development' ? error.stack : undefined,
       });
     }
   }
