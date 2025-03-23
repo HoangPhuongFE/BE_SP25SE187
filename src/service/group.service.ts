@@ -543,7 +543,7 @@ export class GroupService {
         if (!user) throw new Error("Người dùng không tồn tại.");
 
         const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
-        console.log(`User ID: ${userId}, Roles: ${JSON.stringify(userRoles)}`);
+      //  console.log(`User ID: ${userId}, Roles: ${JSON.stringify(userRoles)}`);
 
         // Base query: luôn bao gồm members và mentors
         const baseInclude = {
@@ -567,7 +567,7 @@ export class GroupService {
             userRoles.includes("academic_officer") ||
             userRoles.includes("examination_officer")
         ) {
-            console.log("Fetching all groups for manager role...");
+          //  console.log("Fetching all groups for manager role...");
             return prisma.group.findMany({
                 where: { semesterId },
                 include: baseInclude,
@@ -598,7 +598,7 @@ export class GroupService {
             userRoles.includes("mentor_main") ||
             userRoles.includes("mentor_sub")
         ) {
-            console.log("Fetching groups for mentor role...");
+        //    console.log("Fetching groups for mentor role...");
             const mentorGroupIds = (
                 await prisma.groupMentor.findMany({
                     where: { mentorId: userId },

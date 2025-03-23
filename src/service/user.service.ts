@@ -365,7 +365,7 @@ export class UserService {
             id: true,
             majorId: true,
             specializationId: true,
-            isEligible: true,
+           // isEligible: true,
           },
         },
         groupMemberships: {
@@ -410,7 +410,7 @@ export class UserService {
             id: true,
             majorId: true,
             specializationId: true,
-            isEligible: true,
+            //isEligible: true,
           },
         },
         groupMemberships: {
