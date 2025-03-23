@@ -2080,12 +2080,12 @@ export class GroupService {
                 where: { userId, isDeleted: false },
                 select: { id: true },
             });
-
+    
             if (!student) {
                 throw new Error("Không tìm thấy sinh viên.");
             }
-
-            // Lấy tất cả nhóm mà sinh viên là thành viên
+    
+            // Lấy tất cả nhóm mà sinh viên là thành viên, bao gồm toàn bộ dữ liệu của group
             const groups = await prisma.group.findMany({
                 where: {
                     members: {
@@ -2104,14 +2104,29 @@ export class GroupService {
                         },
                     },
                     semester: { select: { code: true, startDate: true, endDate: true } },
+                    // Có thể thêm các quan hệ khác nếu cần
+                    creator: true, // Ví dụ: bao gồm thông tin người tạo nhóm
+                    mentors: { include: { mentor: true, role: true } }, // Bao gồm thông tin mentor
+                    topicAssignments: { include: { topic: true } }, // Bao gồm thông tin phân công đề tài
                 },
             });
-
-            // Format dữ liệu trả về
+    
+            // Format dữ liệu trả về, bao gồm toàn bộ dữ liệu của group
             const formattedGroups = groups.map((group) => ({
-                id: group.id,
-                groupCode: group.groupCode,
-                status: group.status,
+                // Trả về toàn bộ dữ liệu của group
+                group: {
+                    id: group.id,
+                    groupCode: group.groupCode,
+                    semesterId: group.semesterId,
+                    status: group.status,
+                    isAutoCreated: group.isAutoCreated,
+                    createdBy: group.createdBy,
+                    maxMembers: group.maxMembers,
+                    isMultiMajor: group.isMultiMajor,
+                    createdAt: group.createdAt,
+                    updatedAt: group.updatedAt,
+                    isLocked: group.isLocked,
+                },
                 semesterCode: group.semester.code,
                 startDate: group.semester.startDate,
                 endDate: group.semester.endDate,
@@ -2122,8 +2137,25 @@ export class GroupService {
                     role: member.role.name,
                     status: member.status,
                 })),
+                // Thêm thông tin khác nếu cần
+                creator: {
+                    id: group.creator.id,
+                    fullName: group.creator.fullName,
+                    email: group.creator.email,
+                },
+                mentors: group.mentors.map((mentor) => ({
+                    mentorId: mentor.mentorId,
+                    fullName: mentor.mentor.fullName,
+                    email: mentor.mentor.email,
+                    role: mentor.role.name,
+                })),
+                topicAssignments: group.topicAssignments.map((assignment) => ({
+                    topicId: assignment.topicId,
+                    topicName: assignment.topic.name,
+                    status: assignment.status,
+                })),
             }));
-
+    
             return formattedGroups;
         } catch (error) {
             console.error("Lỗi trong getMyGroups:", error);
