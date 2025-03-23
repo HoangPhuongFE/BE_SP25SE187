@@ -105,7 +105,6 @@ model Student {
   specialization   Specialization?   @relation(fields: [specializationId], references: [id])
   specializationId String?           @map("specialization_id")
   semesterStudents SemesterStudent[]
-  isEligible       Boolean           @default(false) @map("is_eligible")
   personalEmail    String?           @map("personal_email")
   status           StudentStatus     @default(PENDING)
   importAt         DateTime          @default(now()) @map("import_at")
