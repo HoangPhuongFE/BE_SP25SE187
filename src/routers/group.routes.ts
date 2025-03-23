@@ -189,4 +189,12 @@ router.post(
   checkRole (["lecturer"]),
   groupController.toggleMemberStatusByMentor.bind(groupController)
 );
+
+// routes/group.route.ts
+router.get(
+  "/my-groups",
+  authenticateToken,
+  checkRole(["student"], false),
+  groupController.getMyGroups.bind(groupController)
+);
 export default router;

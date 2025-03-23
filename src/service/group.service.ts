@@ -2055,4 +2055,63 @@ export class GroupService {
             };
         }
     }
+
+    // services/group.service.ts
+async getMyGroups(userId: string) {
+    try {
+      // Tìm thông tin sinh viên dựa trên userId
+      const student = await prisma.student.findUnique({
+        where: { userId, isDeleted: false },
+        select: { id: true },
+      });
+  
+      if (!student) {
+        throw new Error("Không tìm thấy sinh viên.");
+      }
+  
+      // Lấy tất cả nhóm mà sinh viên là thành viên
+      const groups = await prisma.group.findMany({
+        where: {
+          members: {
+            some: {
+              studentId: student.id,
+              isDeleted: false,
+            },
+          },
+          isDeleted: false,
+        },
+        include: {
+          members: {
+            include: {
+              student: { include: { user: true } },
+              role: true,
+            },
+          },
+          semester: { select: { code: true, startDate: true, endDate: true } },
+        },
+      });
+  
+      // Format dữ liệu trả về
+      const formattedGroups = groups.map((group) => ({
+        id: group.id,
+        groupCode: group.groupCode,
+        status: group.status,
+        semesterCode: group.semester.code,
+        startDate: group.semester.startDate,
+        endDate: group.semester.endDate,
+        members: group.members.map((member) => ({
+          studentId: member.studentId,
+          fullName: member.student?.user?.fullName || "Không có tên",
+          email: member.student?.user?.email || "",
+          role: member.role.name,
+          status: member.status,
+        })),
+      }));
+  
+      return formattedGroups;
+    } catch (error) {
+      console.error("Lỗi trong getMyGroups:", error);
+      throw error;
+    }
+  }
 }
