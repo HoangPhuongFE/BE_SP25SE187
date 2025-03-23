@@ -42,7 +42,7 @@ router.get(
 router.get(
   "/semester/:semesterId",
   authenticateToken,
-  checkRole([ "student", "graduation_thesis_manager", "academic_officer",'lecturer']),
+  checkRole([ "student", "graduation_thesis_manager", "academic_officer",'lecturer', 'examination_officer']),
   groupController.getGroupsBySemester.bind(groupController)
 );
 
