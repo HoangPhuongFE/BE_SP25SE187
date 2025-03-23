@@ -17,7 +17,7 @@ router.post(
 router.get(
   '/',
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager", "lecturer"]),
+  checkRole(["examination_officer", "graduation_thesis_manager", "lecturer", "council_member"]),
   councilReviewController.getCouncils.bind(councilReviewController)
 );
 
@@ -25,7 +25,7 @@ router.get(
 router.get(
   '/:id',
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager", "lecturer"]),
+  checkRole(["examination_officer", "graduation_thesis_manager", "lecturer", "council_member"]),
   councilReviewController.getCouncilById.bind(councilReviewController)
 );
 

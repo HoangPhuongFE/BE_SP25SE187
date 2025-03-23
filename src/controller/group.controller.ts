@@ -483,4 +483,24 @@ export class GroupController {
       });
     }
   }
+  
+  async getMyGroups(req: AuthenticatedRequest, res: Response) {
+    try {
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+  
+      const groups = await groupService.getMyGroups(userId);
+  
+      return res.status(200).json({
+        message: "Lấy danh sách nhóm thành công.",
+        data: groups,
+      });
+    } catch (error) {
+      console.error("Lỗi khi lấy danh sách nhóm:", error);
+      return res.status(500).json({ message: (error as Error).message });
+    }
+  }
+  
 }

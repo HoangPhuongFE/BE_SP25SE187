@@ -151,7 +151,7 @@ router.post(
   '/:topicId/assign',
   authenticateToken,
   checkRole(['academic_officer', 'graduation_thesis_manager']),
-  topicController.assignMentorsOrGroup
+  topicController.assignMentorsOrGroup.bind(topicController)
 );
 
 
