@@ -2077,15 +2077,20 @@ export class GroupService {
         try {
             // Tìm thông tin sinh viên dựa trên userId
             const student = await prisma.student.findUnique({
-                where: { userId, isDeleted: false },
-                select: { id: true },
+                where: {
+                    userId,
+                    isDeleted: false,
+                },
+                select: {
+                    id: true,
+                },
             });
     
             if (!student) {
                 throw new Error("Không tìm thấy sinh viên.");
             }
     
-            // Lấy tất cả nhóm mà sinh viên là thành viên, bao gồm toàn bộ dữ liệu của group
+            // Truy vấn tất cả nhóm mà sinh viên tham gia
             const groups = await prisma.group.findMany({
                 where: {
                     members: {
@@ -2096,24 +2101,90 @@ export class GroupService {
                     },
                     isDeleted: false,
                 },
-                include: {
-                    members: {
-                        include: {
-                            student: { include: { user: true } },
-                            role: true,
+                select: {
+                    // Lấy toàn bộ các trường của Group
+                    id: true,
+                    groupCode: true,
+                    semesterId: true,
+                    status: true,
+                    isAutoCreated: true,
+                    createdBy: true,
+                    maxMembers: true,
+                    isMultiMajor: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    isLocked: true,
+                    // Thông tin quan hệ
+                    semester: {
+                        select: {
+                            code: true,
+                            startDate: true,
+                            endDate: true,
                         },
                     },
-                    semester: { select: { code: true, startDate: true, endDate: true } },
-                    // Có thể thêm các quan hệ khác nếu cần
-                    creator: true, // Ví dụ: bao gồm thông tin người tạo nhóm
-                    mentors: { include: { mentor: true, role: true } }, // Bao gồm thông tin mentor
-                    topicAssignments: { include: { topic: true } }, // Bao gồm thông tin phân công đề tài
+                    members: {
+                        where: { isDeleted: false },
+                        select: {
+                            studentId: true,
+                            status: true,
+                            role: {
+                                select: {
+                                    name: true,
+                                },
+                            },
+                            student: {
+                                select: {
+                                    user: {
+                                        select: {
+                                            fullName: true,
+                                            email: true,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    creator: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            email: true,
+                        },
+                    },
+                    mentors: {
+                        where: { isDeleted: false },
+                        select: {
+                            mentorId: true,
+                            role: {
+                                select: {
+                                    name: true,
+                                },
+                            },
+                            mentor: {
+                                select: {
+                                    fullName: true,
+                                    email: true,
+                                },
+                            },
+                        },
+                    },
+                    topicAssignments: {
+                        where: { isDeleted: false },
+                        select: {
+                            topicId: true,
+                            status: true,
+                            topic: {
+                                select: {
+                                    name: true,
+                                },
+                            },
+                        },
+                    },
                 },
             });
     
-            // Format dữ liệu trả về, bao gồm toàn bộ dữ liệu của group
+            // Format dữ liệu trả về
             const formattedGroups = groups.map((group) => ({
-                // Trả về toàn bộ dữ liệu của group
                 group: {
                     id: group.id,
                     groupCode: group.groupCode,
@@ -2127,26 +2198,27 @@ export class GroupService {
                     updatedAt: group.updatedAt,
                     isLocked: group.isLocked,
                 },
-                semesterCode: group.semester.code,
-                startDate: group.semester.startDate,
-                endDate: group.semester.endDate,
+                semester: {
+                    code: group.semester.code,
+                    startDate: group.semester.startDate,
+                    endDate: group.semester.endDate,
+                },
                 members: group.members.map((member) => ({
                     studentId: member.studentId,
-                    fullName: member.student?.user?.fullName || "Không có tên",
-                    email: member.student?.user?.email || "",
+                    fullName: member.student?.user?.fullName ?? "Không có tên",
+                    email: member.student?.user?.email ?? "Không có email",
                     role: member.role.name,
                     status: member.status,
                 })),
-                // Thêm thông tin khác nếu cần
                 creator: {
                     id: group.creator.id,
-                    fullName: group.creator.fullName,
-                    email: group.creator.email,
+                    fullName: group.creator.fullName ?? "Không có tên",
+                    email: group.creator.email ?? "Không có email",
                 },
                 mentors: group.mentors.map((mentor) => ({
                     mentorId: mentor.mentorId,
-                    fullName: mentor.mentor.fullName,
-                    email: mentor.mentor.email,
+                    fullName: mentor.mentor.fullName ?? "Không có tên",
+                    email: mentor.mentor.email ?? "Không có email",
                     role: mentor.role.name,
                 })),
                 topicAssignments: group.topicAssignments.map((assignment) => ({
