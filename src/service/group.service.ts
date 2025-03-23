@@ -1943,7 +1943,7 @@ export class GroupService {
         return students.map((student) => ({
             id: student.id,
             studentCode: student.studentCode,
-            studentName: student.user?.fullName || "Không có tên",
+            studentName: student.user?.username || "",
             email: student.user?.email || "",
             major: student.major?.name || "",
             specialization: student.specialization?.name || "",

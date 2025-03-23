@@ -369,24 +369,6 @@ model TopicAssignment {
   @@map("topic_assignments")
 }
 
-model ReviewSchedule {
-  id         String   @id @default(uuid())
-  councilId  String   @map("council_id")
-  groupId    String   @map("group_id")
-  reviewTime DateTime @map("review_time")
-  room       String
-  status     String
-  reviewRound Int
-  notes      String?
-  council    Council  @relation(fields: [councilId], references: [id])
-  group      Group    @relation(fields: [groupId], references: [id])
-  topicId    String
-  topic      Topic    @relation(fields: [topicId], references: [id])
-  isDeleted  Boolean  @default(false)
-
-  @@map("review_schedules")
-}
-
 model Group {
   id               String            @id @default(uuid())
   groupCode        String            @map("group_code")
@@ -603,7 +585,6 @@ model ReviewAssignment {
   id         String    @id @default(uuid())
   councilId  String    @map("council_id")
   topicId    String    @map("topic_id")
-  reviewerId String    @map("reviewer_id")
   score      Float?
   feedback   String?   @db.Text
   status     String
@@ -616,6 +597,25 @@ model ReviewAssignment {
   isDeleted  Boolean   @default(false)
 
   @@map("review_assignment")
+}
+
+model ReviewSchedule {
+  id         String   @id @default(uuid())
+  councilId  String   @map("council_id")
+  groupId    String   @map("group_id")
+  reviewTime DateTime @map("review_time")
+  room       String
+  status     String
+  reviewRound Int
+  notes      String?
+  reportUrl String? @map("report_url")
+  council    Council  @relation(fields: [councilId], references: [id])
+  group      Group    @relation(fields: [groupId], references: [id])
+  topicId    String
+  topic      Topic    @relation(fields: [topicId], references: [id])
+  isDeleted  Boolean  @default(false)
+
+  @@map("review_schedules")
 }
 
 model Document {
