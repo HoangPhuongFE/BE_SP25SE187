@@ -544,7 +544,14 @@ export class GroupService {
 
         const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
 
+<<<<<<< HEAD
         if (userRoles.includes("graduation_thesis_manager") || userRoles.includes("academic_officer") || userRoles.includes("examination_officer")) {
+=======
+        if (userRoles.includes("graduation_thesis_manager")
+             || userRoles.includes("academic_officer")
+                || userRoles.includes("examination_officer")
+            )  {
+>>>>>>> a295b88e5b21246747c5e9672e37daca64c5dad3
             return prisma.group.findMany({
                 where: { semesterId },
                 include: {
