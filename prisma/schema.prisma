@@ -585,6 +585,7 @@ model ReviewAssignment {
   id         String    @id @default(uuid())
   councilId  String    @map("council_id")
   topicId    String    @map("topic_id")
+  reviewerId String    @map("reviewer_id") 
   score      Float?
   feedback   String?   @db.Text
   status     String
