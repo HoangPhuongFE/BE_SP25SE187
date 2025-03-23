@@ -140,4 +140,29 @@ export class AIController {
       });
     }
   }
+
+  // Kiểm tra quyết định phân công đề tài
+  async verifyAssignmentDecision(req: Request, res: Response) {
+    try {
+      const { groupCode, topicCode, semesterId } = req.body;
+
+      const result = await this.aiService.verifyAssignmentDecision({
+        groupCode,
+        topicCode,
+        semesterId
+      });
+
+      return res.status(result.isValid ? 200 : 400).json({
+        success: result.isValid,
+        message: result.message,
+        discrepancies: result.discrepancies
+      });
+    } catch (error) {
+      console.error('Lỗi khi kiểm tra quyết định phân công:', error);
+      return res.status(500).json({
+        success: false,
+        message: MESSAGES.TOPIC.AI_VALIDATION_FAILED + "Lỗi hệ thống"
+      });
+    }
+  }
 } 

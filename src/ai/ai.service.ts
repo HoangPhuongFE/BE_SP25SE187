@@ -1,10 +1,13 @@
 import { AIConfig, AIProvider, AIValidationResult } from './ai.interface';
 import { GeminiProvider } from './gemini.provider';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 export class AIService {
   private provider: AIProvider | null = null;
   private config: AIConfig = {
-    enabled: false,
+    enabled: !process.env.SKIP_AI_VALIDATION || process.env.SKIP_AI_VALIDATION.toLowerCase() !== 'true',
     provider: 'none'
   };
 
@@ -20,8 +23,9 @@ export class AIService {
 
     switch (this.config.provider) {
       case 'gemini':
-        if (this.config.apiKey) {
-          this.provider = new GeminiProvider(this.config.apiKey);
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (apiKey) {
+          this.provider = new GeminiProvider(apiKey);
         }
         break;
       // Có thể thêm các provider khác ở đây

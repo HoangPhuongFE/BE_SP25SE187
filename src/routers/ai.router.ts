@@ -40,4 +40,11 @@ router.post(
   aiController.validateTopic
 );
 
+// Route kiểm tra quyết định phân công đề tài
+router.post(
+  '/verify-assignment',
+  aiMiddleware.validateAssignmentVerification,
+  aiController.verifyAssignmentDecision
+);
+
 export default router; 

@@ -9,14 +9,16 @@ export class AIService {
   // Khởi tạo và train model
   async initializeAndTrainModel() {
     try {
-      await topicModel.initializeModel();
-      await topicModel.trainModel();
-      const modelJSON = await topicModel.saveModel();
-      // Lưu modelJSON vào memory hoặc database nếu cần
-      return { success: true, message: "Model đã được train thành công" };
+      // Cập nhật cấu hình AI
+      aiService.updateConfig({
+        enabled: true,
+        provider: 'gemini'
+      });
+      
+      return { success: true, message: "Model đã được khởi tạo thành công" };
     } catch (error) {
-      console.error('Lỗi khi train model:', error);
-      return { success: false, message: "Lỗi khi train model" };
+      console.error('Lỗi khi khởi tạo model:', error);
+      return { success: false, message: "Lỗi khi khởi tạo model" };
     }
   }
 
@@ -149,6 +151,126 @@ export class AIService {
       return {
         isValid: false,
         message: MESSAGES.TOPIC.AI_VALIDATION_FAILED + "Lỗi hệ thống"
+      };
+    }
+  }
+
+  // Kiểm tra quyết định phân công đề tài
+  async verifyAssignmentDecision(data: {
+    groupCode: string;
+    topicCode: string;
+    semesterId: string;
+  }): Promise<{ isValid: boolean; message: string; discrepancies?: any[] }> {
+    try {
+      const { groupCode, topicCode, semesterId } = data;
+      const discrepancies = [];
+
+      // 1. Kiểm tra nhóm tồn tại
+      const group = await prisma.group.findUnique({
+        where: { semesterId_groupCode: { semesterId, groupCode } },
+        include: {
+          members: {
+            include: {
+              student: true,
+              role: true
+            }
+          }
+        }
+      });
+
+      if (!group) {
+        return {
+          isValid: false,
+          message: "Không tìm thấy nhóm với mã số này trong học kỳ"
+        };
+      }
+
+      // 2. Kiểm tra đề tài tồn tại
+      const topic = await prisma.topic.findUnique({
+        where: { topicCode },
+        include: {
+          majors: true,
+          topicAssignments: {
+            include: {
+              group: true
+            }
+          }
+        }
+      });
+
+      if (!topic) {
+        return {
+          isValid: false,
+          message: "Không tìm thấy đề tài với mã số này"
+        };
+      }
+
+      // 3. Kiểm tra phân công đề tài
+      const assignment = await prisma.topicAssignment.findFirst({
+        where: {
+          topicId: topic.id,
+          groupId: group.id,
+          approvalStatus: 'APPROVED'
+        }
+      });
+
+      if (!assignment) {
+        discrepancies.push({
+          type: 'ASSIGNMENT',
+          message: 'Đề tài chưa được phân công cho nhóm này trong hệ thống'
+        });
+      }
+
+      // 4. Kiểm tra chuyên ngành
+      const groupLeader = group.members.find(member => member.role.name === 'leader');
+      if (groupLeader?.student && groupLeader.student.majorId !== topic.majors[0]?.id) {
+        discrepancies.push({
+          type: 'MAJOR',
+          message: 'Chuyên ngành của trưởng nhóm không khớp với chuyên ngành của đề tài'
+        });
+      }
+
+      // 5. Kiểm tra trạng thái đề tài
+      if (topic.status !== 'APPROVED') {
+        discrepancies.push({
+          type: 'STATUS',
+          message: `Đề tài đang ở trạng thái ${topic.status}, không phải APPROVED`
+        });
+      }
+
+      // 6. Kiểm tra xem nhóm có đang được phân công cho đề tài khác không
+      const otherAssignments = await prisma.topicAssignment.findMany({
+        where: {
+          groupId: group.id,
+          approvalStatus: 'APPROVED',
+          NOT: {
+            topicId: topic.id
+          }
+        },
+        include: {
+          topic: true
+        }
+      });
+
+      if (otherAssignments.length > 0) {
+        discrepancies.push({
+          type: 'MULTIPLE_ASSIGNMENTS',
+          message: `Nhóm đang được phân công cho đề tài khác: ${otherAssignments[0].topic.topicCode}`
+        });
+      }
+
+      return {
+        isValid: discrepancies.length === 0,
+        message: discrepancies.length === 0 
+          ? "Thông tin phân công đề tài chính xác" 
+          : "Phát hiện một số không khớp trong thông tin phân công",
+        discrepancies
+      };
+    } catch (error) {
+      console.error('Lỗi khi kiểm tra quyết định phân công:', error);
+      return {
+        isValid: false,
+        message: MESSAGES.TOPIC.AI_VALIDATION_FAILED + "Lỗi khi kiểm tra quyết định phân công"
       };
     }
   }

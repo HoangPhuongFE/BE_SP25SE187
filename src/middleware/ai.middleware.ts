@@ -141,4 +141,54 @@ export class AIMiddleware {
       });
     }
   };
+
+  // Middleware kiểm tra quyết định phân công
+  validateAssignmentVerification = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { groupCode, topicCode, semesterId } = req.body;
+
+      // Kiểm tra quyền truy cập
+      const userRoles = (req as any).user.roles;
+      if (!userRoles.includes('examination_officer')) {
+        return res.status(403).json({
+          success: false,
+          message: "Chỉ Examination Officer mới có quyền kiểm tra quyết định phân công"
+        });
+      }
+
+      // Kiểm tra dữ liệu đầu vào
+      if (!groupCode || !topicCode || !semesterId) {
+        return res.status(400).json({
+          success: false,
+          message: "Thiếu thông tin bắt buộc: groupCode, topicCode hoặc semesterId"
+        });
+      }
+
+      // Kiểm tra định dạng mã nhóm
+      const groupCodePattern = /^[A-Z]{2}\d{3}$/;
+      if (!groupCodePattern.test(groupCode)) {
+        return res.status(400).json({
+          success: false,
+          message: "Mã nhóm không đúng định dạng (2 chữ cái + 3 số)"
+        });
+      }
+
+      // Kiểm tra định dạng mã đề tài
+      const topicCodePattern = /^[A-Z]{3}\d{4}$/;
+      if (!topicCodePattern.test(topicCode)) {
+        return res.status(400).json({
+          success: false,
+          message: "Mã đề tài không đúng định dạng (3 chữ cái + 4 số)"
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Lỗi trong middleware validateAssignmentVerification:', error);
+      return res.status(500).json({
+        success: false,
+        message: "Lỗi hệ thống khi kiểm tra quyết định phân công"
+      });
+    }
+  }
 } 
