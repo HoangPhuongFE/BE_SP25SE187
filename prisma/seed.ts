@@ -105,7 +105,7 @@ async function createYearsAndSemesters() {
     { code: 'SPRING2024', startDate: new Date('2024-01-01'), endDate: new Date('2024-04-30'), status: 'COMPLETE', yearId: createdYears[2024] },
     { code: 'SUMMER2024', startDate: new Date('2024-05-01'), endDate: new Date('2024-08-31'), status: 'COMPLETE', yearId: createdYears[2024] },
     { code: 'FALL2024', startDate: new Date('2024-09-01'), endDate: new Date('2024-12-31'), status: 'COMPLETE', yearId: createdYears[2024] },
-    { code: 'SPRING2025', startDate: new Date('2025-02-28'), endDate: new Date('2025-04-30'), status: 'ACTIVE', yearId: createdYears[2025] },
+    { code: 'SPRING2025', startDate: new Date('2025-05-28'), endDate: new Date('2025-08-30'), status: 'UPCOMING', yearId: createdYears[2025] },
     { code: 'SUMMER2025', startDate: new Date('2025-05-01'), endDate: new Date('2025-08-31'), status: 'UPCOMING', yearId: createdYears[2025] },
     { code: 'FALL2025', startDate: new Date('2025-09-01'), endDate: new Date('2025-12-31'), status: 'UPCOMING', yearId: createdYears[2025] },
     { code: 'SPRING2026', startDate: new Date('2026-01-01'), endDate: new Date('2026-04-30'), status: 'UPCOMING', yearId: createdYears[2026] },

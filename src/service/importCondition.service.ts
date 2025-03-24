@@ -20,7 +20,6 @@ export class ImportConditionService {
       throw new Error('Không tìm thấy worksheet');
     }
 
-    // Kiểm tra sự tồn tại và trạng thái của học kỳ
     const semester = await prisma.semester.findUnique({
       where: { id: semesterId, isDeleted: false },
     });
@@ -40,20 +39,19 @@ export class ImportConditionService {
     }
 
     const errors: string[] = [];
-    const dataToImport: { studentCode: string; email: string; status: string; rowIndex: number }[] = [];
+    const dataToImport: { studentCode: string; email: string; qualificationStatus: string; rowIndex: number }[] = [];
     const seenStudents = new Set();
 
-    // Đọc dữ liệu từ file Excel
     worksheet.eachRow({ includeEmpty: false }, (row, rowIndex) => {
-      if (rowIndex < 2) return; // Bỏ qua dòng tiêu đề
+      if (rowIndex < 2) return;
 
       const studentCode = extractCellValue(row.getCell(1).value);
       const email = extractCellValue(row.getCell(2).value);
-      const status = extractCellValue(row.getCell(3).value).toLowerCase();
+      const qualificationStatus = extractCellValue(row.getCell(3).value).toLowerCase();
 
-      if (!studentCode && !email && !status) return;
+      if (!studentCode && !email && !qualificationStatus) return;
 
-      if (!studentCode || !email || !status) {
+      if (!studentCode || !email || !qualificationStatus) {
         errors.push(`Dòng ${rowIndex}: Thiếu MSSV, email hoặc trạng thái.`);
         return;
       }
@@ -63,8 +61,8 @@ export class ImportConditionService {
         return;
       }
 
-      if (!['qualified', 'not qualified'].includes(status)) {
-        errors.push(`Dòng ${rowIndex}: Trạng thái ${status} không hợp lệ, chỉ chấp nhận "qualified" hoặc "not qualified".`);
+      if (!['qualified', 'not qualified'].includes(qualificationStatus)) {
+        errors.push(`Dòng ${rowIndex}: Trạng thái ${qualificationStatus} không hợp lệ, chỉ chấp nhận "qualified" hoặc "not qualified".`);
         return;
       }
 
@@ -75,7 +73,7 @@ export class ImportConditionService {
       }
       seenStudents.add(studentKey);
 
-      dataToImport.push({ studentCode, email, status, rowIndex });
+      dataToImport.push({ studentCode, email, qualificationStatus, rowIndex });
     });
 
     if (errors.length > 0) {
@@ -88,16 +86,14 @@ export class ImportConditionService {
 
     let successCount = 0;
     try {
-      for (const { studentCode, email, status, rowIndex } of dataToImport) {
+      for (const { studentCode, email, qualificationStatus, rowIndex } of dataToImport) {
         try {
-          // Tái sử dụng User
           let existingUser = await prisma.user.findUnique({ where: { email } });
           if (!existingUser) {
             errors.push(`Dòng ${rowIndex}: Không tìm thấy người dùng với email ${email}.`);
             continue;
           }
 
-          // Tái sử dụng Student
           let existingStudent = await prisma.student.findFirst({
             where: { studentCode },
           });
@@ -106,15 +102,13 @@ export class ImportConditionService {
             continue;
           }
           if (existingStudent.isDeleted) {
-            // Khôi phục Student nếu bị xóa mềm
             existingStudent = await prisma.student.update({
               where: { id: existingStudent.id },
               data: { isDeleted: false },
             });
           }
 
-          // Kiểm tra và tạo/khôi phục SemesterStudent cho học kỳ mới
-          const isEligible = status === 'qualified';
+          const isEligible = qualificationStatus === 'qualified';
           let existingSemesterStudent = await prisma.semesterStudent.findUnique({
             where: { semesterId_studentId: { semesterId, studentId: existingStudent.id } },
           });
@@ -123,28 +117,29 @@ export class ImportConditionService {
               data: {
                 semesterId,
                 studentId: existingStudent.id,
-                status,
+                status: 'ACTIVE', // Đặt status thành active khi có điều kiện
                 isEligible,
-                qualificationStatus: status,
+                qualificationStatus,
               },
             });
-            console.log(`Tạo mới SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId}`);
-          } else if (existingSemesterStudent.isDeleted) {
-            await prisma.semesterStudent.update({
-              where: { id: existingSemesterStudent.id },
-              data: { isDeleted: false, status, isEligible, qualificationStatus: status },
-            });
-            console.log(`Khôi phục SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId}`);
+            console.log(`Tạo mới SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId} với trạng thái active`);
           } else {
-            // Cập nhật thông tin nếu đã tồn tại
             await prisma.semesterStudent.update({
               where: { id: existingSemesterStudent.id },
-              data: { status, isEligible, qualificationStatus: status },
+              data: {
+                isDeleted: false,
+                status: 'ACTIVE', // Chuyển status thành active khi có điều kiện
+                isEligible,
+                qualificationStatus,
+              },
             });
-            console.log(`Cập nhật SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId}`);
+            console.log(
+              existingSemesterStudent.isDeleted
+                ? `Khôi phục SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId} với trạng thái active`
+                : `Cập nhật SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId} với trạng thái active`
+            );
           }
 
-          // Kiểm tra và tạo/khôi phục UserRole cho học kỳ mới
           const studentRole = await prisma.role.findUnique({
             where: { name: 'student', isDeleted: false },
           });

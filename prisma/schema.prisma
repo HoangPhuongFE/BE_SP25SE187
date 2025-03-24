@@ -106,13 +106,13 @@ model Student {
   specializationId String?           @map("specialization_id")
   semesterStudents SemesterStudent[]
   personalEmail    String?           @map("personal_email")
-  status           StudentStatus     @default(PENDING)
+  status           StudentStatus     @default(ACTIVE)
   importAt         DateTime          @default(now()) @map("import_at")
   importSource     String            @map("import_source")
   isImported       Boolean           @default(true) @map("is_imported")
   invitations      GroupInvitation[]
   groupMembers     GroupMember[]
-    isDeleted      Boolean         @default(false)
+  isDeleted      Boolean         @default(false)
 
 }
 
@@ -152,7 +152,7 @@ model SemesterStudent {
   id                  String   @id @default(uuid())
   semesterId          String   @map("semester_id")
   studentId           String   @map("student_id")
-  status              String   @default("active")
+  status              String   @default("PENDING")
   isEligible          Boolean  @default(false)
   qualificationStatus String   @default("not qualified")
   registeredAt        DateTime @default(now())
@@ -588,7 +588,6 @@ model ReviewSchedule {
   groupId     String            @map("group_id")
   reviewTime  DateTime          @map("review_time")
   room        String
-  status      String            // Giữ lại nếu bạn vẫn muốn trạng thái lịch
   reviewRound Int
   notes       String?
   reportUrl   String?           @map("report_url")

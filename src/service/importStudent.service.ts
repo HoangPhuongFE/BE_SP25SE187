@@ -14,13 +14,12 @@ export class ImportStudentService {
   async importExcel(filePath: string, userId: string, semesterId: string) {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(filePath);
-
+  
     const worksheet = workbook.getWorksheet(1);
     if (!worksheet) {
       throw new Error('Không tìm thấy worksheet');
     }
-
-    // Kiểm tra sự tồn tại của semester
+  
     const semester = await prisma.semester.findUnique({
       where: { id: semesterId, isDeleted: false },
     });
@@ -38,50 +37,49 @@ export class ImportStudentService {
       });
       throw new Error(`Học kỳ với ID ${semesterId} không tồn tại hoặc đã bị xóa.`);
     }
-
+  
     const errors: string[] = [];
     const dataToImport = [];
     const seenStudents = new Set();
-    const DEFAULT_PASSWORD = '123456';
+    const DEFAULT_PASSWORD = 'a123456';
     const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-
+  
     const studentRole = await prisma.role.findUnique({
       where: { name: 'student', isDeleted: false },
     });
     if (!studentRole) {
       throw new Error('Vai trò "student" không tồn tại. Vui lòng tạo trước.');
     }
-
-    // Đọc dữ liệu từ file Excel
+  
     for (let i = 2; i <= worksheet.actualRowCount; i++) {
       const row = worksheet.getRow(i);
       const studentCode = extractCellValue(row.getCell(1).value);
       const email = extractCellValue(row.getCell(2).value);
       const profession = extractCellValue(row.getCell(3).value);
       const specialty = extractCellValue(row.getCell(4).value);
-
+  
       if (!studentCode && !email && !profession && !specialty) continue;
-
+  
       if (!studentCode || !email || !profession || !specialty) {
         errors.push(`Dòng ${i}: Thiếu MSSV, email, ngành hoặc chuyên ngành.`);
         continue;
       }
-
+  
       if (!/^\S+@\S+\.\S+$/.test(email)) {
         errors.push(`Dòng ${i}: Email ${email} không hợp lệ.`);
         continue;
       }
-
+  
       const studentKey = `${studentCode}-${email}`;
       if (seenStudents.has(studentKey)) {
         errors.push(`Dòng ${i}: Trùng MSSV ${studentCode} với email ${email} trong file Excel.`);
         continue;
       }
       seenStudents.add(studentKey);
-
+  
       dataToImport.push({ studentCode, email, profession, specialty, rowIndex: i });
     }
-
+  
     if (errors.length > 0) {
       return {
         status: 'error',
@@ -89,12 +87,11 @@ export class ImportStudentService {
         errors,
       };
     }
-
+  
     let successCount = 0;
     try {
       for (const { studentCode, email, profession, specialty, rowIndex } of dataToImport) {
         try {
-          // Tái sử dụng User
           let existingUser = await prisma.user.findUnique({ where: { email } });
           if (existingUser) {
             existingUser = await prisma.user.update({
@@ -113,8 +110,7 @@ export class ImportStudentService {
               },
             });
           }
-
-          // Tái sử dụng Student
+  
           let existingStudent = await prisma.student.findFirst({ where: { studentCode } });
           if (existingStudent) {
             if (existingStudent.isDeleted) {
@@ -130,7 +126,7 @@ export class ImportStudentService {
             if (!major) {
               major = await prisma.major.create({ data: { name: profession } });
             }
-
+  
             let specialization = await prisma.specialization.findFirst({
               where: { name: specialty, majorId: major.id, isDeleted: false },
             });
@@ -139,7 +135,7 @@ export class ImportStudentService {
                 data: { name: specialty, majorId: major.id },
               });
             }
-
+  
             existingStudent = await prisma.student.create({
               data: {
                 userId: existingUser.id,
@@ -150,8 +146,7 @@ export class ImportStudentService {
               },
             });
           }
-
-          // Tạo mới hoặc khôi phục SemesterStudent cho học kỳ mới
+  
           let existingSemesterStudent = await prisma.semesterStudent.findUnique({
             where: { semesterId_studentId: { semesterId, studentId: existingStudent.id } },
           });
@@ -160,9 +155,8 @@ export class ImportStudentService {
               data: {
                 semesterId,
                 studentId: existingStudent.id,
-                status: 'active',
-                isEligible: false,
-                qualificationStatus: 'not qualified',
+               // status: 'PENDING',
+                // Không đặt rõ ràng isEligible và qualificationStatus, để mặc định theo schema
               },
             });
             console.log(`Tạo mới SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId}`);
@@ -171,17 +165,15 @@ export class ImportStudentService {
               where: { id: existingSemesterStudent.id },
               data: {
                 isDeleted: false,
-                status: 'active',
-                isEligible: false,
-                qualificationStatus: 'not qualified',
+               // status: 'PENDING',
+                // Không đặt rõ ràng isEligible và qualificationStatus, để mặc định theo schema
               },
             });
             console.log(`Khôi phục SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId}`);
           } else {
             console.log(`Sinh viên ${studentCode} đã tồn tại trong học kỳ ${semesterId}, không tạo mới.`);
           }
-
-          // Tạo mới hoặc khôi phục UserRole cho học kỳ mới
+  
           let existingUserRole = await prisma.userRole.findFirst({
             where: { userId: existingUser.id, roleId: studentRole.id, semesterId },
           });
@@ -199,13 +191,13 @@ export class ImportStudentService {
           } else {
             console.log(`UserRole cho sinh viên ${studentCode} đã tồn tại trong học kỳ ${semesterId}`);
           }
-
+  
           successCount++;
         } catch (rowError) {
           errors.push(`Lỗi ở dòng ${rowIndex}: ${(rowError as Error).message}`);
         }
       }
-
+  
       const fileName = filePath.split('/').pop();
       await prisma.importLog.create({
         data: {
@@ -218,7 +210,7 @@ export class ImportStudentService {
           errorsDetails: errors.join('\n'),
         },
       });
-
+  
       return {
         status: 'success',
         message: 'Data imported successfully',

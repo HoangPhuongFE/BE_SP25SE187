@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import HTTP_STATUS from '../constants/httpStatus';
 import COUNCIL_MESSAGE from '../constants/message';
 import { CouncilReviewService } from '../service/council.review.service';
+import { AuthenticatedRequest } from '~/middleware/user.middleware';
 
 const councilReviewService = new CouncilReviewService();
 
@@ -47,13 +48,15 @@ export class CouncilReviewController {
     }
   }
 
-  async getCouncils(req: Request, res: Response) {
+  async getCouncils(req: AuthenticatedRequest, res: Response) {
     try {
       const { semesterId, submissionPeriodId, round } = req.query;
+      const user = req.user; // Lấy thông tin user từ middleware authenticateToken
       const result = await councilReviewService.getReviewCouncils({
         semesterId: semesterId as string,
         submissionPeriodId: submissionPeriodId as string,
         round: round ? Number(round) : undefined,
+        user, // Truyền user vào service
       });
       return res.status(result.status).json(result);
     } catch (error) {
