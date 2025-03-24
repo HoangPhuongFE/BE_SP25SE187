@@ -5,7 +5,7 @@ import { authenticateToken, checkRole } from '../middleware/user.middleware';
 const router = Router();
 const councilReviewController = new CouncilReviewController();
 
-// Tạo hội đồng xét duyệt
+// API 1: Tạo hội đồng xét duyệt 
 router.post(
   '/',
   authenticateToken,
@@ -13,7 +13,7 @@ router.post(
   councilReviewController.createCouncil.bind(councilReviewController)
 );
 
-// Lấy danh sách hội đồng xét duyệt
+// API: Lấy danh sách hội đồng xét duyệt 
 router.get(
   '/',
   authenticateToken,
@@ -21,7 +21,7 @@ router.get(
   councilReviewController.getCouncils.bind(councilReviewController)
 );
 
-// Lấy chi tiết hội đồng xét duyệt theo id
+// API: Lấy chi tiết hội đồng xét duyệt theo id 
 router.get(
   '/:id',
   authenticateToken,
@@ -29,7 +29,7 @@ router.get(
   councilReviewController.getCouncilById.bind(councilReviewController)
 );
 
-// Cập nhật hội đồng xét duyệt
+// API: Cập nhật hội đồng xét duyệt
 router.put(
   '/:id',
   authenticateToken,
@@ -37,7 +37,7 @@ router.put(
   councilReviewController.updateCouncil.bind(councilReviewController)
 );
 
-// Xóa hội đồng xét duyệt
+// API: Xóa hội đồng xét duyệt 
 router.put(
   '/:id/delete',
   authenticateToken,
@@ -45,7 +45,7 @@ router.put(
   councilReviewController.deleteCouncil.bind(councilReviewController)
 );
 
-// Thêm thành viên vào hội đồng
+// API 2: Thêm thành viên vào hội đồng 
 router.post(
   "/:councilId/members",
   authenticateToken,
@@ -53,7 +53,7 @@ router.post(
   councilReviewController.addMemberToCouncil.bind(councilReviewController)
 );
 
-// Xóa thành viên khỏi hội đồng
+// API: Xóa thành viên khỏi hội đồng 
 router.delete(
   "/council/:councilId/user/:userId",
   authenticateToken,
@@ -61,7 +61,7 @@ router.delete(
   councilReviewController.removeMemberFromCouncil.bind(councilReviewController)
 );
 
-// Lấy chi tiết hội đồng cho giảng viên
+// API: Lấy chi tiết hội đồng cho giảng viên 
 router.get(
   '/lecturers/councils/:id',
   authenticateToken,
@@ -69,7 +69,7 @@ router.get(
   councilReviewController.getCouncilDetailsForLecturer.bind(councilReviewController)
 );
 
-// Tạo lịch chấm điểm
+// API 3: Tạo lịch chấm điểm 
 router.post(
   '/schedules',
   authenticateToken,
@@ -77,20 +77,36 @@ router.post(
   councilReviewController.createReviewSchedule.bind(councilReviewController)
 );
 
-// API cho mentor xem lịch nhóm
+// API 4: Mentor xem lịch nhóm (Chỉnh sửa checkRole để hỗ trợ mentor_main, mentor_sub)
 router.get(
   '/mentor/schedules',
   authenticateToken,
-  checkRole(['lecturer']), 
+  checkRole(['lecturer', 'mentor_main', 'mentor_sub']),
   councilReviewController.getReviewScheduleForMentor.bind(councilReviewController)
 );
 
-// API cho student xem lịch nhóm
+// API 5: Student xem lịch nhóm 
 router.get(
   '/student/schedules',
   authenticateToken,
-  checkRole(['student'],false),
+  checkRole(['student'], false),
   councilReviewController.getReviewScheduleForStudent.bind(councilReviewController)
+);
+
+// API 6: Leader thêm URL 
+router.put(
+  '/schedules/:scheduleId/add-url',
+  authenticateToken,
+  checkRole(['student',"leader"],false),
+  councilReviewController.addUrlToReviewSchedule.bind(councilReviewController)
+);
+
+// API 7: Hội đồng cập nhật trạng thái, note, điểm số 
+router.put(
+  '/review-assignments/:assignmentId/update',
+  authenticateToken,
+  checkRole(['lecturer']),
+  councilReviewController.updateReviewAssignment.bind(councilReviewController)
 );
 
 export default router;

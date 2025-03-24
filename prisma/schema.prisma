@@ -589,13 +589,12 @@ model ReviewSchedule {
   reviewTime  DateTime          @map("review_time")
   room        String
   reviewRound Int
-  notes       String?
-  reportUrl   String?           @map("report_url")
   council     Council           @relation(fields: [councilId], references: [id])
   group       Group             @relation(fields: [groupId], references: [id])
   topicId     String
   topic       Topic             @relation(fields: [topicId], references: [id])
-  assignments ReviewAssignment[] @relation("ReviewScheduleAssignments") 
+  assignments ReviewAssignment[] @relation("ReviewScheduleAssignments")
+  documents   Document[]        @relation("ReviewScheduleDocuments")
   isDeleted   Boolean           @default(false)
   @@map("review_schedules")
 }
@@ -632,10 +631,12 @@ model Document {
   topicId      String?  @map("topic_id")
   councilId    String?  @map("council_id")
   groupId      String?  @map("group_id")
+  reviewScheduleId String?       @map("review_schedule_id") 
   uploader     User     @relation(fields: [uploadedBy], references: [id])
   topic        Topic?   @relation("TopicDocuments", fields: [topicId], references: [id])
   council      Council? @relation("CouncilDocuments", fields: [councilId], references: [id])
   group        Group?   @relation("GroupDocuments", fields: [groupId], references: [id])
+  reviewSchedule  ReviewSchedule? @relation("ReviewScheduleDocuments", fields: [reviewScheduleId], references: [id])
   isDeleted    Boolean  @default(false)
 
   @@map("documents")
