@@ -12,16 +12,16 @@ export class AIMiddleware {
   // Middleware kiểm tra mã đề tài
   validateTopicCode = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { topicCode } = req.body;
+      const { topicCode, semesterId, majorId } = req.body;
 
-      if (!topicCode) {
+      if (!topicCode || !semesterId || !majorId) {
         return res.status(400).json({
           success: false,
-          message: "Mã đề tài là bắt buộc"
+          message: "Mã đề tài, ID học kỳ và ID chuyên ngành là bắt buộc"
         });
       }
 
-      const result = await this.aiService.validateTopicCode(topicCode);
+      const result = await this.aiService.validateTopicCode(topicCode, semesterId, majorId);
       
       if (!result.isValid) {
         return res.status(400).json({
@@ -43,16 +43,16 @@ export class AIMiddleware {
   // Middleware kiểm tra tên đề tài
   validateTopicName = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { topicName } = req.body;
+      const { nameVi, nameEn, nameProject } = req.body;
 
-      if (!topicName) {
+      if (!nameVi || !nameEn || !nameProject) {
         return res.status(400).json({
           success: false,
-          message: "Tên đề tài là bắt buộc"
+          message: "Tên đề tài tiếng Việt, tiếng Anh và tên dự án là bắt buộc"
         });
       }
 
-      const result = await this.aiService.validateTopicName(topicName);
+      const result = await this.aiService.validateTopicName(nameVi, nameEn, nameProject);
       
       if (!result.isValid) {
         return res.status(400).json({
@@ -105,30 +105,39 @@ export class AIMiddleware {
   // Middleware kiểm tra toàn bộ thông tin đề tài
   validateTopic = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { topicCode, topicName, groupCode, semesterId } = req.body;
+      const { topicCode, nameVi, nameEn, nameProject, description, groupCode, semesterId, majorId } = req.body;
 
-      if (!topicCode || !topicName || !groupCode || !semesterId) {
+      // Kiểm tra các trường bắt buộc
+      if (!topicCode || !nameVi || !nameEn || !nameProject || !description || !semesterId || !majorId) {
         return res.status(400).json({
           success: false,
-          message: "Thiếu thông tin bắt buộc"
+          message: "Thiếu thông tin bắt buộc cho đề tài: mã đề tài, tên tiếng Việt, tên tiếng Anh, tên dự án, mô tả, ID học kỳ, ID chuyên ngành"
         });
       }
 
-      const [codeResult, nameResult, groupResult] = await Promise.all([
-        this.aiService.validateTopicCode(topicCode),
-        this.aiService.validateTopicName(topicName),
-        this.aiService.validateGroupCode(groupCode, semesterId)
-      ]);
-
-      if (!codeResult.isValid || !nameResult.isValid || !groupResult.isValid) {
-        const messages = [];
-        if (!codeResult.isValid) messages.push(codeResult.message);
-        if (!nameResult.isValid) messages.push(nameResult.message);
-        if (!groupResult.isValid) messages.push(groupResult.message);
-
+      // Kiểm tra độ dài của các trường
+      if (description.length < 50 || description.length > 1000) {
         return res.status(400).json({
           success: false,
-          message: messages.join(", ")
+          message: "Mô tả đề tài phải có độ dài từ 50-1000 ký tự"
+        });
+      }
+
+      const result = await this.aiService.validateTopic(
+        topicCode,
+        nameVi,
+        nameEn,
+        nameProject,
+        description,
+        groupCode || null,
+        semesterId,
+        majorId
+      );
+
+      if (!result.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: result.message
         });
       }
 
@@ -145,40 +154,13 @@ export class AIMiddleware {
   // Middleware kiểm tra quyết định phân công
   validateAssignmentVerification = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { groupCode, topicCode, semesterId } = req.body;
-
-      // Kiểm tra quyền truy cập
-      const userRoles = (req as any).user.roles;
-      if (!userRoles.includes('examination_officer')) {
-        return res.status(403).json({
-          success: false,
-          message: "Chỉ Examination Officer mới có quyền kiểm tra quyết định phân công"
-        });
-      }
+      const { semesterId } = req.body;
 
       // Kiểm tra dữ liệu đầu vào
-      if (!groupCode || !topicCode || !semesterId) {
+      if (!semesterId) {
         return res.status(400).json({
           success: false,
-          message: "Thiếu thông tin bắt buộc: groupCode, topicCode hoặc semesterId"
-        });
-      }
-
-      // Kiểm tra định dạng mã nhóm
-      const groupCodePattern = /^[A-Z]{2}\d{3}$/;
-      if (!groupCodePattern.test(groupCode)) {
-        return res.status(400).json({
-          success: false,
-          message: "Mã nhóm không đúng định dạng (2 chữ cái + 3 số)"
-        });
-      }
-
-      // Kiểm tra định dạng mã đề tài
-      const topicCodePattern = /^[A-Z]{3}\d{4}$/;
-      if (!topicCodePattern.test(topicCode)) {
-        return res.status(400).json({
-          success: false,
-          message: "Mã đề tài không đúng định dạng (3 chữ cái + 4 số)"
+          message: "ID học kỳ là bắt buộc"
         });
       }
 

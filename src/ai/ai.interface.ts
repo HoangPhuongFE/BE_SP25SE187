@@ -5,7 +5,16 @@ export interface AIValidationResult {
 }
 
 export interface AIProvider {
-  validateTopicName(topicName: string, description: string): Promise<AIValidationResult>;
+  train(trainingData: {
+    topics: Array<{
+      nameVi: string;
+      nameEn: string;
+      nameProject: string;
+      description: string;
+      isValid: boolean;
+    }>;
+  }): Promise<AIValidationResult>;
+  validateTopicName(nameVi: string, nameEn: string, nameProject: string): Promise<AIValidationResult>;
   validateTopic(topicName: string, description: string): Promise<AIValidationResult>;
 }
 

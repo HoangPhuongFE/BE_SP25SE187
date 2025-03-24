@@ -1,18 +1,15 @@
 import { AIConfig, AIProvider, AIValidationResult } from './ai.interface';
 import { GeminiProvider } from './gemini.provider';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 export class AIService {
   private provider: AIProvider | null = null;
   private config: AIConfig = {
-    enabled: !process.env.SKIP_AI_VALIDATION || process.env.SKIP_AI_VALIDATION.toLowerCase() !== 'true',
+    enabled: false,
     provider: 'none'
   };
 
   constructor() {
-    // Load config từ env hoặc config file
+    // Khởi tạo với AI bị tắt mặc định
     this.initializeProvider();
   }
 
@@ -23,18 +20,27 @@ export class AIService {
 
     switch (this.config.provider) {
       case 'gemini':
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (apiKey) {
-          this.provider = new GeminiProvider(apiKey);
+        if (this.config.apiKey) {
+          this.provider = new GeminiProvider(this.config.apiKey);
         }
         break;
       // Có thể thêm các provider khác ở đây
     }
   }
 
-  async validateTopicName(topicName: string, description: string): Promise<AIValidationResult> {
+  getConfig(): AIConfig {
+    return { ...this.config };
+  }
+
+  getProvider(): AIProvider | null {
+    return this.provider;
+  }
+
+  async validateTopicName(nameVi: string, nameEn: string, nameProject: string): Promise<AIValidationResult> {
     // Kiểm tra cơ bản trước
-    if (topicName.length < 10 || topicName.length > 200) {
+    if (nameVi.length < 10 || nameVi.length > 200 || 
+        nameEn.length < 10 || nameEn.length > 200 || 
+        nameProject.length < 10 || nameProject.length > 200) {
       return {
         isValid: false,
         message: "Tên đề tài phải có độ dài từ 10-200 ký tự"
@@ -50,7 +56,7 @@ export class AIService {
     }
 
     // Sử dụng AI provider đã chọn
-    return this.provider.validateTopicName(topicName, description);
+    return this.provider.validateTopicName(nameVi, nameEn, nameProject);
   }
 
   async validateTopic(topicName: string, description: string): Promise<AIValidationResult> {
