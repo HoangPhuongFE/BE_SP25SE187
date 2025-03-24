@@ -189,15 +189,38 @@ export class CouncilReviewService {
     }
   }
 
-  async getReviewCouncils(filter: { semesterId?: string; submissionPeriodId?: string; round?: number }) {
+  async getReviewCouncils(filter: {
+    semesterId?: string;
+    submissionPeriodId?: string;
+    round?: number;
+    user?: { userId: string; roles: { name: string; semesterId?: string | null }[] }; // Thêm user vào filter
+  }) {
     try {
+      const { semesterId, submissionPeriodId, round, user } = filter;
+  
+      // Xác định điều kiện lọc cơ bản
+      let whereClause: any = {
+        type: "review",
+        ...(semesterId && { semesterId }),
+        ...(submissionPeriodId && { submissionPeriodId }),
+        ...(round !== undefined && { round }),
+      };
+  
+      // Nếu user là lecturer, chỉ lấy hội đồng mà họ là thành viên
+      if (user && user.roles.some(role => role.name === "lecturer") && !user.roles.some(role => ["examination_officer", "graduation_thesis_manager"].includes(role.name))) {
+        whereClause = {
+          ...whereClause,
+          members: {
+            some: {
+              userId: user.userId, // Lọc hội đồng có lecturer là thành viên
+            },
+          },
+        };
+        console.log(`Filtering councils for lecturer ${user.userId}`);
+      }
+  
       const councils = await prisma.council.findMany({
-        where: {
-          type: "review",
-          ...(filter.semesterId && { semesterId: filter.semesterId }),
-          ...(filter.submissionPeriodId && { submissionPeriodId: filter.submissionPeriodId }),
-          ...(filter.round !== undefined && { round: filter.round }),
-        },
+        where: whereClause,
         include: {
           members: {
             include: {
@@ -206,14 +229,14 @@ export class CouncilReviewService {
           },
         },
       });
-
+  
       const roleIds = councils.flatMap(c => c.members.map(m => m.roleId)).filter((id, i, self) => self.indexOf(id) === i);
       const roles = await prisma.role.findMany({
         where: { id: { in: roleIds } },
         select: { id: true, name: true },
       });
       const roleMap = new Map(roles.map(r => [r.id, r.name]));
-
+  
       const councilsWithRoleNames = councils.map(council => ({
         ...council,
         members: council.members.map(member => ({
@@ -221,7 +244,7 @@ export class CouncilReviewService {
           roleName: roleMap.get(member.roleId) || "Không xác định",
         })),
       }));
-
+  
       return {
         success: true,
         status: HTTP_STATUS.OK,
