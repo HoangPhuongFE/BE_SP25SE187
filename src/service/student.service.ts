@@ -179,7 +179,7 @@ export class StudentService {
       email: entry.student?.user?.email || "",
       major: entry.student?.major?.name || "",
       specialization: entry.student?.specialization?.name || "",
-      status: entry.status,
+      // status: entry.status,
       qualificationStatus: entry.qualificationStatus,
       isEligible: entry.isEligible,
       semester: entry.semester?.year.year + " - " + entry.semester?.code,
