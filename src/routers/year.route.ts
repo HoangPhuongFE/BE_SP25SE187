@@ -1,6 +1,6 @@
 import express from "express";
 import { YearController } from "../controller/year.controller";
-import { authenticateToken, checkRole } from '../middleware/user.middleware';
+import { authenticateToken } from '../middleware/user.middleware';
 const router = express.Router();
 const yearController = new YearController();
 

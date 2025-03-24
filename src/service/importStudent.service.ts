@@ -155,7 +155,7 @@ export class ImportStudentService {
               data: {
                 semesterId,
                 studentId: existingStudent.id,
-                status: 'ACTIVE',
+               // status: 'PENDING',
                 // Không đặt rõ ràng isEligible và qualificationStatus, để mặc định theo schema
               },
             });
@@ -165,7 +165,7 @@ export class ImportStudentService {
               where: { id: existingSemesterStudent.id },
               data: {
                 isDeleted: false,
-                status: 'ACTIVE',
+               // status: 'PENDING',
                 // Không đặt rõ ràng isEligible và qualificationStatus, để mặc định theo schema
               },
             });

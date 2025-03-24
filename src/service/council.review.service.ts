@@ -737,7 +737,7 @@ export class CouncilReviewService {
       }
   
       // 7. Kiểm tra trạng thái đề tài
-      const validStatuses = ["APPROVED", "SUBMITTED_FOR_REVIEW"];
+      const validStatuses = ["APPROVED"];
       const invalidTopics = topicAssignments.filter(ta => !validStatuses.includes(ta.topic.status));
       if (invalidTopics.length > 0) {
         const invalidDetails = invalidTopics.map(ta => `${ta.topic.id} (${ta.topic.status})`);

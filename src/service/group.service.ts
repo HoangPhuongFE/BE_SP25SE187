@@ -626,52 +626,118 @@ export class GroupService {
     }
 
     // 6) getStudentsWithoutGroup
-    async getStudentsWithoutGroup(semesterId: string) {
-        const students = await prisma.student.findMany({
-          where: {
-            semesterStudents: {
-              some: {
-                semesterId,
-                isEligible: false,
-                qualificationStatus: "not qualified",
-              },
+    // 6) getStudentsWithoutGroup - Lấy danh sách sinh viên chưa có nhóm và đủ điều kiện
+async getStudentsWithoutGroup(semesterId: string) {
+    try {
+        // 1. Kiểm tra học kỳ có tồn tại và không bị xóa
+        const semesterExists = await prisma.semester.findUnique({
+            where: { 
+                id: semesterId,
+                isDeleted: false 
             },
-            NOT: {
-              groupMembers: {
-                some: {
-                  group: {
-                    semesterId: semesterId,
-                  },
-                },
-              },
-            },
-          },
-          include: {
-            user: true,
-            major: true,
-            specialization: true,
-            groupMembers: {
-              include: {
-                group: true,
-              },
-            },
-            semesterStudents: {
-              where: {
-                semesterId: semesterId,
-                isEligible: false,
-                qualificationStatus: "not qualified",
-                isDeleted: false,
-              },
-              select: {
-                status: true,
-                isEligible: true,
-                qualificationStatus: true,
-              },
-            },
-          },
+            select: { id: true }
         });
-        return students;
-      }
+        
+        if (!semesterExists) {
+            return {
+                success: false,
+                status: HTTP_STATUS.NOT_FOUND,
+                message: "Học kỳ không tồn tại hoặc đã bị xóa."
+            };
+        }
+
+        // 2. Lấy danh sách sinh viên đủ điều kiện nhưng chưa có nhóm
+        const students = await prisma.student.findMany({
+            where: {
+                // Sinh viên thuộc học kỳ này
+                semesterStudents: {
+                    some: {
+                        semesterId,
+                        isEligible: true, // Đủ điều kiện
+                        qualificationStatus: "qualified", // Trạng thái đủ điều kiện
+                        semester: {
+                            isDeleted: false // Học kỳ không bị xóa
+                        }
+                    }
+                },
+                // Sinh viên chưa có nhóm trong học kỳ này
+                NOT: {
+                    groupMembers: {
+                        some: {
+                            group: {
+                                semesterId,
+                                isDeleted: false // Nhóm không bị xóa
+                            }
+                        }
+                    }
+                },
+                isDeleted: false // Sinh viên không bị xóa
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        username: true,
+                        email: true,
+                    }
+                },
+                major: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
+                specialization: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
+                semesterStudents: {
+                    where: {
+                        semesterId,
+                        isEligible: true,
+                        qualificationStatus: "qualified"
+                    },
+                    select: {
+                        status: true,
+                        isEligible: true,
+                        qualificationStatus: true
+                    }
+                }
+            },
+            orderBy: {
+                studentCode: 'asc' // Sắp xếp theo mã sinh viên
+            }
+        });
+
+        // 3. Format dữ liệu trả về
+        const formattedStudents = students.map(student => ({
+            id: student.id,
+            studentCode: student.studentCode,
+            username: student.user?.username || 'Không có tên',
+            email: student.user?.email || 'Không có email',
+            major: student.major?.name || 'Không có chuyên ngành',
+            specialization: student.specialization?.name || 'Không có chuyên ngành hẹp',
+            qualificationStatus: student.semesterStudents[0]?.qualificationStatus || 'unknown',
+            isEligible: student.semesterStudents[0]?.isEligible || false
+        }));
+
+        return {
+            success: true,
+            status: HTTP_STATUS.OK,
+            message: "Danh sách sinh viên chưa có nhóm và đủ điều kiện.",
+            data: formattedStudents
+        };
+    } catch (error) {
+        console.error("Lỗi khi lấy danh sách sinh viên chưa có nhóm:", error);
+        return {
+            success: false,
+            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            message: "Lỗi hệ thống khi lấy danh sách sinh viên chưa có nhóm."
+        };
+    }
+}
     // Hàm tạo mã nhóm duy nhất theo học kỳ và tên ngành
     private async generateUniqueGroupCode(
         professionName: string,

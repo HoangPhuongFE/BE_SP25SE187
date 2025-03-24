@@ -152,7 +152,7 @@ model SemesterStudent {
   id                  String   @id @default(uuid())
   semesterId          String   @map("semester_id")
   studentId           String   @map("student_id")
-  status              String   @default("active")
+  status              String   @default("PENDING")
   isEligible          Boolean  @default(false)
   qualificationStatus String   @default("not qualified")
   registeredAt        DateTime @default(now())

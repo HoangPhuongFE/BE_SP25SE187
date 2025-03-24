@@ -11,7 +11,6 @@ function extractCellValue(cellValue: any): string {
 }
 
 export class ImportConditionService {
- 
   async importConditionExcel(filePath: string, semesterId: string, userId: string) {
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.readFile(filePath);
@@ -118,26 +117,26 @@ export class ImportConditionService {
               data: {
                 semesterId,
                 studentId: existingStudent.id,
-                status: 'active', // Đặt status thành active
+                status: 'ACTIVE', // Đặt status thành active khi có điều kiện
                 isEligible,
                 qualificationStatus,
               },
             });
-            console.log(`Tạo mới SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId}`);
+            console.log(`Tạo mới SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId} với trạng thái active`);
           } else {
             await prisma.semesterStudent.update({
               where: { id: existingSemesterStudent.id },
               data: {
                 isDeleted: false,
-                status: existingSemesterStudent.status, // Giữ nguyên status hiện tại
+                status: 'ACTIVE', // Chuyển status thành active khi có điều kiện
                 isEligible,
                 qualificationStatus,
               },
             });
             console.log(
               existingSemesterStudent.isDeleted
-                ? `Khôi phục SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId}`
-                : `Cập nhật SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId}`
+                ? `Khôi phục SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId} với trạng thái active`
+                : `Cập nhật SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId} với trạng thái active`
             );
           }
 
@@ -166,7 +165,7 @@ export class ImportConditionService {
 
           successCount++;
         } catch (rowError) {
-            errors.push(`Lỗi ở dòng ${rowIndex}: ${(rowError as Error).message}`);
+          errors.push(`Lỗi ở dòng ${rowIndex}: ${(rowError as Error).message}`);
         }
       }
     } catch (error) {
