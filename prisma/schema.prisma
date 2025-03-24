@@ -589,6 +589,8 @@ model ReviewSchedule {
   reviewTime  DateTime          @map("review_time")
   room        String
   reviewRound Int
+  note         String?
+  status        String            @default("PENDING")
   council     Council           @relation(fields: [councilId], references: [id])
   group       Group             @relation(fields: [groupId], references: [id])
   topicId     String
@@ -603,7 +605,7 @@ model ReviewAssignment {
   id             String         @id @default(uuid())
   councilId      String         @map("council_id")
   topicId        String         @map("topic_id")
-  reviewerId     String?        @map("reviewer_id") // Optional nếu ai cũng có thể chấm
+  reviewerId     String?        @map("reviewer_id") 
   score          Float?
   feedback       String?        @db.Text
   status         String         @default("PENDING")

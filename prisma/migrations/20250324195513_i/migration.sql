@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `review_schedules` ADD COLUMN `note` VARCHAR(191) NULL,
+    ADD COLUMN `status` VARCHAR(191) NOT NULL DEFAULT 'PENDING';

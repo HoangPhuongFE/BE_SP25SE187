@@ -487,8 +487,6 @@ export class TopicService {
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi đăng ký đề tài.' };
     }
   }
-
-
   async updateTopic(
     topicId: string,
     data: {
@@ -610,8 +608,6 @@ export class TopicService {
       };
     }
   }
-
-
   async getTopicsBySemester(semesterId: string, round?: number) {
     try {
       const semester = await prisma.semester.findUnique({
@@ -761,8 +757,6 @@ export class TopicService {
       };
     }
   }
-
-
   async approveTopicByAcademic(
     topicId: string,
     status: 'APPROVED' | 'REJECTED' | 'IMPROVED',
@@ -895,7 +889,6 @@ export class TopicService {
       };
     }
   }
-
   async approveTopicRegistrationByMentor(
     registrationId: string,
     data: { status: 'APPROVED' | 'REJECTED'; reason?: string },
@@ -1512,7 +1505,6 @@ export class TopicService {
       return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi đánh dấu xóa đề tài!' };
     }
   }
-
   async getTopicsForApprovalBySubmission(query: { submissionPeriodId?: string; round?: number; semesterId?: string }) {
     try {
       let submissionPeriodId: string;
@@ -1592,7 +1584,6 @@ export class TopicService {
 
     return { success: true, status: HTTP_STATUS.OK, message: 'Lấy danh sách đề tài thành công!', data: topics };
   }
-
   async getRegisteredTopicsByMentor(mentorId: string, semesterId: string, round?: number) {
     try {
       // Kiểm tra học kỳ
@@ -1718,8 +1709,6 @@ export class TopicService {
       };
     }
   }
-
-
   async getTopicRegistrations(topicId: string, mentorId: string) {
     try {
       // Kiểm tra đề tài
@@ -1883,7 +1872,6 @@ export class TopicService {
       };
     }
   }
-
   async getAllRegistrations() {
     try {
       // Step 1: Fetch all registrations without including 'user'
@@ -1926,7 +1914,6 @@ export class TopicService {
       };
     }
   }
-
   async getGroupRegistrations(groupId: string, userId: string, semesterId: string) {
     try {
       // Kiểm tra xem user có thuộc nhóm không
@@ -2011,7 +1998,6 @@ export class TopicService {
       };
     }
   }
-
   // Lấy danh sách đề tài đã duyệt cho sinh viên
   async getApprovedTopicsForStudent(userId: string) {
     try {
@@ -2170,7 +2156,6 @@ export class TopicService {
       };
     }
   }
-
   async getAllApprovedTopicsForStudent(userId: string) {
     try {
       const student = await prisma.student.findUnique({
@@ -2347,9 +2332,6 @@ export class TopicService {
       };
     }
   }
-
-
-
   async createTopicWithMentors(data: {
     nameVi: string;
     nameEn: string;
