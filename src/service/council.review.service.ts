@@ -302,7 +302,7 @@ export class CouncilReviewService {
       }
 
       const user = await prisma.user.findUnique({
-        where: { email: data.email },
+        where: { email: data.email }, // Ensure 'email' is marked as unique in the Prisma schema
         select: { id: true, email: true },
       });
       if (!user) {
@@ -404,6 +404,21 @@ export class CouncilReviewService {
 
   async deleteReviewCouncil(councilId: string, userId: string, ipAddress?: string) {
     try {
+      // Kiểm tra quyền người dùng
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { roles: { include: { role: true } } },
+      });
+      if (!user) {
+        throw new Error('Người dùng không tồn tại');
+      }
+      const userRoles = user.roles.map(r => r.role.name.toLowerCase());
+      const isAuthorized = userRoles.includes('admin') || userRoles.includes('academic_officer');
+      if (!isAuthorized) {
+        throw new Error('Chỉ admin hoặc academic_officer mới có quyền xóa hội đồng');
+      }
+  
+      // Kiểm tra hội đồng
       const council = await prisma.council.findUnique({
         where: { id: councilId, isDeleted: false },
       });
@@ -421,36 +436,53 @@ export class CouncilReviewService {
         });
         return { success: false, status: HTTP_STATUS.NOT_FOUND, message: COUNCIL_MESSAGE.COUNCIL_NOT_FOUND };
       }
-
+  
+      // Xóa mềm trong transaction
       const updatedCouncil = await prisma.$transaction(async (tx) => {
-        await tx.reviewSchedule.updateMany({
+        const updatedCounts = {
+          reviewSchedules: 0,
+          defenseSchedules: 0,
+          reviewAssignments: 0,
+          reviewDefenseCouncils: 0,
+          councilMembers: 0,
+          documents: 0,
+        };
+  
+        updatedCounts.reviewSchedules = await tx.reviewSchedule.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
-        await tx.defenseSchedule.updateMany({
+        }).then(res => res.count);
+  
+        updatedCounts.defenseSchedules = await tx.defenseSchedule.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
-        await tx.reviewAssignment.updateMany({
+        }).then(res => res.count);
+  
+        updatedCounts.reviewAssignments = await tx.reviewAssignment.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
-        await tx.reviewDefenseCouncil.updateMany({
+        }).then(res => res.count);
+  
+        updatedCounts.reviewDefenseCouncils = await tx.reviewDefenseCouncil.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
-        await tx.councilMember.updateMany({
+        }).then(res => res.count);
+  
+        updatedCounts.councilMembers = await tx.councilMember.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
-        await tx.document.updateMany({
+        }).then(res => res.count);
+  
+        updatedCounts.documents = await tx.document.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
+  
         await tx.council.update({
           where: { id: councilId },
           data: { isDeleted: true },
         });
+  
         await tx.systemLog.create({
           data: {
             userId,
@@ -460,13 +492,19 @@ export class CouncilReviewService {
             description: `Hội đồng xét duyệt "${council.name}" đã được đánh dấu xóa`,
             severity: 'INFO',
             ipAddress: ipAddress || 'unknown',
-            metadata: { councilCode: council.code, councilName: council.name },
+            metadata: {
+              councilCode: council.code,
+              councilName: council.name,
+              updatedCounts,
+              deletedBy: userRoles.join(', '),
+            },
             oldValues: JSON.stringify(council),
           },
         });
+  
         return await tx.council.findUnique({ where: { id: councilId } });
       });
-
+  
       return { success: true, status: HTTP_STATUS.OK, message: COUNCIL_MESSAGE.COUNCIL_DELETED, data: updatedCouncil };
     } catch (error) {
       await prisma.systemLog.create({

@@ -1291,7 +1291,7 @@ export class TopicService {
     try {
       // Tìm đề tài và các thông tin liên quan
       const topic = await prisma.topic.findUnique({
-        where: { id: topicId, isDeleted: false }, // Chỉ tìm đề tài chưa bị xóa
+        where: { id: topicId, isDeleted: false },
         select: {
           status: true,
           createdBy: true,
@@ -1301,7 +1301,7 @@ export class TopicService {
           name: true,
         },
       });
-
+  
       if (!topic) {
         await prisma.systemLog.create({
           data: {
@@ -1316,7 +1316,7 @@ export class TopicService {
         });
         return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy đề tài!' };
       }
-
+  
       // Kiểm tra vai trò của người dùng
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -1336,10 +1336,10 @@ export class TopicService {
         });
         return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Người dùng không tồn tại!' };
       }
-
+  
       const userRoles = user.roles.map(r => r.role.name.toLowerCase());
       const isAcademic = userRoles.includes('academic_officer');
-
+  
       // Kiểm tra quyền xóa
       if (!isSystemWide && !isAcademic && topic.createdBy !== userId) {
         await prisma.systemLog.create({
@@ -1356,7 +1356,7 @@ export class TopicService {
         });
         return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Chỉ người tạo, academic hoặc admin mới được phép xóa!' };
       }
-
+  
       // Kiểm tra ràng buộc nếu không phải system-wide hoặc academic
       if (!isSystemWide && !isAcademic) {
         if (topic.status !== 'PENDING') {
@@ -1394,60 +1394,70 @@ export class TopicService {
           return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Không thể xóa đề tài đã có nhóm đăng ký hoặc đề xuất!' };
         }
       }
-
+  
       // Xóa mềm toàn bộ dữ liệu liên quan trong giao dịch
       const updatedTopic = await prisma.$transaction(async (tx) => {
+        const updatedCounts = {
+          reviewSchedules: 0,
+          reviewAssignments: 0,
+          documents: 0,
+          semesterTopicMajors: 0,
+          detailMajorTopics: 0,
+          topicAssignments: 0,
+          topicRegistrations: 0,
+          aiVerificationLogs: 0,
+        };
+  
         // 1. Đánh dấu xóa các ReviewSchedule liên quan
-        await tx.reviewSchedule.updateMany({
+        updatedCounts.reviewSchedules = await tx.reviewSchedule.updateMany({
           where: { topicId, isDeleted: false },
           data: { isDeleted: true },
-        });
-
+        }).then(res => res.count);
+  
         // 2. Đánh dấu xóa các ReviewAssignment liên quan
-        await tx.reviewAssignment.updateMany({
+        updatedCounts.reviewAssignments = await tx.reviewAssignment.updateMany({
           where: { topicId, isDeleted: false },
           data: { isDeleted: true },
-        });
-
+        }).then(res => res.count);
+  
         // 3. Đánh dấu xóa các Document liên quan
-        await tx.document.updateMany({
+        updatedCounts.documents = await tx.document.updateMany({
           where: { topicId, isDeleted: false },
           data: { isDeleted: true },
-        });
-
+        }).then(res => res.count);
+  
         // 4. Đánh dấu xóa các SemesterTopicMajor liên quan
-        await tx.semesterTopicMajor.updateMany({
+        updatedCounts.semesterTopicMajors = await tx.semesterTopicMajor.updateMany({
           where: { topicId, isDeleted: false },
           data: { isDeleted: true },
-        });
-
+        }).then(res => res.count);
+  
         // 5. Đánh dấu xóa các DetailMajorTopic liên quan
-        await tx.detailMajorTopic.updateMany({
+        updatedCounts.detailMajorTopics = await tx.detailMajorTopic.updateMany({
           where: { topicId, isDeleted: false },
           data: { isDeleted: true },
-        });
-
+        }).then(res => res.count);
+  
         // 6. Đánh dấu xóa các TopicAssignment liên quan
-        await tx.topicAssignment.updateMany({
+        updatedCounts.topicAssignments = await tx.topicAssignment.updateMany({
           where: { topicId, isDeleted: false },
           data: { isDeleted: true },
-        });
-
+        }).then(res => res.count);
+  
         // 7. Đánh dấu xóa các TopicRegistration liên quan
-        await tx.topicRegistration.updateMany({
+        updatedCounts.topicRegistrations = await tx.topicRegistration.updateMany({
           where: { topicId, isDeleted: false },
           data: { isDeleted: true },
-        });
-
-        // 8. Đánh dấu xóa các AIVerificationLog liên quan
-
-
+        }).then(res => res.count);
+  
+      
+  
         // 9. Đánh dấu xóa Topic
         await tx.topic.update({
           where: { id: topicId },
           data: { isDeleted: true },
         });
-
+  
         // 10. Ghi log hành động xóa thành công
         await tx.systemLog.create({
           data: {
@@ -1462,14 +1472,12 @@ export class TopicService {
               deletedByRole: isAcademic ? 'academic_officer' : isSystemWide ? 'admin' : 'creator',
               topicName: topic.name,
               status: topic.status,
-              assignmentsCount: topic.topicAssignments.length,
-              registrationsCount: topic.topicRegistrations.length,
-              proposedGroupId: topic.proposedGroupId,
+              updatedCounts,
             },
             oldValues: JSON.stringify(topic),
           },
         });
-
+  
         // Trả về dữ liệu Topic sau khi cập nhật
         return await tx.topic.findUnique({
           where: { id: topicId },
@@ -1484,7 +1492,7 @@ export class TopicService {
           },
         });
       });
-
+  
       return { success: true, status: HTTP_STATUS.OK, message: 'Đề tài đã được đánh dấu xóa thành công!', data: updatedTopic };
     } catch (error) {
       await prisma.systemLog.create({

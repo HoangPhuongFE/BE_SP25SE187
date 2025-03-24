@@ -168,6 +168,10 @@ async function createStudents(semesterId: string) {
     { studentCode: 'SE164244', email: 'phatpham198311@gmail.com', profession: 'Software Engineering', specialty: 'Nodejs', programming_language: 'Front-end', status: 'qualified' },
   ];
 
+  const studentRole = await prisma.role.findUnique({ where: { name: 'student' } });
+  if (!studentRole) throw new Error('Student role not found');
+  const studentRoleId = studentRole.id;
+
   for (const student of studentsData) {
     const major = await prisma.major.upsert({
       where: { name: student.profession },
@@ -183,30 +187,33 @@ async function createStudents(semesterId: string) {
 
     const hashedPassword = await hashPassword('a123456');
 
-    const user = await prisma.user.upsert({
+    // Tìm người dùng dựa trên email
+
+    let user = await prisma.user.findFirst({
       where: { email: student.email },
-      update: {},
-      create: {
-        email: student.email,
-        username: student.email.split('@')[0],
-        passwordHash: hashedPassword,
-        student_code: student.studentCode,
-        profession: student.profession,
-        specialty: student.specialty,
-        programming_language: student.programming_language,
-        roles: {
-          create: {
-            roleId: (await (async () => {
-              const role = await prisma.role.findFirst({ where: { name: 'student' } });
-              if (!role) throw new Error('Role "student" not found');
-              return role.id;
-            })()),
-            semesterId, // Gán semesterId cho sinh viên
-            isActive: true,
+    });
+
+    // Nếu không tìm thấy, tạo người dùng mới
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email: student.email,
+          username: student.email.split('@')[0],
+          passwordHash: hashedPassword,
+          student_code: student.studentCode,
+          profession: student.profession,
+          specialty: student.specialty,
+          programming_language: student.programming_language,
+          roles: {
+            create: {
+              roleId: studentRoleId,
+              semesterId,
+              isActive: true,
+            },
           },
         },
-      },
-    });
+      });
+    }
 
     let studentEntry = await prisma.student.findUnique({
       where: { userId: user.id },

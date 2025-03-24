@@ -157,111 +157,132 @@ export class MeetingService {
     });
   }
 
-  async deleteMeeting(id: string, mentorId: string, ipAddress?: string): Promise<{ message: string; data: any }> {
+  async  deleteMeeting(meetingId: string, userId: string, ipAddress?: string): Promise<{ message: string; data: any }> {
     try {
-      // Kiểm tra xem MeetingSchedule có tồn tại và chưa bị đánh dấu xóa
+      // Bước 1: Kiểm tra cuộc họp có tồn tại và chưa bị xóa
       const meeting = await prisma.meetingSchedule.findUnique({
-        where: { id, isDeleted: false },
+        where: { id: meetingId, isDeleted: false },
+        select: {
+          id: true,
+          mentorId: true,
+          meetingTime: true,
+          location: true,
+          status: true,
+          groupId: true, // Lấy groupId thay vì include group
+        },
       });
+  
       if (!meeting) {
         await prisma.systemLog.create({
           data: {
-            userId: mentorId,
+            userId,
             action: 'DELETE_MEETING_ATTEMPT',
             entityType: 'MeetingSchedule',
-            entityId: id,
+            entityId: meetingId,
             description: 'Thử xóa cuộc họp nhưng không tìm thấy hoặc đã bị đánh dấu xóa',
             severity: 'WARNING',
             ipAddress: ipAddress || 'unknown',
           },
         });
-        throw new Error(MEETING_MESSAGE.MEETING_NOT_FOUND);
+        throw new Error('Cuộc họp không tồn tại hoặc đã bị xóa');
       }
   
-      // Kiểm tra quyền của mentor
-      if (meeting.mentorId !== mentorId) {
+      // Bước 2: Kiểm tra quyền của mentor
+      if (meeting.mentorId !== userId) {
         await prisma.systemLog.create({
           data: {
-            userId: mentorId,
+            userId,
             action: 'DELETE_MEETING_ATTEMPT',
             entityType: 'MeetingSchedule',
-            entityId: id,
+            entityId: meetingId,
             description: 'Thử xóa cuộc họp nhưng không phải mentor được phân công',
             severity: 'WARNING',
             ipAddress: ipAddress || 'unknown',
-            metadata: { mentorId, meetingMentorId: meeting.mentorId },
+            metadata: { userId, meetingMentorId: meeting.mentorId },
           },
         });
-        throw new Error(MEETING_MESSAGE.UNAUTHORIZED_MENTOR);
+        throw new Error('Chỉ mentor được phân công mới có quyền xóa cuộc họp');
       }
   
-      // Kiểm tra thời gian xóa (trước 24h so với meetingTime)
+      // Bước 3: Kiểm tra thời gian xóa (trước 24h so với meetingTime)
       const now = new Date();
       const meetingTime = new Date(meeting.meetingTime);
       const oneDayBefore = new Date(meetingTime.getTime() - 24 * 60 * 60 * 1000);
       if (now > oneDayBefore) {
         await prisma.systemLog.create({
           data: {
-            userId: mentorId,
+            userId,
             action: 'DELETE_MEETING_ATTEMPT',
             entityType: 'MeetingSchedule',
-            entityId: id,
+            entityId: meetingId,
             description: 'Thử xóa cuộc họp nhưng đã quá thời hạn cho phép (trước 24h)',
             severity: 'WARNING',
             ipAddress: ipAddress || 'unknown',
             metadata: { currentTime: now.toISOString(), oneDayBefore: oneDayBefore.toISOString() },
           },
         });
-        throw new Error(MEETING_MESSAGE.DELETE_TIME_EXPIRED);
+        throw new Error('Chỉ có thể xóa cuộc họp trước 24 giờ');
       }
   
-      // Xóa mềm trong transaction
-      const updatedMeeting = await prisma.$transaction(async (tx) => {
-        // 1. Đánh dấu xóa các Feedback liên quan
-        await tx.feedback.updateMany({
-          where: { meetingId: id, isDeleted: false },
-          data: { isDeleted: true },
-        });
-  
-        // 2. Đánh dấu xóa MeetingSchedule
-        await tx.meetingSchedule.update({
-          where: { id },
-          data: { isDeleted: true },
-        });
-  
-        // 3. Ghi log hành động thành công
-        await tx.systemLog.create({
+      // Bước 4: Kiểm tra trạng thái cuộc họp (không cho xóa nếu đã hoàn thành)
+      if (meeting.status === 'completed') {
+        await prisma.systemLog.create({
           data: {
-            userId: mentorId,
-            action: 'DELETE_MEETING',
+            userId,
+            action: 'DELETE_MEETING_ATTEMPT',
             entityType: 'MeetingSchedule',
-            entityId: id,
-            description: `Cuộc họp tại "${meeting.location}" vào ${meeting.meetingTime.toISOString()} đã được đánh dấu xóa`,
-            severity: 'INFO',
+            entityId: meetingId,
+            description: 'Thử xóa cuộc họp nhưng cuộc họp đã diễn ra',
+            severity: 'WARNING',
             ipAddress: ipAddress || 'unknown',
-            metadata: {
-              meetingTime: meeting.meetingTime.toISOString(),
-              location: meeting.location,
-              groupId: meeting.groupId,
-            },
-            oldValues: JSON.stringify(meeting),
+            metadata: { currentStatus: meeting.status },
           },
         });
+        throw new Error('Không thể xóa cuộc họp đã diễn ra');
+      }
   
-        // Trả về dữ liệu MeetingSchedule sau khi cập nhật
-        return await tx.meetingSchedule.findUnique({
-          where: { id },
-        });
+      // Bước 5: Thực hiện xóa mềm trong transaction (bỏ qua Notification)
+      const [updatedFeedbacks, updatedMeeting] = await prisma.$transaction([
+        // Xóa mềm Feedback
+        prisma.feedback.updateMany({
+          where: { meetingId, isDeleted: false },
+          data: { isDeleted: true },
+        }),
+        // Xóa mềm MeetingSchedule
+        prisma.meetingSchedule.update({
+          where: { id: meetingId },
+          data: { isDeleted: true },
+        }),
+      ]);
+  
+      // Bước 6: Ghi log hành động thành công
+      await prisma.systemLog.create({
+        data: {
+          userId,
+          action: 'DELETE_MEETING',
+          entityType: 'MeetingSchedule',
+          entityId: meetingId,
+          description: `Cuộc họp tại "${meeting.location}" vào ${meeting.meetingTime.toISOString()} đã được đánh dấu xóa`,
+          severity: 'INFO',
+          ipAddress: ipAddress || 'unknown',
+          metadata: {
+            meetingTime: meeting.meetingTime.toISOString(),
+            location: meeting.location,
+            groupId: meeting.groupId,
+            updatedFeedbacks: updatedFeedbacks.count,
+          },
+          oldValues: JSON.stringify(meeting),
+        },
       });
   
-      return { message: MEETING_MESSAGE.MEETING_DELETED, data: updatedMeeting };
+      return { message: 'Xóa cuộc họp thành công', data: updatedMeeting };
     } catch (error) {
       await prisma.systemLog.create({
         data: {
-          userId: mentorId,
+          userId,
           action: 'DELETE_MEETING_ERROR',
           entityType: 'MeetingSchedule',
-          entityId: id,
+          entityId: meetingId,
           description: 'Lỗi hệ thống khi đánh dấu xóa cuộc họp',
           severity: 'ERROR',
           error: error instanceof Error ? error.message : 'Unknown error',
@@ -272,6 +293,16 @@ export class MeetingService {
       throw error;
     }
   }
+
+
+
+
+
+
+
+
+
+
 
   async getMeetingsByGroup(groupId: string): Promise<any[]> {
     // Kiểm tra group có tồn tại không

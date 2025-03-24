@@ -18,19 +18,13 @@ export class ImportLecturerService {
     const worksheet = workbook.getWorksheet(1);
     if (!worksheet) throw new Error('Không tìm thấy worksheet');
 
-    const lecturerRole = await prisma.role.findUnique({ 
-      where: { 
-        name: 'lecturer',
-        isDeleted: false 
-      } 
+    const lecturerRole = await prisma.role.findUnique({
+      where: { name: 'lecturer', isDeleted: false },
     });
     if (!lecturerRole) throw new Error('Vai trò "lecturer" không tồn tại.');
 
-    const semester = await prisma.semester.findUnique({ 
-      where: { 
-        id: semesterId,
-        isDeleted: false 
-      } 
+    const semester = await prisma.semester.findUnique({
+      where: { id: semesterId, isDeleted: false },
     });
     if (!semester) throw new Error(`Học kỳ với ID ${semesterId} không tồn tại.`);
 
@@ -46,13 +40,18 @@ export class ImportLecturerService {
       const lecturerCode = extractCellValue(row.getCell(1).value);
       const email = extractCellValue(row.getCell(2).value);
       const fullName = extractCellValue(row.getCell(3).value);
-      const departmentPosition = extractCellValue(row.getCell(4).value); // Chức nhiệm bộ môn
-      const department = extractCellValue(row.getCell(5).value); // Bộ phận
+      const departmentPosition = extractCellValue(row.getCell(4).value);
+      const department = extractCellValue(row.getCell(5).value);
 
       if (!lecturerCode && !email && !fullName) continue;
 
       if (!lecturerCode || !email || !fullName) {
         errors.push(`Dòng ${i}: Thiếu mã giảng viên, email hoặc họ tên.`);
+        continue;
+      }
+
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        errors.push(`Dòng ${i}: Email ${email} không hợp lệ.`);
         continue;
       }
 
@@ -73,53 +72,49 @@ export class ImportLecturerService {
     let successCount = 0;
     try {
       for (const { lecturerCode, email, fullName, departmentPosition, department, rowIndex } of dataToImport) {
-        let existingUser = await prisma.user.findUnique({ 
-          where: { 
-            email,
-            isDeleted: false 
-          } 
-        });
+        try {
+          // Tái sử dụng hoặc tạo mới User
+          let existingUser = await prisma.user.findUnique({ where: { email } });
+          if (existingUser) {
+            // Cập nhật thông tin User nếu đã tồn tại
+            existingUser = await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { lecturerCode, fullName, departmentPosition, department },
+            });
+          } else {
+            // Tạo mới User
+            existingUser = await prisma.user.create({
+              data: {
+                email,
+                username: email.split('@')[0],
+                passwordHash: hashedPassword,
+                lecturerCode,
+                fullName,
+                departmentPosition,
+                department,
+              },
+            });
+          }
 
-        if (existingUser && existingUser.lecturerCode !== lecturerCode) {
-          errors.push(`Dòng ${rowIndex}: Email ${email} đã được sử dụng cho mã giảng viên khác.`);
-          continue;
-        }
-
-        if (!existingUser) {
-          existingUser = await prisma.user.create({
-            data: {
-              email,
-              username: email.split('@')[0],
-              passwordHash: hashedPassword,
-              lecturerCode,
-              fullName,
-              departmentPosition,
-              department,
-            },
+          // Kiểm tra và tạo/khôi phục UserRole cho học kỳ mới
+          let existingUserRole = await prisma.userRole.findFirst({
+            where: { userId: existingUser.id, roleId: lecturerRole.id, semesterId },
           });
-        } else {
-          await prisma.user.update({
-            where: { id: existingUser.id },
-            data: { lecturerCode, fullName, departmentPosition, department },
-          });
+          if (!existingUserRole) {
+            await prisma.userRole.create({
+              data: { userId: existingUser.id, roleId: lecturerRole.id, semesterId, isActive: true },
+            });
+          } else if (existingUserRole.isDeleted) {
+            await prisma.userRole.update({
+              where: { id: existingUserRole.id },
+              data: { isDeleted: false, isActive: true },
+            });
+          }
+
+          successCount++;
+        } catch (rowError) {
+          errors.push(`Lỗi ở dòng ${rowIndex}: ${(rowError as Error).message}`);
         }
-
-        const existingUserRole = await prisma.userRole.findFirst({
-          where: { 
-            userId: existingUser.id, 
-            roleId: lecturerRole.id, 
-            semesterId,
-            isDeleted: false 
-          },
-        });
-
-        if (!existingUserRole) {
-          await prisma.userRole.create({
-            data: { userId: existingUser.id, roleId: lecturerRole.id, semesterId, isActive: true },
-          });
-        }
-
-        successCount++;
       }
 
       const fileName = filePath.split('/').pop();
@@ -148,6 +143,7 @@ export class ImportLecturerService {
       return { status: 'error', message: 'Quá trình nhập dữ liệu bị hủy do lỗi.', errors: [(error as Error).message] };
     }
   }
+
 
   async getAllLecturers(semesterId: string) {
     try {

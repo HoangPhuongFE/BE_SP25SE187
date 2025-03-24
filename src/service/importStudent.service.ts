@@ -5,10 +5,9 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 function extractCellValue(cellValue: any): string {
-  if (typeof cellValue === 'object' && cellValue?.text) {
-    return cellValue.text;
-  }
-  return String(cellValue || '').trim();
+  return typeof cellValue === 'object' && cellValue?.text
+    ? cellValue.text
+    : String(cellValue || '').trim();
 }
 
 export class ImportStudentService {
@@ -21,17 +20,33 @@ export class ImportStudentService {
       throw new Error('Không tìm thấy worksheet');
     }
 
+    // Kiểm tra sự tồn tại của semester
+    const semester = await prisma.semester.findUnique({
+      where: { id: semesterId, isDeleted: false },
+    });
+    if (!semester) {
+      await prisma.systemLog.create({
+        data: {
+          userId,
+          action: 'IMPORT_STUDENTS_ATTEMPT',
+          entityType: 'Semester',
+          entityId: semesterId,
+          description: `Thử nhập danh sách sinh viên nhưng học kỳ không tồn tại hoặc đã bị xóa mềm`,
+          severity: 'WARNING',
+          ipAddress: 'unknown',
+        },
+      });
+      throw new Error(`Học kỳ với ID ${semesterId} không tồn tại hoặc đã bị xóa.`);
+    }
+
     const errors: string[] = [];
     const dataToImport = [];
     const seenStudents = new Set();
     const DEFAULT_PASSWORD = '123456';
     const hashedPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
 
-    const studentRole = await prisma.role.findUnique({ 
-      where: { 
-        name: 'student',
-        isDeleted: false 
-      } 
+    const studentRole = await prisma.role.findUnique({
+      where: { name: 'student', isDeleted: false },
     });
     if (!studentRole) {
       throw new Error('Vai trò "student" không tồn tại. Vui lòng tạo trước.');
@@ -49,6 +64,11 @@ export class ImportStudentService {
 
       if (!studentCode || !email || !profession || !specialty) {
         errors.push(`Dòng ${i}: Thiếu MSSV, email, ngành hoặc chuyên ngành.`);
+        continue;
+      }
+
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        errors.push(`Dòng ${i}: Email ${email} không hợp lệ.`);
         continue;
       }
 
@@ -73,114 +93,154 @@ export class ImportStudentService {
     let successCount = 0;
     try {
       for (const { studentCode, email, profession, specialty, rowIndex } of dataToImport) {
-        let existingUser = await prisma.user.findUnique({ 
-          where: { 
-            email,
-            isDeleted: false 
-          } 
-        });
-        let existingStudent = await prisma.student.findUnique({ 
-          where: { 
-            studentCode,
-            isDeleted: false 
-          } 
-        });
-
-        if (!existingUser) {
-          // Nếu user chưa tồn tại, tạo mới user
-          existingUser = await prisma.user.create({
-            data: {
-              email,
-              username: email.split('@')[0],
-              passwordHash: hashedPassword,
-              student_code: studentCode,
-              profession,
-              specialty,
-            },
-          });
-        }
-
-        if (!existingStudent) {
-          // Kiểm tra hoặc tạo ngành học (major)
-          let major = await prisma.major.findUnique({ 
-            where: { 
-              name: profession,
-              isDeleted: false 
-            } 
-          });
-          if (!major) {
-            major = await prisma.major.create({ data: { name: profession } });
-          }
-
-          // Kiểm tra hoặc tạo chuyên ngành (specialization)
-          let specialization = await prisma.specialization.findFirst({
-            where: { 
-              name: specialty, 
-              majorId: major.id,
-              isDeleted: false 
-            },
-          });
-          if (!specialization) {
-            specialization = await prisma.specialization.create({
-              data: { name: specialty, majorId: major.id },
+        try {
+          // Tái sử dụng User
+          let existingUser = await prisma.user.findUnique({ where: { email } });
+          if (existingUser) {
+            existingUser = await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { student_code: studentCode, profession, specialty },
+            });
+          } else {
+            existingUser = await prisma.user.create({
+              data: {
+                email,
+                username: email.split('@')[0],
+                passwordHash: hashedPassword,
+                student_code: studentCode,
+                profession,
+                specialty,
+              },
             });
           }
 
-          // Nếu sinh viên chưa có, tạo mới
-          existingStudent = await prisma.student.create({
-            data: {
-              userId: existingUser.id,
-              studentCode,
-              majorId: major.id,
-              specializationId: specialization?.id || null,
-              importSource: 'excelImport',
-            },
+          // Tái sử dụng Student
+          let existingStudent = await prisma.student.findFirst({ where: { studentCode } });
+          if (existingStudent) {
+            if (existingStudent.isDeleted) {
+              existingStudent = await prisma.student.update({
+                where: { id: existingStudent.id },
+                data: { isDeleted: false, userId: existingUser.id },
+              });
+            }
+          } else {
+            let major = await prisma.major.findUnique({
+              where: { name: profession, isDeleted: false },
+            });
+            if (!major) {
+              major = await prisma.major.create({ data: { name: profession } });
+            }
+
+            let specialization = await prisma.specialization.findFirst({
+              where: { name: specialty, majorId: major.id, isDeleted: false },
+            });
+            if (!specialization) {
+              specialization = await prisma.specialization.create({
+                data: { name: specialty, majorId: major.id },
+              });
+            }
+
+            existingStudent = await prisma.student.create({
+              data: {
+                userId: existingUser.id,
+                studentCode,
+                majorId: major.id,
+                specializationId: specialization?.id || null,
+                importSource: 'excelImport',
+              },
+            });
+          }
+
+          // Tạo mới hoặc khôi phục SemesterStudent cho học kỳ mới
+          let existingSemesterStudent = await prisma.semesterStudent.findUnique({
+            where: { semesterId_studentId: { semesterId, studentId: existingStudent.id } },
           });
-        }
+          if (!existingSemesterStudent) {
+            await prisma.semesterStudent.create({
+              data: {
+                semesterId,
+                studentId: existingStudent.id,
+                status: 'active',
+                isEligible: false,
+                qualificationStatus: 'not qualified',
+              },
+            });
+            console.log(`Tạo mới SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId}`);
+          } else if (existingSemesterStudent.isDeleted) {
+            await prisma.semesterStudent.update({
+              where: { id: existingSemesterStudent.id },
+              data: {
+                isDeleted: false,
+                status: 'active',
+                isEligible: false,
+                qualificationStatus: 'not qualified',
+              },
+            });
+            console.log(`Khôi phục SemesterStudent cho sinh viên ${studentCode} trong học kỳ ${semesterId}`);
+          } else {
+            console.log(`Sinh viên ${studentCode} đã tồn tại trong học kỳ ${semesterId}, không tạo mới.`);
+          }
 
-        // Kiểm tra xem sinh viên đã có trong học kỳ chưa
-        const existingSemesterStudent = await prisma.semesterStudent.findUnique({
-          where: { 
-            semesterId_studentId: { semesterId, studentId: existingStudent.id },
-            isDeleted: false 
-          },
-        });
-
-        if (!existingSemesterStudent) {
-          // Nếu chưa có, tạo mới
-          await prisma.semesterStudent.create({
-            data: { semesterId, studentId: existingStudent.id },
+          // Tạo mới hoặc khôi phục UserRole cho học kỳ mới
+          let existingUserRole = await prisma.userRole.findFirst({
+            where: { userId: existingUser.id, roleId: studentRole.id, semesterId },
           });
-        } else {
-          console.log(`Sinh viên ${studentCode} đã tồn tại trong học kỳ ${semesterId}, bỏ qua.`);
+          if (!existingUserRole) {
+            await prisma.userRole.create({
+              data: { userId: existingUser.id, roleId: studentRole.id, semesterId, isActive: true },
+            });
+            console.log(`Tạo mới UserRole cho sinh viên ${studentCode} trong học kỳ ${semesterId}`);
+          } else if (existingUserRole.isDeleted) {
+            await prisma.userRole.update({
+              where: { id: existingUserRole.id },
+              data: { isDeleted: false, isActive: true },
+            });
+            console.log(`Khôi phục UserRole cho sinh viên ${studentCode} trong học kỳ ${semesterId}`);
+          } else {
+            console.log(`UserRole cho sinh viên ${studentCode} đã tồn tại trong học kỳ ${semesterId}`);
+          }
+
+          successCount++;
+        } catch (rowError) {
+          errors.push(`Lỗi ở dòng ${rowIndex}: ${(rowError as Error).message}`);
         }
-
-        // Kiểm tra và thêm userRole nếu chưa có cho học kỳ mới
-        const existingUserRole = await prisma.userRole.findFirst({
-          where: {
-            userId: existingUser.id,
-            roleId: studentRole.id,
-            semesterId: semesterId,
-            isDeleted: false
-          },
-        });
-
-        if (!existingUserRole) {
-          await prisma.userRole.create({
-            data: {
-              userId: existingUser.id,
-              roleId: studentRole.id,
-              semesterId,
-              isActive: true,
-            },
-          });
-        } else {
-          console.log(`User ${existingUser.id} đã có vai trò "student" trong học kỳ ${semesterId}`);
-        }
-
-        successCount++;
       }
+
+      const fileName = filePath.split('/').pop();
+      await prisma.importLog.create({
+        data: {
+          source: 'Import Student',
+          fileName: fileName || 'unknown',
+          importById: userId,
+          totalRecords: dataToImport.length,
+          successRecords: successCount,
+          errorRecords: errors.length,
+          errorsDetails: errors.join('\n'),
+        },
+      });
+
+      return {
+        status: 'success',
+        message: 'Data imported successfully',
+        totalRecords: dataToImport.length,
+        successRecords: successCount,
+        errorRecords: errors.length,
+        errors,
+      };
     } catch (error) {
+      await prisma.systemLog.create({
+        data: {
+          userId,
+          action: 'IMPORT_STUDENTS_ERROR',
+          entityType: 'Semester',
+          entityId: semesterId,
+          description: `Lỗi hệ thống khi nhập danh sách sinh viên`,
+          severity: 'ERROR',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stackTrace: (error as Error).stack || 'No stack trace',
+          ipAddress: 'unknown',
+        },
+      });
       console.error(`Lỗi khi xử lý dữ liệu:`, error);
       return {
         status: 'error',
@@ -188,14 +248,5 @@ export class ImportStudentService {
         errors: [(error as Error).message],
       };
     }
-
-    return {
-      status: 'success',
-      message: 'Dữ liệu đã được import thành công.',
-      totalRecords: dataToImport.length,
-      successRecords: successCount,
-      errorRecords: errors.length,
-      errors,
-    };
   }
 }
