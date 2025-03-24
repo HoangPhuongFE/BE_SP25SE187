@@ -23,43 +23,160 @@ export class AIService {
   }
 
   // Kiểm tra tính hợp lệ của mã đề tài
-  async validateTopicCode(topicCode: string): Promise<{ isValid: boolean; message: string }> {
+  async validateTopicCode(topicCode: string, semesterId: string, majorId: string): Promise<{ isValid: boolean; message: string }> {
     try {
-      // Kiểm tra định dạng mã đề tài (ví dụ: 3 chữ cái + 4 số)
-      const codePattern = /^[A-Z]{3}\d{4}$/;
+      // 1. Kiểm tra định dạng mã đề tài (SP25SE007)
+      const codePattern = /^(SP|SU|FA)(\d{2})(SE|AI)(\d{3})$/;
       if (!codePattern.test(topicCode)) {
         return {
           isValid: false,
-          message: MESSAGES.TOPIC.INVALID_TOPIC_CODE + "Mã đề tài phải có định dạng 3 chữ cái + 4 số (ví dụ: ABC1234)"
+          message: "Mã đề tài phải có định dạng: [SP/SU/FA][Năm 2 số][SE/AI][3 số] (ví dụ: SP25SE007)"
         };
       }
 
-      // Kiểm tra trùng lặp mã đề tài
-      const existingTopic = await prisma.topic.findUnique({
-        where: { topicCode }
+      // 2. Kiểm tra xem mã có phù hợp với học kỳ không
+      const semester = await prisma.semester.findUnique({
+        where: { id: semesterId }
+      });
+
+      if (!semester) {
+        return {
+          isValid: false,
+          message: "Không tìm thấy học kỳ"
+        };
+      }
+
+      // Lấy thông tin từ mã đề tài
+      const [, seasonCode, yearCode, majorCode] = topicCode.match(codePattern) || [];
+      
+      // Kiểm tra mùa học có khớp với học kỳ không
+      const semesterSeason = semester.code.substring(0, 2);
+      if (seasonCode !== semesterSeason) {
+        return {
+          isValid: false,
+          message: `Mã đề tài không khớp với học kỳ hiện tại (${semester.code})`
+        };
+      }
+
+      // Kiểm tra năm có khớp với học kỳ không
+      const semesterYear = semester.code.substring(2, 4);
+      const currentDate = new Date();
+      const currentMonth = currentDate.getMonth() + 1; // getMonth() trả về 0-11
+      const currentYear = currentDate.getFullYear().toString().slice(-2);
+      
+      // Nếu tháng hiện tại là 11 hoặc 12, cho phép tạo mã cho năm sau
+      const allowedYear = (currentMonth >= 11 && parseInt(yearCode) === parseInt(currentYear) + 1) 
+        ? (parseInt(currentYear) + 1).toString().padStart(2, '0')
+        : currentYear;
+
+      if (yearCode !== allowedYear) {
+        return {
+          isValid: false,
+          message: `Năm trong mã đề tài (${yearCode}) không hợp lệ. Năm hiện tại là ${currentYear}${currentMonth >= 11 ? ` và có thể tạo mã cho năm ${allowedYear}` : ''}`
+        };
+      }
+
+      // 3. Kiểm tra xem mã có phù hợp với chuyên ngành không
+      const major = await prisma.major.findUnique({
+        where: { id: majorId }
+      });
+
+      if (!major) {
+        return {
+          isValid: false,
+          message: "Không tìm thấy chuyên ngành"
+        };
+      }
+
+      // Kiểm tra mã ngành có khớp không
+      const majorCodeInDB = major.name === 'Software Engineering' ? 'SE' : 'AI';
+      if (majorCode !== majorCodeInDB) {
+        return {
+          isValid: false,
+          message: `Mã ngành trong mã đề tài (${majorCode}) không khớp với chuyên ngành (${majorCodeInDB})`
+        };
+      }
+
+      // 4. Kiểm tra số thứ tự có hợp lệ không
+      const sequenceNumber = parseInt(topicCode.slice(-3));
+      if (sequenceNumber < 1 || sequenceNumber > 999) {
+        return {
+          isValid: false,
+          message: "Số thứ tự phải từ 001 đến 999"
+        };
+      }
+
+      // 5. Kiểm tra trùng lặp mã đề tài trong cùng học kỳ và ngành
+      const existingTopic = await prisma.topic.findFirst({
+        where: { 
+          topicCode,
+          semesterId,
+          majors: {
+            some: {
+              id: majorId
+            }
+          }
+        }
       });
 
       if (existingTopic) {
         return {
           isValid: false,
-          message: MESSAGES.TOPIC.DUPLICATE_TOPIC_CODE
+          message: "Mã đề tài đã tồn tại trong học kỳ này"
         };
       }
 
-      return { isValid: true, message: "Mã đề tài hợp lệ" };
+      return { 
+        isValid: true, 
+        message: "Mã đề tài hợp lệ" 
+      };
     } catch (error) {
       console.error('Lỗi khi kiểm tra mã đề tài:', error);
       return {
         isValid: false,
-        message: MESSAGES.TOPIC.AI_VALIDATION_FAILED + "Lỗi khi kiểm tra mã đề tài"
+        message: "Lỗi hệ thống khi kiểm tra mã đề tài"
       };
     }
   }
 
   // Kiểm tra tính hợp lệ của tên đề tài
-  async validateTopicName(topicName: string): Promise<{ isValid: boolean; message: string }> {
+  async validateTopicName(nameVi: string, nameEn: string, nameProject: string): Promise<{ isValid: boolean; message: string }> {
     try {
-      const aiResult = await aiService.validateTopicName(topicName, "");
+      // Kiểm tra độ dài tối thiểu và tối đa
+      if (nameVi.length < 10 || nameVi.length > 200 || 
+          nameEn.length < 10 || nameEn.length > 200 || 
+          nameProject.length < 10 || nameProject.length > 200) {
+        return {
+          isValid: false,
+          message: "Tên đề tài phải có độ dài từ 10-200 ký tự"
+        };
+      }
+
+      // Kiểm tra trùng lặp chính xác từng ký tự
+      const existingTopic = await prisma.topic.findFirst({
+        where: {
+          OR: [
+            { nameVi },
+            { nameEn },
+            { name: nameProject }
+          ]
+        }
+      });
+
+      if (existingTopic) {
+        const duplicateFields = [];
+        if (existingTopic.nameVi === nameVi) duplicateFields.push("tên tiếng Việt");
+        if (existingTopic.nameEn === nameEn) duplicateFields.push("tên tiếng Anh");
+        if (existingTopic.name === nameProject) duplicateFields.push("tên dự án");
+
+        return {
+          isValid: false,
+          message: `Đề tài đã tồn tại với ${duplicateFields.join(", ")}`
+        };
+      }
+
+      // Kiểm tra với AI
+      const aiResult = await aiService.validateTopicName(nameVi, "");
       
       if (!aiResult.isValid) {
         return {
@@ -81,12 +198,12 @@ export class AIService {
   // Kiểm tra tính hợp lệ của mã nhóm
   async validateGroupCode(groupCode: string, semesterId: string): Promise<{ isValid: boolean; message: string }> {
     try {
-      // Kiểm tra định dạng mã nhóm (ví dụ: 2 chữ cái + 3 số)
-      const codePattern = /^[A-Z]{2}\d{3}$/;
+      // Kiểm tra định dạng mã nhóm (3 chữ cái + 2 số + 2 chữ cái + số)
+      const codePattern = /^[A-Z]{3}\d{2}[A-Z]{2}\d+$/;
       if (!codePattern.test(groupCode)) {
         return {
           isValid: false,
-          message: "Mã nhóm phải có định dạng 2 chữ cái + 3 số (ví dụ: AB123)"
+          message: "Mã nhóm phải có định dạng: 3 chữ cái + 2 số + 2 chữ cái + số (ví dụ: ABC12DE1)"
         };
       }
 
@@ -119,8 +236,8 @@ export class AIService {
   async validateTopic(topicCode: string, topicName: string, description: string, groupCode: string, semesterId: string): Promise<{ isValid: boolean; message: string }> {
     try {
       const [codeResult, nameResult, groupResult] = await Promise.all([
-        this.validateTopicCode(topicCode),
-        this.validateTopicName(topicName),
+        this.validateTopicCode(topicCode, semesterId, ""),
+        this.validateTopicName(topicName, "", ""),
         this.validateGroupCode(groupCode, semesterId)
       ]);
 

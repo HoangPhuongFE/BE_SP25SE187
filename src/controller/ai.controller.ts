@@ -30,16 +30,16 @@ export class AIController {
   // Kiểm tra mã đề tài
   async validateTopicCode(req: Request, res: Response) {
     try {
-      const { topicCode } = req.body;
+      const { topicCode, semesterId, majorId } = req.body;
 
-      if (!topicCode) {
+      if (!topicCode || !semesterId || !majorId) {
         return res.status(400).json({
           success: false,
-          message: "Mã đề tài là bắt buộc"
+          message: "Mã đề tài, ID học kỳ và ID chuyên ngành là bắt buộc"
         });
       }
 
-      const result = await this.aiService.validateTopicCode(topicCode);
+      const result = await this.aiService.validateTopicCode(topicCode, semesterId, majorId);
       
       return res.status(result.isValid ? 200 : 400).json({
         success: result.isValid,
@@ -49,7 +49,7 @@ export class AIController {
       console.error('Lỗi khi kiểm tra mã đề tài:', error);
       return res.status(500).json({
         success: false,
-        message: MESSAGES.TOPIC.AI_VALIDATION_FAILED + "Lỗi hệ thống"
+        message: "Lỗi hệ thống khi kiểm tra mã đề tài"
       });
     }
   }
@@ -57,16 +57,16 @@ export class AIController {
   // Kiểm tra tên đề tài
   async validateTopicName(req: Request, res: Response) {
     try {
-      const { topicName } = req.body;
+      const { nameVi, nameEn, nameProject } = req.body;
 
-      if (!topicName) {
+      if (!nameVi || !nameEn || !nameProject) {
         return res.status(400).json({
           success: false,
-          message: "Tên đề tài là bắt buộc"
+          message: "Tên đề tài tiếng Việt, tiếng Anh và tên dự án là bắt buộc"
         });
       }
 
-      const result = await this.aiService.validateTopicName(topicName);
+      const result = await this.aiService.validateTopicName(nameVi, nameEn, nameProject);
       
       return res.status(result.isValid ? 200 : 400).json({
         success: result.isValid,
