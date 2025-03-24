@@ -50,7 +50,7 @@ model User {
   progressReportMentors  ProgressReportMentor[]  @relation("MentorProgressReports")
   Decision               Decision[]
   reviewAssignments      ReviewAssignment[]
-  isDeleted              Boolean                 @default(false)
+    isDeleted      Boolean         @default(false)
 
   @@map("users")
 }
@@ -112,7 +112,8 @@ model Student {
   isImported       Boolean           @default(true) @map("is_imported")
   invitations      GroupInvitation[]
   groupMembers     GroupMember[]
-  isDeleted        Boolean           @default(false)
+    isDeleted      Boolean         @default(false)
+
 }
 
 model Semester {
@@ -581,42 +582,43 @@ model Decision {
   @@map("decisions")
 }
 
-model ReviewAssignment {
-  id         String    @id @default(uuid())
-  councilId  String    @map("council_id")
-  topicId    String    @map("topic_id")
-  reviewerId String    @map("reviewer_id") 
-  score      Float?
-  feedback   String?   @db.Text
-  status     String
+model ReviewSchedule {
+  id          String            @id @default(uuid())
+  councilId   String            @map("council_id")
+  groupId     String            @map("group_id")
+  reviewTime  DateTime          @map("review_time")
+  room        String
+  status      String            // Giữ lại nếu bạn vẫn muốn trạng thái lịch
   reviewRound Int
-  assignedAt DateTime  @default(now()) @map("assigned_at")
-  reviewedAt DateTime? @map("reviewed_at")
-  council    Council   @relation(fields: [councilId], references: [id])
-  topic      Topic     @relation(fields: [topicId], references: [id])
-  reviewer   User      @relation(fields: [reviewerId], references: [id])
-  isDeleted  Boolean   @default(false)
-
-  @@map("review_assignment")
+  notes       String?
+  reportUrl   String?           @map("report_url")
+  council     Council           @relation(fields: [councilId], references: [id])
+  group       Group             @relation(fields: [groupId], references: [id])
+  topicId     String
+  topic       Topic             @relation(fields: [topicId], references: [id])
+  assignments ReviewAssignment[] @relation("ReviewScheduleAssignments") 
+  isDeleted   Boolean           @default(false)
+  @@map("review_schedules")
 }
 
-model ReviewSchedule {
-  id         String   @id @default(uuid())
-  councilId  String   @map("council_id")
-  groupId    String   @map("group_id")
-  reviewTime DateTime @map("review_time")
-  room       String
-  status     String
-  reviewRound Int
-  notes      String?
-  reportUrl String? @map("report_url")
-  council    Council  @relation(fields: [councilId], references: [id])
-  group      Group    @relation(fields: [groupId], references: [id])
-  topicId    String
-  topic      Topic    @relation(fields: [topicId], references: [id])
-  isDeleted  Boolean  @default(false)
-
-  @@map("review_schedules")
+model ReviewAssignment {
+  id             String         @id @default(uuid())
+  councilId      String         @map("council_id")
+  topicId        String         @map("topic_id")
+  reviewerId     String?        @map("reviewer_id") // Optional nếu ai cũng có thể chấm
+  score          Float?
+  feedback       String?        @db.Text
+  status         String         @default("PENDING")
+  reviewRound    Int
+  assignedAt     DateTime       @default(now()) @map("assigned_at")
+  reviewedAt     DateTime?      @map("reviewed_at")
+  reviewScheduleId String       @map("review_schedule_id")
+  council        Council        @relation(fields: [councilId], references: [id])
+  topic          Topic          @relation(fields: [topicId], references: [id])
+  reviewer       User?          @relation(fields: [reviewerId], references: [id])
+  reviewSchedule ReviewSchedule @relation("ReviewScheduleAssignments", fields: [reviewScheduleId], references: [id]) 
+  isDeleted      Boolean        @default(false)
+  @@map("review_assignment")
 }
 
 model Document {

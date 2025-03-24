@@ -437,10 +437,21 @@ export class ProgressReportService {
   // Xóa báo cáo tiến độ
   async deleteProgressReport(reportId: string, userId: string, ipAddress?: string): Promise<{ message: string; data: any }> {
     try {
-      // Kiểm tra xem ProgressReport có tồn tại và chưa bị đánh dấu xóa
+      // Bước 1: Kiểm tra báo cáo tiến độ có tồn tại và chưa bị xóa
       const report = await prisma.progressReport.findUnique({
         where: { id: reportId, isDeleted: false },
-        include: { group: true },
+        include: {
+          group: {
+            include: {
+              members: {
+                include: {
+                  role: true, // Include role to access role.name
+                },
+              }, // Để kiểm tra quyền trưởng nhóm
+              mentors: true  // Để kiểm tra quyền mentor
+            }
+          }
+        },
       });
       if (!report) {
         await prisma.systemLog.create({
@@ -454,40 +465,17 @@ export class ProgressReportService {
             ipAddress: ipAddress || 'unknown',
           },
         });
-        throw new Error(MESSAGES.PROGRESS_REPORT.REPORT_NOT_FOUND);
+        throw new Error('Báo cáo tiến độ không tồn tại hoặc đã bị xóa');
       }
   
-      // Kiểm tra quyền của người dùng
-      let hasPermission = false;
-      const student = await prisma.student.findFirst({ where: { userId } });
-      if (student) {
-        const groupMember = await prisma.groupMember.findFirst({
-          where: {
-            groupId: report.groupId,
-            studentId: student.id,
-            role: { name: { in: ['group_leader', 'leader'] } },
-            isActive: true,
-            isDeleted: false,
-          },
-          include: { role: true },
-        });
-        if (groupMember) hasPermission = true;
-      }
-  
-      if (!hasPermission) {
-        const mentorRole = await prisma.groupMentor.findFirst({
-          where: {
-            groupId: report.groupId,
-            mentorId: userId,
-            role: { name: { in: ['mentor_main', 'lecturer'] } },
-            isDeleted: false,
-          },
-          include: { role: true },
-        });
-        if (mentorRole) hasPermission = true;
-      }
-  
-      if (!hasPermission) {
+      // Bước 2: Kiểm tra quyền của người dùng (trưởng nhóm hoặc mentor)
+      const isLeader = report.group.members.some(member =>
+        member.userId === userId && member.role.name === 'group_leader' && !member.isDeleted
+      );
+      const isMentor = report.group.mentors.some(mentor =>
+        mentor.mentorId === userId && !mentor.isDeleted
+      );
+      if (!isLeader && !isMentor) {
         await prisma.systemLog.create({
           data: {
             userId,
@@ -497,53 +485,64 @@ export class ProgressReportService {
             description: 'Thử xóa báo cáo tiến độ nhưng không có quyền',
             severity: 'WARNING',
             ipAddress: ipAddress || 'unknown',
-            metadata: { userId, requiredRoles: 'group_leader or mentor_main' },
+            metadata: { userId, requiredRoles: 'group_leader or mentor' },
           },
         });
-        throw new Error(MESSAGES.PROGRESS_REPORT.UNAUTHORIZED);
+        throw new Error('Bạn không có quyền xóa báo cáo này');
       }
   
-      // Xóa mềm trong transaction
-      const updatedReport = await prisma.$transaction(async (tx) => {
-        // 1. Đánh dấu xóa các ProgressReportMentor liên quan
-        await tx.progressReportMentor.updateMany({
-          where: { reportId, isDeleted: false },
-          data: { isDeleted: true },
-        });
-  
-        // 2. Đánh dấu xóa ProgressReport
-        await tx.progressReport.update({
-          where: { id: reportId },
-          data: { isDeleted: true },
-        });
-  
-        // 3. Ghi log hành động thành công
-        await tx.systemLog.create({
+      // Bước 3: Kiểm tra trạng thái báo cáo (chỉ xóa nếu là draft hoặc pending)
+      if (report.status !== 'draft' && report.status !== 'pending') {
+        await prisma.systemLog.create({
           data: {
             userId,
-            action: 'DELETE_PROGRESS_REPORT',
+            action: 'DELETE_PROGRESS_REPORT_ATTEMPT',
             entityType: 'ProgressReport',
             entityId: reportId,
-            description: `Báo cáo tiến độ tuần ${report.weekNumber} của nhóm ${report.groupId} đã được đánh dấu xóa`,
-            severity: 'INFO',
+            description: 'Thử xóa báo cáo tiến độ nhưng trạng thái không cho phép',
+            severity: 'WARNING',
             ipAddress: ipAddress || 'unknown',
-            metadata: {
-              weekNumber: report.weekNumber,
-              groupId: report.groupId,
-              deletedBy: hasPermission && student ? 'group_leader' : 'mentor',
-            },
-            oldValues: JSON.stringify(report),
+            metadata: { currentStatus: report.status },
           },
         });
+        throw new Error('Chỉ có thể xóa báo cáo ở trạng thái nháp hoặc chờ duyệt');
+      }
   
-        // Trả về dữ liệu ProgressReport sau khi cập nhật
-        return await tx.progressReport.findUnique({
+      // Bước 4: Thực hiện xóa mềm trong transaction
+      const [updatedMentors, updatedDocuments] = await prisma.$transaction([
+        // Xóa mềm ProgressReportMentor
+        prisma.progressReportMentor.updateMany({
+          where: { reportId, isDeleted: false },
+          data: { isDeleted: true },
+        }),
+        
+        // Xóa mềm ProgressReport
+        prisma.progressReport.update({
           where: { id: reportId },
-          include: { group: true },
-        });
-      });
+          data: { isDeleted: true },
+        }),
+      ]);
   
-      return { message: MESSAGES.PROGRESS_REPORT.REPORT_DELETED, data: updatedReport };
+      // Bước 5: Ghi log hành động thành công
+      await prisma.systemLog.create({
+        data: {
+          userId,
+          action: 'DELETE_PROGRESS_REPORT',
+          entityType: 'ProgressReport',
+          entityId: reportId,
+          description: `Báo cáo tiến độ tuần ${report.weekNumber} của nhóm ${report.groupId} đã được đánh dấu xóa`,
+          severity: 'INFO',
+          ipAddress: ipAddress || 'unknown',
+          metadata: {
+            weekNumber: report.weekNumber,
+            groupId: report.groupId,
+            updatedMentors: updatedMentors.count,
+          },
+          oldValues: JSON.stringify(report),
+        },
+      });
+      return { message: 'Xóa báo cáo tiến độ thành công', data: { reportId } };
+  
     } catch (error) {
       await prisma.systemLog.create({
         data: {

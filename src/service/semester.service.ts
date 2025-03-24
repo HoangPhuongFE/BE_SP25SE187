@@ -102,117 +102,133 @@ export class SemesterService {
       const councilIds = semester.councils.map((c) => c.id);
       const studentIds = semester.semesterStudents.map((s) => s.studentId);
   
-      const updatedSemester = await prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async (tx) => {
+        const updatedCounts = {
+          reviewSchedules: 0,
+          defenseSchedules: 0,
+          councilMembers: 0,
+          topicAssignments: 0,
+          groupMembers: 0,
+          groupMentors: 0,
+          semesterStudents: 0,
+          reviewDefenseCouncils: 0,
+          topics: 0,
+          groups: 0,
+          councils: 0,
+          decisions: 0,
+          submissionPeriods: 0,
+          userRoles: 0,
+          semesterTopicMajors: 0,
+          progressReports: 0,
+          groupInvitations: 0,
+          documents: 0,
+          meetingSchedules: 0,
+        };
+  
         // 1. Đánh dấu xóa các ReviewSchedule liên quan đến các Group
-        await tx.reviewSchedule.updateMany({
+        updatedCounts.reviewSchedules = await tx.reviewSchedule.updateMany({
           where: { groupId: { in: groupIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 2. Đánh dấu xóa các DefenseSchedule liên quan đến các Council
-        await tx.defenseSchedule.updateMany({
+        updatedCounts.defenseSchedules = await tx.defenseSchedule.updateMany({
           where: { councilId: { in: councilIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 3. Đánh dấu xóa các CouncilMember liên quan đến các Council
-        await tx.councilMember.updateMany({
+        updatedCounts.councilMembers = await tx.councilMember.updateMany({
           where: { councilId: { in: councilIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 4. Đánh dấu xóa các TopicAssignment liên quan đến các Topic
-        await tx.topicAssignment.updateMany({
+        updatedCounts.topicAssignments = await tx.topicAssignment.updateMany({
           where: { topicId: { in: topicIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 5. Đánh dấu xóa các GroupMember liên quan đến các Group
-        await tx.groupMember.updateMany({
+        updatedCounts.groupMembers = await tx.groupMember.updateMany({
           where: { groupId: { in: groupIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 6. Đánh dấu xóa các GroupMentor liên quan đến các Group
-        await tx.groupMentor.updateMany({
+        updatedCounts.groupMentors = await tx.groupMentor.updateMany({
           where: { groupId: { in: groupIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 7. Đánh dấu xóa các SemesterStudent liên quan đến Semester
-        await tx.semesterStudent.updateMany({
+        updatedCounts.semesterStudents = await tx.semesterStudent.updateMany({
           where: { semesterId: id, isDeleted: false },
           data: { isDeleted: true },
-        });
-  
-        // 8. Đánh dấu xóa các Student liên quan
-        await tx.student.updateMany({
-          where: { id: { in: studentIds }, isDeleted: false },
-          data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 9. Đánh dấu xóa các ReviewDefenseCouncil liên quan đến Semester
-        await tx.reviewDefenseCouncil.updateMany({
+        updatedCounts.reviewDefenseCouncils = await tx.reviewDefenseCouncil.updateMany({
           where: { semesterId: id, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 10. Đánh dấu xóa các Topic liên quan đến Semester
-        await tx.topic.updateMany({
+        updatedCounts.topics = await tx.topic.updateMany({
           where: { semesterId: id, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 11. Đánh dấu xóa các Group liên quan đến Semester
-        await tx.group.updateMany({
+        updatedCounts.groups = await tx.group.updateMany({
           where: { semesterId: id, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 12. Đánh dấu xóa các Council liên quan đến Semester
-        await tx.council.updateMany({
+        updatedCounts.councils = await tx.council.updateMany({
           where: { semesterId: id, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 13. Đánh dấu xóa các Decision liên quan đến Semester
-        await tx.decision.updateMany({
+        updatedCounts.decisions = await tx.decision.updateMany({
           where: { semesterId: id, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 14. Đánh dấu xóa các SubmissionPeriod liên quan đến Semester
-        await tx.submissionPeriod.updateMany({
+        updatedCounts.submissionPeriods = await tx.submissionPeriod.updateMany({
           where: { semesterId: id, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 15. Đánh dấu xóa các UserRole liên quan đến Semester
-        await tx.userRole.updateMany({
+        updatedCounts.userRoles = await tx.userRole.updateMany({
           where: { semesterId: id, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 16. Đánh dấu xóa các SemesterTopicMajor liên quan đến Semester
-        await tx.semesterTopicMajor.updateMany({
+        updatedCounts.semesterTopicMajors = await tx.semesterTopicMajor.updateMany({
           where: { semesterId: id, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 17. Đánh dấu xóa các ProgressReport liên quan đến Group
-        await tx.progressReport.updateMany({
+        updatedCounts.progressReports = await tx.progressReport.updateMany({
           where: { groupId: { in: groupIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 18. Đánh dấu xóa các GroupInvitation liên quan đến Group
-        await tx.groupInvitation.updateMany({
+        updatedCounts.groupInvitations = await tx.groupInvitation.updateMany({
           where: { groupId: { in: groupIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 19. Đánh dấu xóa các Document liên quan đến Group, Topic, Council
-        await tx.document.updateMany({
+        updatedCounts.documents = await tx.document.updateMany({
           where: {
             OR: [
               { groupId: { in: groupIds } },
@@ -222,13 +238,13 @@ export class SemesterService {
             isDeleted: false,
           },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 20. Đánh dấu xóa các MeetingSchedule liên quan đến Group
-        await tx.meetingSchedule.updateMany({
+        updatedCounts.meetingSchedules = await tx.meetingSchedule.updateMany({
           where: { groupId: { in: groupIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
         // 21. Đánh dấu xóa Semester
         await tx.semester.update({
@@ -250,19 +266,30 @@ export class SemesterService {
               groupCount: semester.groups.length,
               topicCount: semester.topics.length,
               councilCount: semester.councils.length,
-              studentCount: semester.semesterStudents.length,
+              semesterStudentCount: semester.semesterStudents.length,
+              deletedUserRoleCount: updatedCounts.userRoles, // Số lượng UserRole bị xóa mềm
+              deletedSemesterStudentCount: updatedCounts.semesterStudents, // Số lượng SemesterStudent bị xóa mềm
+              updatedCounts, // Toàn bộ số lượng bản ghi bị ảnh hưởng
             },
             oldValues: JSON.stringify(semester),
           },
         });
   
-        return await tx.semester.findUnique({
-          where: { id },
-          include: { groups: true, topics: true, councils: true, semesterStudents: true },
-        });
+        // Trả về kết quả với thông tin chi tiết
+        return {
+          updatedSemester: await tx.semester.findUnique({
+            where: { id },
+            include: { groups: true, topics: true, councils: true, semesterStudents: true },
+          }),
+          updatedCounts, // Trả về số lượng bản ghi bị ảnh hưởng
+        };
       });
   
-      return updatedSemester;
+      return {
+        message: `Học kỳ ${semester.code} đã được xóa mềm thành công`,
+        data: result.updatedSemester,
+        updatedCounts: result.updatedCounts, // Số lượng bản ghi bị ảnh hưởng
+      };
     } catch (error) {
       await prisma.systemLog.create({
         data: {

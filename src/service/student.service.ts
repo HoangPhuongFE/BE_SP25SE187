@@ -112,13 +112,79 @@ export class StudentService {
 
 
   // Xoá student
-  async deleteStudent(studentId: string) {
-    await prisma.$transaction([
-      prisma.semesterStudent.deleteMany({ where: { studentId } }),
-      prisma.groupMember.deleteMany({ where: { studentId } }),
-      prisma.groupInvitation.deleteMany({ where: { studentId } }),
-      prisma.student.delete({ where: { id: studentId } }),
-    ]);
+  async  deleteStudent(studentId: string, userId?: string, ipAddress?: string): Promise<{ message: string; data: any } | undefined> {
+    try {
+      // Bước 1: Kiểm tra sinh viên có tồn tại và chưa bị xóa mềm
+      const student = await prisma.student.findUnique({
+        where: { id: studentId, isDeleted: false },
+      });
+      if (!student) {
+        throw new Error('Sinh viên không tồn tại hoặc đã bị xóa');
+      }
+  
+      // Bước 2: Thực hiện xóa mềm trong transaction
+      const [updatedSemesterStudents, updatedGroupMembers, updatedGroupInvitations, updatedStudent] = await prisma.$transaction([
+        // Xóa mềm SemesterStudent
+        prisma.semesterStudent.updateMany({
+          where: { studentId, isDeleted: false },
+          data: { isDeleted: true },
+        }),
+        // Xóa mềm GroupMember
+        prisma.groupMember.updateMany({
+          where: { studentId, isDeleted: false },
+          data: { isDeleted: true },
+        }),
+        // Xóa mềm GroupInvitation
+        prisma.groupInvitation.updateMany({
+          where: { studentId, isDeleted: false },
+          data: { isDeleted: true },
+        }),
+        // Xóa mềm Student
+        prisma.student.update({
+          where: { id: studentId },
+          data: { isDeleted: true },
+        }),
+      ]);
+  
+      // Bước 3: Ghi log hành động (tuỳ chọn, nếu hệ thống có bảng SystemLog)
+      if (userId) {
+        await prisma.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_STUDENT',
+            entityType: 'Student',
+            entityId: studentId,
+            description: `Sinh viên ${student.studentCode} đã được đánh dấu xóa`,
+            severity: 'INFO',
+            ipAddress: ipAddress || 'unknown',
+            metadata: {
+              updatedSemesterStudents: updatedSemesterStudents.count,
+              updatedGroupMembers: updatedGroupMembers.count,
+              updatedGroupInvitations: updatedGroupInvitations.count,
+            },
+          },
+        });
+      }
+  
+      return { message: 'Xóa sinh viên thành công', data: updatedStudent };
+    } catch (error) {
+      // Ghi log lỗi (tuỳ chọn)
+      if (userId) {
+        await prisma.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_STUDENT_ERROR',
+            entityType: 'Student',
+            entityId: studentId,
+            description: 'Lỗi khi xóa sinh viên',
+            severity: 'ERROR',
+            error: error instanceof Error ? error.message : 'Unknown error',
+            ipAddress: ipAddress || 'unknown',
+          },
+        });
+      }
+      return undefined; // Ensure a return value in the catch block
+    }
   }
 
 

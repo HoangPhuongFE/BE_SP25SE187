@@ -257,14 +257,11 @@ export class SubmissionPeriodService {
   //  Xóa đợt đề xuất
   async deleteSubmissionPeriod(periodId: string, userId: string, ipAddress?: string) {
     try {
-      // Kiểm tra xem SubmissionPeriod có tồn tại và chưa bị đánh dấu xóa
       const period = await prisma.submissionPeriod.findFirst({
         where: { 
-            id: periodId, 
-            isDeleted: false,
-            semester: {
-                isDeleted: false
-            }
+          id: periodId, 
+          isDeleted: false,
+          semester: { isDeleted: false },
         },
         include: { topics: true, councils: true },
       });
@@ -287,88 +284,75 @@ export class SubmissionPeriodService {
       const topicIds = period.topics.map(t => t.id);
       const councilIds = period.councils.map(c => c.id);
   
-      // Thực hiện xóa mềm trong transaction
       const updatedPeriod = await prisma.$transaction(async (tx) => {
-        // 1. Đánh dấu xóa các ReviewSchedule liên quan đến Topic
-        await tx.reviewSchedule.updateMany({
+        const updatedCounts = {
+          reviewSchedules: 0, reviewAssignments: 0, defenseSchedules: 0, councilMembers: 0,
+          documents: 0, semesterTopicMajors: 0, detailMajorTopics: 0, topicAssignments: 0,
+          topics: 0, councils: 0, topicRegistrations: 0, notifications: 0,
+        };
+  
+        updatedCounts.reviewSchedules = await tx.reviewSchedule.updateMany({
           where: { topicId: { in: topicIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 2. Đánh dấu xóa các ReviewAssignment liên quan đến Topic
-        await tx.reviewAssignment.updateMany({
+        updatedCounts.reviewAssignments = await tx.reviewAssignment.updateMany({
           where: { topicId: { in: topicIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 3. Đánh dấu xóa các DefenseSchedule liên quan đến Council
-        await tx.defenseSchedule.updateMany({
+        updatedCounts.defenseSchedules = await tx.defenseSchedule.updateMany({
           where: { councilId: { in: councilIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 4. Đánh dấu xóa các CouncilMember liên quan đến Council
-        await tx.councilMember.updateMany({
+        updatedCounts.councilMembers = await tx.councilMember.updateMany({
           where: { councilId: { in: councilIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 5. Đánh dấu xóa các Document liên quan đến Topic và Council
-        await tx.document.updateMany({
-          where: {
-            OR: [
-              { topicId: { in: topicIds } },
-              { councilId: { in: councilIds } },
-            ],
-            isDeleted: false,
-          },
+        updatedCounts.documents = await tx.document.updateMany({
+          where: { OR: [{ topicId: { in: topicIds } }, { councilId: { in: councilIds } }], isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 6. Đánh dấu xóa các SemesterTopicMajor liên quan đến Topic
-        await tx.semesterTopicMajor.updateMany({
+        updatedCounts.semesterTopicMajors = await tx.semesterTopicMajor.updateMany({
           where: { topicId: { in: topicIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 7. Đánh dấu xóa các DetailMajorTopic liên quan đến Topic
-        await tx.detailMajorTopic.updateMany({
+        updatedCounts.detailMajorTopics = await tx.detailMajorTopic.updateMany({
           where: { topicId: { in: topicIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 8. Đánh dấu xóa các TopicAssignment liên quan đến Topic
-        await tx.topicAssignment.updateMany({
+        updatedCounts.topicAssignments = await tx.topicAssignment.updateMany({
           where: { topicId: { in: topicIds }, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        
-        // 10. Đánh dấu xóa các Topic liên quan đến SubmissionPeriod
-        await tx.topic.updateMany({
+        updatedCounts.topics = await tx.topic.updateMany({
           where: { submissionPeriodId: periodId, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 11. Đánh dấu xóa các Council liên quan đến SubmissionPeriod
-        await tx.council.updateMany({
+        updatedCounts.councils = await tx.council.updateMany({
           where: { submissionPeriodId: periodId, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 12. Đánh dấu xóa các TopicRegistration liên quan đến SubmissionPeriod
-        await tx.topicRegistration.updateMany({
+        updatedCounts.topicRegistrations = await tx.topicRegistration.updateMany({
           where: { submissionPeriodId: periodId, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 13. Đánh dấu xóa SubmissionPeriod
+       
+  
         await tx.submissionPeriod.update({
           where: { id: periodId },
           data: { isDeleted: true },
         });
   
-        // 14. Ghi log hành động thành công
         await tx.systemLog.create({
           data: {
             userId,
@@ -381,12 +365,12 @@ export class SubmissionPeriodService {
             metadata: {
               topicCount: period.topics.length,
               councilCount: period.councils.length,
+              updatedCounts,
             },
             oldValues: JSON.stringify(period),
           },
         });
   
-        // Trả về dữ liệu SubmissionPeriod sau khi cập nhật
         return await tx.submissionPeriod.findUnique({
           where: { id: periodId },
           include: { topics: true, councils: true },
