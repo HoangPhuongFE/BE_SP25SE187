@@ -43,15 +43,6 @@ export class YearController {
       const { id } = req.params;
       const { year } = req.body;
 
-      // Kiểm tra id hợp lệ (UUID format)
-      if (!id || typeof id !== 'string' || !id.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-        return res.status(400).json({ message: "ID không hợp lệ" });
-      }
-
-      if (!year || typeof year !== "number") {
-        return res.status(400).json({ message: "Year phải là một số" });
-      }
-
       const updatedYear = await this.yearService.updateYear(id, year);
       return res.status(200).json({ message: YEAR_MESSAGE.YEAR_UPDATED, data: updatedYear });
     } catch (error) {
@@ -67,11 +58,29 @@ export class YearController {
   async deleteYear(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const year = await this.yearService.deleteYear(id);
-      return res.status(200).json({ message: YEAR_MESSAGE.YEAR_DELETED, data: year });
+      const userId = req.user?.userId || "";
+      const ipAddress = req.ip;
+  
+      if (!userId) {
+        return res.status(401).json({ message: "Không tìm thấy thông tin người dùng." });
+      }
+  
+      console.log("ID nhận được:", id);
+      const year = await this.yearService.deleteYear(id, userId, ipAddress);
+  
+      return res.status(200).json({
+        message: "Năm học đã được đánh dấu là xóa.",
+        data: year,
+      });
     } catch (error) {
-      console.error("Error deleting year:", error);
-      return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
+      console.error("Error marking year as deleted:", error);
+      if ((error as Error).message === "YEAR_NOT_FOUND") {
+        return res.status(404).json({ message: "Không tìm thấy năm học." });
+      }
+      return res.status(500).json({
+        message: "Có lỗi xảy ra trên server.",
+        error: "Có lỗi xảy ra khi đánh dấu xóa năm học và dữ liệu liên quan",
+      });
     }
   }
 }

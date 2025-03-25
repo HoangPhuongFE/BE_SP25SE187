@@ -4,7 +4,7 @@ import { sendEmail } from "../utils/email";
 const prisma = new PrismaClient();
 
 export class EmailService {
-  // ✅ Gửi email cho danh sách người nhận có tham số động
+  //  Gửi email cho danh sách người nhận có tham số động
   async sendEmails(emailType: string, recipients: { email: string; params: Record<string, string> }[], userId: string) {
     const template = await prisma.emailTemplate.findUnique({ where: { name: emailType } });
     if (!template) throw new Error(`Không tìm thấy template: ${emailType}`);
@@ -63,7 +63,7 @@ export class EmailService {
     return { successCount, failedCount, errors };
   }
 
-  // ✅ Gửi email hàng loạt mà không cần tham số động
+  // Gửi email hàng loạt mà không cần tham số động
   async sendBulkEmails(emailType: string, emails: string[], userId: string) {
     if (emails.length === 0) {
       throw new Error("Danh sách email không được để trống.");
