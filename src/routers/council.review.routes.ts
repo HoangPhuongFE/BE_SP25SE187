@@ -105,8 +105,16 @@ router.put(
 router.put(
   '/review-assignments/:assignmentId/update',
   authenticateToken,
-  checkRole(['lecturer']),
+  checkRole(['lecturer',"council_member"]),
   councilReviewController.updateReviewAssignment.bind(councilReviewController)
+);
+
+// API: Hội đồng cập nhật trạng thái của ReviewSchedule (hỗ trợ groupId hoặc groupCode)
+router.put(
+  "/schedules/:scheduleId/update",
+  authenticateToken,
+  checkRole(["lecturer", "council_member"]),
+  councilReviewController.updateReviewSchedule.bind(councilReviewController)
 );
 
 export default router;

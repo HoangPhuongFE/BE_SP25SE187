@@ -505,6 +505,8 @@ CREATE TABLE `review_schedules` (
     `review_time` DATETIME(3) NOT NULL,
     `room` VARCHAR(191) NOT NULL,
     `reviewRound` INTEGER NOT NULL,
+    `note` VARCHAR(191) NULL,
+    `status` VARCHAR(191) NOT NULL DEFAULT 'PENDING',
     `topicId` VARCHAR(191) NOT NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 

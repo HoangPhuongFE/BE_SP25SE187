@@ -264,11 +264,27 @@ export class CouncilReviewController {
       const result = await councilReviewService.updateReviewAssignment(assignmentId, { score, feedback, status }, userId);
       return res.status(result.status).json(result);
     } catch (error) {
-      console.error("Lỗi trong updateReviewAssignment:", error);
+      //console.error("Lỗi trong updateReviewAssignment:", error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: "Lỗi hệ thống khi cập nhật assignment!",
       });
     }
   }
+
+  // API: Hội đồng cập nhật trạng thái của ReviewSchedule (hỗ trợ groupId hoặc groupCode) (API mới)
+  async updateReviewSchedule(req: Request, res: Response) {
+    const { scheduleId } = req.params;
+    const { status, room, reviewTime, note, groupId, groupCode } = req.body; 
+    const userId = req.user?.id;
+
+    const result = await councilReviewService.updateReviewSchedule(
+      scheduleId,
+      { status, room, reviewTime: reviewTime ? new Date(reviewTime) : undefined, note, groupId, groupCode }, 
+      userId
+    );
+
+    return res.status(result.status).json(result);
+  }
+
 }
