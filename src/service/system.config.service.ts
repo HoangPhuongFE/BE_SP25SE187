@@ -20,7 +20,7 @@ export class SystemConfigService {
     });
   }
 
-  // Cấu hình số lượng thành viên nhóm
+  // Cấu hình số lượng thành viên nhóm (giữ nguyên)
   async getMaxGroupMembers(): Promise<number> {
     return this.getSystemConfigValue("MAX_GROUP_MEMBERS", 5) as Promise<number>;
   }
@@ -33,30 +33,46 @@ export class SystemConfigService {
     return this.getSystemConfigValue("MAX_GROUPS_PER_MENTOR", 4) as Promise<number>;
   }
 
-  // Thêm cấu hình số lượng tối đa nhóm mà một hội đồng có thể chấm trong một lịch trình
   async getMaxTopicsPerCouncilSchedule(): Promise<number> {
     return this.getSystemConfigValue("MAX_TOPICS_PER_COUNCIL_SCHEDULE", 4) as Promise<number>;
   }
 
-  // Các phương thức khác giữ nguyên...
-  async getMaxReviewMembers(): Promise<number> {
-    return this.getSystemConfigValue("MAX_REVIEW_MEMBERS", 2) as Promise<number>;
+  // Cấu hình cho hội đồng bảo vệ
+  async getMinDefenseMembers(): Promise<number> {
+    return this.getSystemConfigValue("MIN_DEFENSE_MEMBERS", 5) as Promise<number>;
   }
 
   async getMaxDefenseMembers(): Promise<number> {
-    return this.getSystemConfigValue("MAX_DEFENSE_MEMBERS", 4) as Promise<number>;
+    return this.getSystemConfigValue("MAX_DEFENSE_MEMBERS", 5) as Promise<number>;
+  }
+
+  async getMinDefenseChairman(): Promise<number> {
+    return this.getSystemConfigValue("MIN_DEFENSE_CHAIRMAN", 1) as Promise<number>;
   }
 
   async getMaxDefenseChairman(): Promise<number> {
     return this.getSystemConfigValue("MAX_DEFENSE_CHAIRMAN", 1) as Promise<number>;
   }
 
+  async getMinDefenseSecretary(): Promise<number> {
+    return this.getSystemConfigValue("MIN_DEFENSE_SECRETARY", 1) as Promise<number>;
+  }
+
   async getMaxDefenseSecretary(): Promise<number> {
     return this.getSystemConfigValue("MAX_DEFENSE_SECRETARY", 1) as Promise<number>;
   }
 
+  async getMinDefenseReviewers(): Promise<number> {
+    return this.getSystemConfigValue("MIN_DEFENSE_REVIEWERS", 3) as Promise<number>;
+  }
+
   async getMaxDefenseReviewers(): Promise<number> {
-    return this.getSystemConfigValue("MAX_DEFENSE_REVIEWERS", 2) as Promise<number>;
+    return this.getSystemConfigValue("MAX_DEFENSE_REVIEWERS", 3) as Promise<number>;
+  }
+
+  // Các phương thức khác giữ nguyên
+  async getMaxReviewMembers(): Promise<number> {
+    return this.getSystemConfigValue("MAX_REVIEW_MEMBERS", 2) as Promise<number>;
   }
 
   async getMaxCouncilMembers(): Promise<number> {

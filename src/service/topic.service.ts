@@ -1,5 +1,5 @@
 import { Prisma, PrismaClient } from '@prisma/client';
-import { TOPIC_MESSAGE, GROUP_MESSAGE } from '../constants/message';
+import COUNCIL_MESSAGE, { TOPIC_MESSAGE, GROUP_MESSAGE } from '../constants/message';
 import HTTP_STATUS from '../constants/httpStatus';
 import { SystemConfigService } from './system.config.service';
 
@@ -7,6 +7,7 @@ import { SystemConfigService } from './system.config.service';
 const prisma = new PrismaClient();
 
 export class TopicService {
+  [x: string]: any;
 
   private systemConfigService = new SystemConfigService();
 
@@ -1280,229 +1281,143 @@ export class TopicService {
       };
     }
   }
-  async deleteTopic(topicId: string, isSystemWide: boolean, userId: string, ipAddress?: string) {
+  async deleteTopicCouncil(councilId: string, userId: string, ipAddress?: string): Promise<{ success: boolean; status: number; message: string; data?: any }> {
     try {
-      // Tìm đề tài và các thông tin liên quan
-      const topic = await prisma.topic.findUnique({
-        where: { id: topicId, isDeleted: false },
-        select: {
-          status: true,
-          createdBy: true,
-          topicAssignments: true,
-          topicRegistrations: true,
-          proposedGroupId: true,
-          name: true,
-        },
-      });
-
-      if (!topic) {
-        await prisma.systemLog.create({
-          data: {
-            userId,
-            action: 'DELETE_TOPIC_ATTEMPT',
-            entityType: 'Topic',
-            entityId: topicId,
-            description: 'Thử xóa đề tài nhưng không tìm thấy hoặc đã bị đánh dấu xóa',
-            severity: 'WARNING',
-            ipAddress: ipAddress || 'unknown',
-          },
-        });
-        return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy đề tài!' };
-      }
-
-      // Kiểm tra vai trò của người dùng
       const user = await prisma.user.findUnique({
         where: { id: userId },
         include: { roles: { include: { role: true } } },
       });
       if (!user) {
+        throw new Error("Người dùng không tồn tại");
+      }
+      const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
+      const isAuthorized = userRoles.includes("admin") || userRoles.includes("academic_officer");
+      if (!isAuthorized) {
+        throw new Error("Chỉ admin hoặc academic_officer mới có quyền xóa hội đồng");
+      }
+  
+      const council = await prisma.council.findUnique({
+        where: { id: councilId, isDeleted: false },
+      });
+      if (!council) {
         await prisma.systemLog.create({
           data: {
             userId,
-            action: 'DELETE_TOPIC_ATTEMPT',
-            entityType: 'Topic',
-            entityId: topicId,
-            description: 'Thử xóa đề tài nhưng người dùng không tồn tại',
-            severity: 'ERROR',
-            ipAddress: ipAddress || 'unknown',
+            action: "DELETE_TOPIC_COUNCIL_ATTEMPT",
+            entityType: "Council",
+            entityId: councilId,
+            description: "Thử xóa hội đồng topic nhưng không tìm thấy hoặc đã bị đánh dấu xóa",
+            severity: "WARNING",
+            ipAddress: ipAddress || "unknown",
           },
         });
-        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Người dùng không tồn tại!' };
+        return { success: false, status: HTTP_STATUS.NOT_FOUND, message: COUNCIL_MESSAGE.COUNCIL_NOT_FOUND };
       }
-
-      const userRoles = user.roles.map(r => r.role.name.toLowerCase());
-      const isAcademic = userRoles.includes('academic_officer');
-
-      // Kiểm tra quyền xóa
-      if (!isSystemWide && !isAcademic && topic.createdBy !== userId) {
-        await prisma.systemLog.create({
-          data: {
-            userId,
-            action: 'DELETE_TOPIC_ATTEMPT',
-            entityType: 'Topic',
-            entityId: topicId,
-            description: 'Thử xóa đề tài nhưng không có quyền',
-            severity: 'WARNING',
-            ipAddress: ipAddress || 'unknown',
-            metadata: { attemptedBy: userId, required: 'creator, academic, or system-wide' },
-          },
-        });
-        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Chỉ người tạo, academic hoặc admin mới được phép xóa!' };
-      }
-
-      // Kiểm tra ràng buộc nếu không phải system-wide hoặc academic
-      if (!isSystemWide && !isAcademic) {
-        if (topic.status !== 'PENDING') {
-          await prisma.systemLog.create({
-            data: {
-              userId,
-              action: 'DELETE_TOPIC_ATTEMPT',
-              entityType: 'Topic',
-              entityId: topicId,
-              description: 'Thử xóa đề tài nhưng trạng thái không phải PENDING',
-              severity: 'WARNING',
-              ipAddress: ipAddress || 'unknown',
-              metadata: { currentStatus: topic.status },
-            },
-          });
-          return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Chỉ có thể xóa đề tài ở trạng thái PENDING!' };
-        }
-        if (topic.topicAssignments.length > 0 || topic.topicRegistrations.length > 0 || topic.proposedGroupId) {
-          await prisma.systemLog.create({
-            data: {
-              userId,
-              action: 'DELETE_TOPIC_ATTEMPT',
-              entityType: 'Topic',
-              entityId: topicId,
-              description: 'Thử xóa đề tài nhưng đã có nhóm đăng ký hoặc đề xuất',
-              severity: 'WARNING',
-              ipAddress: ipAddress || 'unknown',
-              metadata: {
-                assignmentsCount: topic.topicAssignments.length,
-                registrationsCount: topic.topicRegistrations.length,
-                proposedGroupId: topic.proposedGroupId,
-              },
-            },
-          });
-          return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Không thể xóa đề tài đã có nhóm đăng ký hoặc đề xuất!' };
-        }
-      }
-
-      // Xóa mềm toàn bộ dữ liệu liên quan trong giao dịch
-      const updatedTopic = await prisma.$transaction(async (tx) => {
+  
+      const updatedCouncil = await prisma.$transaction(async (tx) => {
         const updatedCounts = {
           reviewSchedules: 0,
+          defenseSchedules: 0,
+          defenseMemberResults: 0, // Thêm để đếm số bản ghi DefenseMemberResult bị xóa
           reviewAssignments: 0,
+          councilMembers: 0,
           documents: 0,
-          semesterTopicMajors: 0,
-          detailMajorTopics: 0,
-          topicAssignments: 0,
-          topicRegistrations: 0,
-          aiVerificationLogs: 0,
         };
-
-        // 1. Đánh dấu xóa các ReviewSchedule liên quan
-        updatedCounts.reviewSchedules = await tx.reviewSchedule.updateMany({
-          where: { topicId, isDeleted: false },
-          data: { isDeleted: true },
-        }).then(res => res.count);
-
-        // 2. Đánh dấu xóa các ReviewAssignment liên quan
-        updatedCounts.reviewAssignments = await tx.reviewAssignment.updateMany({
-          where: { topicId, isDeleted: false },
-          data: { isDeleted: true },
-        }).then(res => res.count);
-
-        // 3. Đánh dấu xóa các Document liên quan
-        updatedCounts.documents = await tx.document.updateMany({
-          where: { topicId, isDeleted: false },
-          data: { isDeleted: true },
-        }).then(res => res.count);
-
-        // 4. Đánh dấu xóa các SemesterTopicMajor liên quan
-        updatedCounts.semesterTopicMajors = await tx.semesterTopicMajor.updateMany({
-          where: { topicId, isDeleted: false },
-          data: { isDeleted: true },
-        }).then(res => res.count);
-
-        // 5. Đánh dấu xóa các DetailMajorTopic liên quan
-        updatedCounts.detailMajorTopics = await tx.detailMajorTopic.updateMany({
-          where: { topicId, isDeleted: false },
-          data: { isDeleted: true },
-        }).then(res => res.count);
-
-        // 6. Đánh dấu xóa các TopicAssignment liên quan
-        updatedCounts.topicAssignments = await tx.topicAssignment.updateMany({
-          where: { topicId, isDeleted: false },
-          data: { isDeleted: true },
-        }).then(res => res.count);
-
-        // 7. Đánh dấu xóa các TopicRegistration liên quan
-        updatedCounts.topicRegistrations = await tx.topicRegistration.updateMany({
-          where: { topicId, isDeleted: false },
-          data: { isDeleted: true },
-        }).then(res => res.count);
-
-
-
-        // 9. Đánh dấu xóa Topic
-        await tx.topic.update({
-          where: { id: topicId },
+  
+        updatedCounts.reviewSchedules = await tx.reviewSchedule
+          .updateMany({
+            where: { councilId, isDeleted: false },
+            data: { isDeleted: true },
+          })
+          .then((res) => res.count);
+  
+        const defenseScheduleIds = await tx.defenseSchedule
+          .findMany({
+            where: { councilId, isDeleted: false },
+            select: { id: true },
+          })
+          .then((schedules) => schedules.map((s) => s.id));
+  
+        updatedCounts.defenseSchedules = await tx.defenseSchedule
+          .updateMany({
+            where: { councilId, isDeleted: false },
+            data: { isDeleted: true },
+          })
+          .then((res) => res.count);
+  
+        updatedCounts.defenseMemberResults = await tx.defenseMemberResult
+          .updateMany({
+            where: { defenseScheduleId: { in: defenseScheduleIds }, isDeleted: false },
+            data: { isDeleted: true },
+          })
+          .then((res) => res.count);
+  
+        updatedCounts.reviewAssignments = await tx.reviewAssignment
+          .updateMany({
+            where: { councilId, isDeleted: false },
+            data: { isDeleted: true },
+          })
+          .then((res) => res.count);
+  
+        updatedCounts.councilMembers = await tx.councilMember
+          .updateMany({
+            where: { councilId, isDeleted: false },
+            data: { isDeleted: true },
+          })
+          .then((res) => res.count);
+  
+        updatedCounts.documents = await tx.document
+          .updateMany({
+            where: { councilId, isDeleted: false },
+            data: { isDeleted: true },
+          })
+          .then((res) => res.count);
+  
+        await tx.council.update({
+          where: { id: councilId },
           data: { isDeleted: true },
         });
-
-        // 10. Ghi log hành động xóa thành công
+  
         await tx.systemLog.create({
           data: {
             userId,
-            action: 'DELETE_TOPIC',
-            entityType: 'Topic',
-            entityId: topicId,
-            description: `Đề tài "${topic.name}" đã được đánh dấu xóa bởi ${isAcademic ? 'academic_officer' : isSystemWide ? 'admin' : 'người tạo'}`,
-            severity: 'INFO',
-            ipAddress: ipAddress || 'unknown',
+            action: "DELETE_TOPIC_COUNCIL",
+            entityType: "Council",
+            entityId: councilId,
+            description: `Hội đồng topic "${council.name}" đã được đánh dấu xóa`,
+            severity: "INFO",
+            ipAddress: ipAddress || "unknown",
             metadata: {
-              deletedByRole: isAcademic ? 'academic_officer' : isSystemWide ? 'admin' : 'creator',
-              topicName: topic.name,
-              status: topic.status,
+              councilCode: council.code,
+              councilName: council.name,
+              deletedDefenseMemberResultCount: updatedCounts.defenseMemberResults,
               updatedCounts,
+              deletedBy: userRoles.join(", "),
             },
-            oldValues: JSON.stringify(topic),
+            oldValues: JSON.stringify(council),
           },
         });
-
-        // Trả về dữ liệu Topic sau khi cập nhật
-        return await tx.topic.findUnique({
-          where: { id: topicId },
-          select: {
-            status: true,
-            createdBy: true,
-            topicAssignments: true,
-            topicRegistrations: true,
-            proposedGroupId: true,
-            name: true,
-            isDeleted: true,
-          },
-        });
+  
+        return await tx.council.findUnique({ where: { id: councilId } });
       });
-
-      return { success: true, status: HTTP_STATUS.OK, message: 'Đề tài đã được đánh dấu xóa thành công!', data: updatedTopic };
+  
+      return { success: true, status: HTTP_STATUS.OK, message: COUNCIL_MESSAGE.COUNCIL_DELETED, data: updatedCouncil };
     } catch (error) {
       await prisma.systemLog.create({
         data: {
           userId,
-          action: 'DELETE_TOPIC_ERROR',
-          entityType: 'Topic',
-          entityId: topicId,
-          description: 'Lỗi hệ thống khi đánh dấu xóa đề tài',
-          severity: 'ERROR',
-          error: error instanceof Error ? error.message : 'Unknown error',
-          stackTrace: (error as Error).stack || 'No stack trace',
-          ipAddress: ipAddress || 'unknown',
+          action: "DELETE_TOPIC_COUNCIL_ERROR",
+          entityType: "Council",
+          entityId: councilId,
+          description: "Lỗi hệ thống khi đánh dấu xóa hội đồng topic",
+          severity: "ERROR",
+          error: error instanceof Error ? error.message : "Unknown error",
+          stackTrace: (error as Error).stack || "No stack trace",
+          ipAddress: ipAddress || "unknown",
         },
       });
-      console.error('Lỗi khi đánh dấu xóa đề tài:', error);
-      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi đánh dấu xóa đề tài!' };
+      console.error("Lỗi khi đánh dấu xóa hội đồng topic:", error);
+      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống khi đánh dấu xóa hội đồng." };
     }
   }
   async getTopicsForApprovalBySubmission(query: { submissionPeriodId?: string; round?: number; semesterId?: string }) {
