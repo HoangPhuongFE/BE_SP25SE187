@@ -7,7 +7,28 @@ const councilDefenseService = new CouncilDefenseService();
 export class CouncilDefenseController {
   async createDefenseCouncil(req: Request, res: Response) {
     try {
-      const result = await councilDefenseService.createDefenseCouncil(req.body);
+      // Lấy userId từ token (req.user)
+      const userId = req.user?.userId; // Sử dụng userId thay vì id
+            if (!userId) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          status: HTTP_STATUS.UNAUTHORIZED,
+          message: 'Không tìm thấy thông tin người dùng từ token!',
+        });
+      }
+  
+      // Tạo dữ liệu đầu vào cho service, loại bỏ createdBy từ req.body
+      const data = {
+        name: req.body.name,
+        semesterId: req.body.semesterId,
+        submissionPeriodId: req.body.submissionPeriodId,
+        startDate: new Date(req.body.startDate), // Chuyển đổi sang Date
+        endDate: new Date(req.body.endDate),     // Chuyển đổi sang Date
+        status: req.body.status,
+        defenseRound: req.body.defenseRound,
+      };
+  
+      const result = await councilDefenseService.createDefenseCouncil({ ...data, createdBy: userId });
       res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi trong controller createDefenseCouncil:', error);

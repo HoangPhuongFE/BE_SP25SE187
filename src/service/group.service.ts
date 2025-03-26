@@ -554,21 +554,23 @@ export class GroupService {
 
     // 5) getGroupsBySemester
     async getGroupsBySemester(semesterId: string, userId: string) {
-        // Kiểm tra user
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: { roles: { include: { role: true } } },
         });
         if (!user) throw new Error("Người dùng không tồn tại.");
-
+    
         const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
-        //  console.log(`User ID: ${userId}, Roles: ${JSON.stringify(userRoles)}`);
-
-        // Base query: luôn bao gồm members và mentors
+    
         const baseInclude = {
             members: {
                 include: {
-                    student: { include: { user: true } },
+                    student: { 
+                        include: { 
+                            user: true,
+                            major: true // Thêm để lấy thông tin Major
+                        } 
+                    },
                     role: true,
                 },
             },
@@ -578,70 +580,79 @@ export class GroupService {
                     role: true,
                 },
             },
+            semester: true, // Thêm để lấy thông tin Semester
         };
-
-        // Vai trò quản lý: trả về tất cả nhóm trong kỳ
+    
+        let groups;
         if (
             userRoles.includes("graduation_thesis_manager") ||
             userRoles.includes("academic_officer") ||
             userRoles.includes("examination_officer")
         ) {
-            //  console.log("Fetching all groups for manager role...");
-            return prisma.group.findMany({
+            groups = await prisma.group.findMany({
                 where: { semesterId },
                 include: baseInclude,
             });
-        }
-
-        // Vai trò sinh viên: chỉ trả về nhóm của sinh viên
-        if (userRoles.includes("student")) {
-            console.log("Fetching groups for student role...");
+        } else if (userRoles.includes("student")) {
             const student = await prisma.student.findUnique({
                 where: { userId },
                 select: { id: true },
             });
             if (!student) throw new Error("Không tìm thấy sinh viên.");
-
-            return prisma.group.findMany({
+    
+            groups = await prisma.group.findMany({
                 where: {
                     semesterId,
                     members: { some: { studentId: student.id } },
                 },
                 include: baseInclude,
             });
-        }
-
-        // Vai trò mentor: chỉ trả về nhóm mà mentor hướng dẫn
-        if (
+        } else if (
             userRoles.includes("lecturer") ||
             userRoles.includes("mentor_main") ||
             userRoles.includes("mentor_sub")
         ) {
-            //    console.log("Fetching groups for mentor role...");
             const mentorGroupIds = (
                 await prisma.groupMentor.findMany({
                     where: { mentorId: userId },
                     select: { groupId: true },
                 })
             ).map((gm) => gm.groupId);
-
-            console.log(`Mentor Group IDs: ${JSON.stringify(mentorGroupIds)}`);
-
+    
             if (mentorGroupIds.length === 0) {
-                console.log("No groups found for this mentor.");
                 return [];
             }
-
-            return prisma.group.findMany({
+    
+            groups = await prisma.group.findMany({
                 where: {
                     semesterId,
                     id: { in: mentorGroupIds },
                 },
                 include: baseInclude,
             });
+        } else {
+            throw new Error("Bạn không có quyền truy cập danh sách nhóm.");
         }
-
-        throw new Error("Bạn không có quyền truy cập danh sách nhóm.");
+    
+        // Cập nhật groupCode nếu cần
+        for (const group of groups) {
+            const majorName = group.members[0]?.student?.major?.name || "Unknown";
+            const newGroupCode = await this.generateUniqueGroupCode(
+                majorName,
+                group.semesterId,
+                group.semester.startDate
+            );
+    
+            if (newGroupCode !== group.groupCode) {
+                await prisma.group.update({
+                    where: { id: group.id },
+                    data: { groupCode: newGroupCode },
+                });
+                group.groupCode = newGroupCode; // Cập nhật giá trị trong object trả về
+            }
+        }
+    
+        return groups;
     }
 
     // 6) getStudentsWithoutGroup - Lấy danh sách sinh viên chưa có nhóm và đủ điều kiện

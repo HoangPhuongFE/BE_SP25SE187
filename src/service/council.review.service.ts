@@ -1235,7 +1235,7 @@ export class CouncilReviewService {
       });
 
       const roleNames = userRoles.map((ur) => ur.role.name);
-      console.log("User roles:", roleNames);
+      //console.log("User roles:", roleNames);
 
       // Các vai trò được phép
       const allowedRoles = ["lecturer", "council_member"];

@@ -121,7 +121,7 @@ router.put(
 router.post(
   "/defense/confirm-defense-round",
   authenticateToken,
-  checkRole(["mentor_main", "mentor_sub"]),
+  checkRole(["mentor_main", "mentor_sub", "lecturer"]),
   councilReviewController.confirmDefenseRound.bind(councilReviewController)
 );
 

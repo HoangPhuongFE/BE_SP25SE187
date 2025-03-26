@@ -23,6 +23,7 @@ router.post(
 // Route mới: Lấy danh sách hội đồng bảo vệ
 router.get(
     '/',
+    authenticateToken,
     checkRole(["examination_officer", "graduation_thesis_manager", "lecturer", "council_member"]),
     councilDefenseController.getDefenseCouncils.bind(councilDefenseController)
 );
@@ -30,6 +31,7 @@ router.get(
 // Route mới: Lấy chi tiết hội đồng bảo vệ theo ID
 router.get(
     '/:councilId',
+    authenticateToken,
     checkRole(["examination_officer", "graduation_thesis_manager", "lecturer", "council_member"]),
     councilDefenseController.getDefenseCouncilById.bind(councilDefenseController)
 );
@@ -93,7 +95,8 @@ router.get(
 router.put(
     '/schedules/:defenseScheduleId/students/:studentId/evaluate',
     authenticateToken,
-    checkRole(["lecturer", "council_member"]),
+    checkRole(["lecturer", "council_member","council_secretary","council_chairman"
+    ]),
     councilDefenseController.evaluateDefenseMember.bind(councilDefenseController)
 );
 // Route mới: Thay đổi thành viên hội đồng
