@@ -587,8 +587,9 @@ export class CouncilReviewService {
   // API: Lấy chi tiết hội đồng cho giảng viên 
   async getCouncilDetailsForLecturer(councilId: string, userId: string) {
     try {
+      // Kiểm tra user là thành viên hội đồng
       const isMember = await prisma.councilMember.findFirst({
-        where: { councilId, userId },
+        where: { councilId, userId, isDeleted: false },
       });
       if (!isMember) {
         return {
@@ -598,8 +599,9 @@ export class CouncilReviewService {
         };
       }
 
+      // Truy vấn đầy đủ dữ liệu hội đồng
       const council = await prisma.council.findUnique({
-        where: { id: councilId },
+        where: { id: councilId, isDeleted: false },
         include: {
           members: {
             include: {
@@ -609,6 +611,38 @@ export class CouncilReviewService {
           },
           semester: { select: { id: true, code: true, startDate: true, endDate: true } },
           submissionPeriod: { select: { id: true, roundNumber: true, startDate: true, endDate: true } },
+          reviewDefenseCouncils: true, // Các thông tin liên quan đến bảo vệ
+          reviewAssignments: {
+            include: {
+              topic: { select: { id: true, topicCode: true, name: true } },
+              reviewer: { select: { id: true, fullName: true, email: true } },
+              reviewSchedule: true,
+            },
+          },
+          defenseSchedules: {
+            include: {
+              group: { select: { id: true, groupCode: true } },
+            },
+          },
+          sessions: { // Tức là ReviewSchedule
+            include: {
+              group: { select: { id: true, groupCode: true } },
+              topic: { select: { id: true, topicCode: true, name: true } },
+              assignments: {
+                include: {
+                  reviewer: { select: { id: true, fullName: true } },
+                },
+              },
+              documents: {
+                where: { isDeleted: false },
+                select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true },
+              },
+            },
+          },
+          documents: {
+            where: { isDeleted: false },
+            select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true },
+          },
         },
       });
 
@@ -620,6 +654,7 @@ export class CouncilReviewService {
         };
       }
 
+      // Thêm roleName vào members
       const councilWithRoleNames = {
         ...council,
         members: council.members.map(member => ({
@@ -979,11 +1014,12 @@ export class CouncilReviewService {
   // API 5: Mentor xem lịch nhóm
   async getReviewScheduleForMentor(userId: string) {
     try {
+      // 1. Lấy danh sách nhóm mà user là mentor
       const mentorGroups = await prisma.groupMentor.findMany({
         where: { mentorId: userId, isDeleted: false },
         select: { groupId: true },
       });
-  
+
       const groupIds = mentorGroups.map(gm => gm.groupId);
       if (groupIds.length === 0) {
         return {
@@ -992,23 +1028,31 @@ export class CouncilReviewService {
           message: "Bạn hiện không phụ trách nhóm nào!",
         };
       }
-  
+
+      // 2. Truy vấn đầy đủ dữ liệu ReviewSchedule và ReviewAssignment
       const schedules = await prisma.reviewSchedule.findMany({
         where: { groupId: { in: groupIds }, isDeleted: false },
         include: {
-          topic: { select: { topicCode: true, name: true } },
-          group: { select: { groupCode: true } },
-          council: { select: { name: true } },
+          council: { select: { id: true, code: true, name: true, status: true, type: true, round: true } },
+          group: { select: { id: true, groupCode: true, semesterId: true, status: true } },
+          topic: { select: { id: true, topicCode: true, name: true, status: true } },
           assignments: {
-            select: { id: true, score: true, status: true, feedback: true, reviewerId: true, assignedAt: true, reviewedAt: true },
+            include: {
+              council: { select: { id: true, name: true } },
+              topic: { select: { id: true, topicCode: true, name: true } },
+              reviewer: { select: { id: true, fullName: true, email: true } },
+              reviewSchedule: {
+                select: { id: true, reviewTime: true, room: true, reviewRound: true, status: true, note: true },
+              },
+            },
           },
           documents: {
             where: { documentType: "REVIEW_REPORT", isDeleted: false },
-            select: { fileUrl: true },
+            select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true, uploadedBy: true },
           },
         },
       });
-  
+
       if (schedules.length === 0) {
         return {
           success: false,
@@ -1016,7 +1060,8 @@ export class CouncilReviewService {
           message: "Hiện tại chưa có lịch chấm điểm nào cho các nhóm bạn phụ trách!",
         };
       }
-  
+
+      // 3. Chuẩn bị dữ liệu trả về
       const result = schedules.map(schedule => ({
         schedule: {
           id: schedule.id,
@@ -1026,15 +1071,34 @@ export class CouncilReviewService {
           reviewTime: schedule.reviewTime,
           room: schedule.room,
           reviewRound: schedule.reviewRound,
+          note: schedule.note,
           status: schedule.status,
-          council: schedule.council.name,
-          group: schedule.group.groupCode,
-          topic: schedule.topic.name,
+          isDeleted: schedule.isDeleted,
+          council: schedule.council,
+          group: schedule.group,
+          topic: schedule.topic,
         },
-        assignment: schedule.assignments[0] || null, // Trả đầy đủ ReviewAssignment
-        url: schedule.documents[0]?.fileUrl || null,
+        assignments: schedule.assignments.map(assignment => ({
+          id: assignment.id,
+          councilId: assignment.councilId,
+          topicId: assignment.topicId,
+          reviewerId: assignment.reviewerId,
+          score: assignment.score,
+          feedback: assignment.feedback,
+          status: assignment.status,
+          reviewRound: assignment.reviewRound,
+          assignedAt: assignment.assignedAt,
+          reviewedAt: assignment.reviewedAt,
+          reviewScheduleId: assignment.reviewScheduleId,
+          isDeleted: assignment.isDeleted,
+          council: assignment.council,
+          topic: assignment.topic,
+          reviewer: assignment.reviewer,
+          reviewSchedule: assignment.reviewSchedule,
+        })),
+        documents: schedule.documents,
       }));
-  
+
       return {
         success: true,
         status: HTTP_STATUS.OK,

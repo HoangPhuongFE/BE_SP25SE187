@@ -2257,7 +2257,7 @@ export class GroupService {
                             },
                             mentor: {
                                 select: {
-                                    fullName: true,
+                                    username: true,
                                     email: true,
                                 },
                             },
@@ -2312,7 +2312,7 @@ export class GroupService {
                 },
                 mentors: group.mentors.map((mentor) => ({
                     mentorId: mentor.mentorId,
-                    fullName: mentor.mentor.fullName ?? "Không có tên",
+                    username: mentor.mentor.username ?? "Không có tên",
                     email: mentor.mentor.email ?? "Không có email",
                     role: mentor.role.name,
                 })),
