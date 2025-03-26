@@ -287,4 +287,27 @@ export class CouncilReviewController {
     return res.status(result.status).json(result);
   }
 
+  // Trong CouncilReviewController
+async confirmDefenseRound(req: Request, res: Response) {
+  try {
+    const { groupId, defenseRound } = req.body;
+    const userId = req.user!.userId;
+
+    if (!groupId || !defenseRound) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: "Thiếu groupId hoặc defenseRound!",
+      });
+    }
+
+    const result = await councilReviewService.confirmDefenseRound(groupId, defenseRound, userId);
+    return res.status(result.status).json(result);
+  } catch (error) {
+    console.error("Lỗi trong confirmDefenseRound:", error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
+    });
+  }
+}
 }

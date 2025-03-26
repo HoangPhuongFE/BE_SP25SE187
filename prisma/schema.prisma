@@ -50,7 +50,7 @@ model User {
   progressReportMentors  ProgressReportMentor[]  @relation("MentorProgressReports")
   Decision               Decision[]
   reviewAssignments      ReviewAssignment[]
-    isDeleted      Boolean         @default(false)
+  isDeleted              Boolean                 @default(false)
 
   @@map("users")
 }
@@ -112,29 +112,27 @@ model Student {
   isImported       Boolean           @default(true) @map("is_imported")
   invitations      GroupInvitation[]
   groupMembers     GroupMember[]
-  isDeleted      Boolean         @default(false)
-
+  isDeleted        Boolean           @default(false)
 }
 
 model Semester {
-  id                    String                 @id @default(uuid())
+  id                    String               @id @default(uuid())
   code                  String
-  startDate             DateTime               @map("start_date")
-  endDate               DateTime               @map("end_date")
+  startDate             DateTime             @map("start_date")
+  endDate               DateTime             @map("end_date")
   status                String
-  createdAt             DateTime               @default(now()) @map("created_at")
+  createdAt             DateTime             @default(now()) @map("created_at")
   semesterStudents      SemesterStudent[]
-  reviewDefenseCouncils ReviewDefenseCouncil[]
   topics                Topic[]
   groups                Group[]
   councils              Council[]
   semesterTopicMajors   SemesterTopicMajor[]
   yearId                String
-  year                  Year                   @relation("YearSemesters", fields: [yearId], references: [id])
+  year                  Year                 @relation("YearSemesters", fields: [yearId], references: [id])
   SubmissionPeriod      SubmissionPeriod[]
-  userRoles             UserRole[]             @relation(name: "UserRoleToSemester")
+  userRoles             UserRole[]           @relation(name: "UserRoleToSemester")
   decisions             Decision[]
-  isDeleted             Boolean                @default(false)
+  isDeleted             Boolean              @default(false)
 
   @@map("semesters")
 }
@@ -266,49 +264,30 @@ model SystemConfig {
 }
 
 model Council {
-  id                    String                 @id @default(uuid()) @map("council_id")
-  code                  String?                @unique @map("council_code")
-  name                  String                 @map("council_name")
-  topicAssId            String?                @map("topicass_id")
-  createdDate           DateTime               @default(now()) @map("created_date")
+  id                    String             @id @default(uuid()) @map("council_id")
+  code                  String?            @unique @map("council_code")
+  name                  String             @map("council_name")
+  topicAssId            String?            @map("topicass_id")
+  createdDate           DateTime           @default(now()) @map("created_date")
   status                String?
   type                  String?
   round                 Int?
-  semesterId            String?                @map("semester_id")
-  isActive              Boolean                @default(true)
-  semester              Semester?              @relation(fields: [semesterId], references: [id])
-  topicAssignment       TopicAssignment?       @relation(fields: [topicAssId], references: [id])
+  semesterId            String?            @map("semester_id")
+  isActive              Boolean            @default(true)
+  semester              Semester?          @relation(fields: [semesterId], references: [id])
+  topicAssignment       TopicAssignment?   @relation(fields: [topicAssId], references: [id])
   members               CouncilMember[]
-  reviewDefenseCouncils ReviewDefenseCouncil[]
   reviewAssignments     ReviewAssignment[]
   defenseSchedules      DefenseSchedule[]
-  documents             Document[]             @relation("CouncilDocuments")
-  councilStartDate      DateTime?              @map("council_start_date")
-  councilEndDate        DateTime?              @map("council_end_date")
-  submissionPeriodId    String?                @map("submission_period_id")
-  submissionPeriod      SubmissionPeriod?      @relation(name: "SubmissionPeriodCouncils", fields: [submissionPeriodId], references: [id])
+  documents             Document[]         @relation("CouncilDocuments")
+  councilStartDate      DateTime?          @map("council_start_date")
+  councilEndDate        DateTime?          @map("council_end_date")
+  submissionPeriodId    String?            @map("submission_period_id")
+  submissionPeriod      SubmissionPeriod?  @relation(name: "SubmissionPeriodCouncils", fields: [submissionPeriodId], references: [id])
   sessions              ReviewSchedule[]
-  isDeleted             Boolean                @default(false)
+  isDeleted             Boolean            @default(false)
 
   @@map("councils")
-}
-
-model ReviewDefenseCouncil {
-  id                 String   @id @default(uuid())
-  councilId          String   @unique @map("council_id")
-  semesterId         String   @map("semester_id")
-  defenseReviewRound String   @map("defense_review_round")
-  url                String   @map("URL")
-  status             String
-  createdBy          String   @map("created_by")
-  createdAt          DateTime @default(now()) @map("created_at")
-  timeReview         DateTime @map("time_review")
-  topicAssignmentId  Int      @map("TopicAssignments_id")
-  council            Council  @relation(fields: [councilId], references: [id])
-  semester           Semester @relation(fields: [semesterId], references: [id])
-  isDeleted          Boolean  @default(false)
-
-  @@map("review_defense_councils")
 }
 
 model Topic {
@@ -357,7 +336,7 @@ model TopicAssignment {
   status         String   @default("ASSIGNED")
   approvalStatus String   @map("approval_status")
   defendStatus   String?
-  url            String?  @map("URL")
+  defenseRound   String?
   assignedBy     String   @map("assigned_by")
   assignedAt     DateTime @default(now()) @map("assigned_at")
   createdAt      DateTime @default(now())
@@ -589,8 +568,8 @@ model ReviewSchedule {
   reviewTime  DateTime          @map("review_time")
   room        String
   reviewRound Int
-  note         String?
-  status        String            @default("PENDING")
+  note        String?
+  status      String            @default("PENDING")
   council     Council           @relation(fields: [councilId], references: [id])
   group       Group             @relation(fields: [groupId], references: [id])
   topicId     String
@@ -598,6 +577,7 @@ model ReviewSchedule {
   assignments ReviewAssignment[] @relation("ReviewScheduleAssignments")
   documents   Document[]        @relation("ReviewScheduleDocuments")
   isDeleted   Boolean           @default(false)
+  
   @@map("review_schedules")
 }
 
@@ -618,28 +598,31 @@ model ReviewAssignment {
   reviewer       User?          @relation(fields: [reviewerId], references: [id])
   reviewSchedule ReviewSchedule @relation("ReviewScheduleAssignments", fields: [reviewScheduleId], references: [id]) 
   isDeleted      Boolean        @default(false)
+  
   @@map("review_assignment")
 }
 
 model Document {
-  id           String   @id @default(uuid())
-  fileName     String   @map("file_name")
-  fileUrl      String   @map("file_url")
-  fileType     String   @map("file_type")
-  uploadedAt   DateTime @default(now()) @map("uploaded_at")
-  uploadedBy   String   @map("uploaded_by")
-  description  String?
-  documentType String?
-  topicId      String?  @map("topic_id")
-  councilId    String?  @map("council_id")
-  groupId      String?  @map("group_id")
-  reviewScheduleId String?       @map("review_schedule_id") 
-  uploader     User     @relation(fields: [uploadedBy], references: [id])
-  topic        Topic?   @relation("TopicDocuments", fields: [topicId], references: [id])
-  council      Council? @relation("CouncilDocuments", fields: [councilId], references: [id])
-  group        Group?   @relation("GroupDocuments", fields: [groupId], references: [id])
-  reviewSchedule  ReviewSchedule? @relation("ReviewScheduleDocuments", fields: [reviewScheduleId], references: [id])
-  isDeleted    Boolean  @default(false)
+  id                String            @id @default(uuid())
+  fileName          String            @map("file_name")
+  fileUrl           String            @map("file_url")
+  fileType          String            @map("file_type")
+  uploadedAt        DateTime          @default(now()) @map("uploaded_at")
+  uploadedBy        String            @map("uploaded_by")
+  description       String?
+  documentType      String?
+  topicId           String?           @map("topic_id")
+  councilId         String?           @map("council_id")
+  groupId           String?           @map("group_id")
+  reviewScheduleId  String?           @map("review_schedule_id")
+  defenseScheduleId String?           @map("defense_schedule_id")
+  uploader          User              @relation(fields: [uploadedBy], references: [id])
+  topic             Topic?            @relation("TopicDocuments", fields: [topicId], references: [id])
+  council           Council?          @relation("CouncilDocuments", fields: [councilId], references: [id])
+  group             Group?            @relation("GroupDocuments", fields: [groupId], references: [id])
+  reviewSchedule    ReviewSchedule?   @relation("ReviewScheduleDocuments", fields: [reviewScheduleId], references: [id])
+  defenseSchedule   DefenseSchedule?  @relation("DefenseScheduleDocuments", fields: [defenseScheduleId], references: [id]) // Đồng bộ tên quan hệ
+  isDeleted         Boolean           @default(false)
 
   @@map("documents")
 }
@@ -680,23 +663,37 @@ enum CouncilType {
 }
 
 model DefenseSchedule {
-  id                 String   @id @default(uuid())
-  councilId          String   @map("council_id")
-  groupId            String   @map("group_id")
-  defenseTime        DateTime @map("defense_time")
+  id                 String             @id @default(uuid())
+  councilId          String             @map("council_id")
+  groupId            String             @map("group_id")
+  defenseTime        DateTime           @map("defense_time")
   room               String
-  defenseRound       Int      @map("defense_round")
+  defenseRound       Int                @map("defense_round")
   status             String
-  notes              String?  @db.Text
+  notes              String?            @db.Text
   result             String?
   feedback           String?
-  createdAt          DateTime @default(now()) @map("created_at")
-  confirmationStatus String   @map("confirmation_status")
-  council            Council  @relation(fields: [councilId], references: [id])
-  group              Group    @relation(fields: [groupId], references: [id])
-  isDeleted          Boolean  @default(false)
+  createdAt          DateTime           @default(now()) @map("created_at")
+  council            Council            @relation(fields: [councilId], references: [id])
+  group              Group              @relation(fields: [groupId], references: [id])
+  documents          Document[]         @relation("DefenseScheduleDocuments") 
+  isDeleted          Boolean            @default(false)
+  memberResults DefenseMemberResult[]
+  @@map("defense_schedules")
 }
 
+model DefenseMemberResult {
+  id               String         @id @default(uuid())
+  defenseScheduleId String        @map("defense_schedule_id")
+  studentId        String         @map("student_id")
+  result           String         // "PASS" hoặc "NOT_PASS"
+  feedback         String?        @db.Text
+  evaluatedBy      String?        @map("evaluated_by") // Người đánh giá (tùy chọn)
+  evaluatedAt      DateTime?      @map("evaluated_at") // Thời gian đánh giá (tùy chọn)
+  defenseSchedule  DefenseSchedule @relation(fields: [defenseScheduleId], references: [id])
+  student          Student        @relation(fields: [studentId], references: [id])
+  isDeleted        Boolean        @default(false)
+}
 model NotificationRecipient {
   notificationId String       @map("notification_id")
   userId         String       @map("user_id")

@@ -482,10 +482,7 @@ export class CouncilReviewService {
           data: { isDeleted: true },
         }).then(res => res.count);
 
-        updatedCounts.reviewDefenseCouncils = await tx.reviewDefenseCouncil.updateMany({
-          where: { councilId, isDeleted: false },
-          data: { isDeleted: true },
-        }).then(res => res.count);
+        
 
         updatedCounts.councilMembers = await tx.councilMember.updateMany({
           where: { councilId, isDeleted: false },
@@ -611,7 +608,6 @@ export class CouncilReviewService {
           },
           semester: { select: { id: true, code: true, startDate: true, endDate: true } },
           submissionPeriod: { select: { id: true, roundNumber: true, startDate: true, endDate: true } },
-          reviewDefenseCouncils: true, // Các thông tin liên quan đến bảo vệ
           reviewAssignments: {
             include: {
               topic: { select: { id: true, topicCode: true, name: true } },
@@ -1448,5 +1444,80 @@ export class CouncilReviewService {
       };
     }
   }
+
+  // Trong CouncilReviewService
+async confirmDefenseRound(groupId: string, defenseRound: number, userId: string) {
+  try {
+    // 1. Kiểm tra quyền mentor
+    const mentorGroup = await prisma.groupMentor.findFirst({
+      where: { mentorId: userId, groupId, isDeleted: false },
+    });
+    if (!mentorGroup) {
+      return {
+        success: false,
+        status: HTTP_STATUS.FORBIDDEN,
+        message: "Bạn không phải mentor của nhóm này!",
+      };
+    }
+
+    // 2. Kiểm tra nhóm có đề tài
+    const topicAssignment = await prisma.topicAssignment.findFirst({
+      where: { groupId, status: "ASSIGNED", isDeleted: false },
+    });
+    if (!topicAssignment) {
+      return {
+        success: false,
+        status: HTTP_STATUS.BAD_REQUEST,
+        message: "Nhóm chưa được phân công đề tài!",
+      };
+    }
+
+    // 3. Kiểm tra defenseRound hợp lệ
+    if (defenseRound !== 1 && defenseRound !== 2) {
+      return {
+        success: false,
+        status: HTTP_STATUS.BAD_REQUEST,
+        message: "Vòng bảo vệ chỉ có thể là 1 hoặc 2!",
+      };
+    }
+
+    // 4. Nếu vòng 2, kiểm tra vòng 1 đã hoàn thành
+    if (defenseRound === 2) {
+      const round1Schedule = await prisma.defenseSchedule.findFirst({
+        where: { groupId, defenseRound: 1, status: "COMPLETED", isDeleted: false },
+      });
+      if (!round1Schedule) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: "Nhóm chưa hoàn thành bảo vệ vòng 1!",
+        };
+      }
+    }
+
+    // 5. Ghi nhận xác nhận vào TopicAssignment
+    const updatedAssignment = await prisma.topicAssignment.update({
+      where: { id: topicAssignment.id },
+      data: {
+        defenseRound: defenseRound.toString(), // Lưu dưới dạng string
+        defendStatus: "CONFIRMED",
+      },
+    });
+
+    return {
+      success: true,
+      status: HTTP_STATUS.OK,
+      message: `Xác nhận nhóm đi bảo vệ vòng ${defenseRound} thành công!`,
+      data: updatedAssignment,
+    };
+  } catch (error) {
+    console.error("Lỗi khi xác nhận vòng bảo vệ:", error);
+    return {
+      success: false,
+      status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
+    };
+  }
+}
 }
 

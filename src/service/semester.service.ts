@@ -167,11 +167,7 @@ export class SemesterService {
           data: { isDeleted: true },
         }).then(res => res.count);
   
-        // 9. Đánh dấu xóa các ReviewDefenseCouncil liên quan đến Semester
-        updatedCounts.reviewDefenseCouncils = await tx.reviewDefenseCouncil.updateMany({
-          where: { semesterId: id, isDeleted: false },
-          data: { isDeleted: true },
-        }).then(res => res.count);
+        
   
         // 10. Đánh dấu xóa các Topic liên quan đến Semester
         updatedCounts.topics = await tx.topic.updateMany({

@@ -524,21 +524,16 @@ export class CouncilTopicService {
           data: { isDeleted: true },
         }).then(res => res.count);
   
-        updatedCounts.reviewDefenseCouncils = await tx.reviewDefenseCouncil.updateMany({
-          where: { councilId, isDeleted: false },
-          data: { isDeleted: true },
-        }).then(res => res.count);
-  
         updatedCounts.councilMembers = await tx.councilMember.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
         }).then(res => res.count);
-  
+
         updatedCounts.documents = await tx.document.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
         }).then(res => res.count);
-  
+
         await tx.council.update({
           where: { id: councilId },
           data: { isDeleted: true },
