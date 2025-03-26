@@ -106,6 +106,7 @@ export class SemesterService {
         const updatedCounts = {
           reviewSchedules: 0,
           defenseSchedules: 0,
+          defenseMemberResults: 0,
           councilMembers: 0,
           topicAssignments: 0,
           groupMembers: 0,
@@ -134,6 +135,12 @@ export class SemesterService {
         // 2. Đánh dấu xóa các DefenseSchedule liên quan đến các Council
         updatedCounts.defenseSchedules = await tx.defenseSchedule.updateMany({
           where: { councilId: { in: councilIds }, isDeleted: false },
+          data: { isDeleted: true },
+        }).then(res => res.count);
+
+        // 3. Đánh dấu xóa các DefenseMemberResult liên quan đến các Council
+        updatedCounts.defenseMemberResults = await tx.defenseMemberResult.updateMany({
+          where: { defenseScheduleId: { in: councilIds }, isDeleted: false },
           data: { isDeleted: true },
         }).then(res => res.count);
   
@@ -265,6 +272,7 @@ export class SemesterService {
               semesterStudentCount: semester.semesterStudents.length,
               deletedUserRoleCount: updatedCounts.userRoles, // Số lượng UserRole bị xóa mềm
               deletedSemesterStudentCount: updatedCounts.semesterStudents, // Số lượng SemesterStudent bị xóa mềm
+              deletedDefenseMemberResultCount: updatedCounts.defenseMemberResults, // Thêm vào metadata
               updatedCounts, // Toàn bộ số lượng bản ghi bị ảnh hưởng
             },
             oldValues: JSON.stringify(semester),

@@ -579,6 +579,20 @@ CREATE TABLE `defense_schedules` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `DefenseMemberResult` (
+    `id` VARCHAR(191) NOT NULL,
+    `defense_schedule_id` VARCHAR(191) NOT NULL,
+    `student_id` VARCHAR(191) NOT NULL,
+    `result` VARCHAR(191) NOT NULL,
+    `feedback` TEXT NULL,
+    `evaluated_by` VARCHAR(191) NULL,
+    `evaluated_at` DATETIME(3) NULL,
+    `isDeleted` BOOLEAN NOT NULL DEFAULT false,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `notification_recipients` (
     `notification_id` VARCHAR(191) NOT NULL,
     `user_id` VARCHAR(191) NOT NULL,
@@ -841,6 +855,12 @@ ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_council_id_fke
 
 -- AddForeignKey
 ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `DefenseMemberResult` ADD CONSTRAINT `DefenseMemberResult_defense_schedule_id_fkey` FOREIGN KEY (`defense_schedule_id`) REFERENCES `defense_schedules`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `DefenseMemberResult` ADD CONSTRAINT `DefenseMemberResult_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `Student`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `notification_recipients` ADD CONSTRAINT `notification_recipients_notification_id_fkey` FOREIGN KEY (`notification_id`) REFERENCES `notifications`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

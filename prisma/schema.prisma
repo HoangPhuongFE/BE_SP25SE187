@@ -112,6 +112,7 @@ model Student {
   isImported       Boolean           @default(true) @map("is_imported")
   invitations      GroupInvitation[]
   groupMembers     GroupMember[]
+  defenseMemberResults DefenseMemberResult[] @relation("StudentDefenseResults")
   isDeleted        Boolean           @default(false)
 }
 
@@ -663,35 +664,36 @@ enum CouncilType {
 }
 
 model DefenseSchedule {
-  id                 String             @id @default(uuid())
-  councilId          String             @map("council_id")
-  groupId            String             @map("group_id")
-  defenseTime        DateTime           @map("defense_time")
+  id                 String                @id @default(uuid())
+  councilId          String                @map("council_id")
+  groupId            String                @map("group_id")
+  defenseTime        DateTime              @map("defense_time")
   room               String
-  defenseRound       Int                @map("defense_round")
+  defenseRound       Int                   @map("defense_round")
   status             String
-  notes              String?            @db.Text
+  notes              String?               @db.Text
   result             String?
   feedback           String?
-  createdAt          DateTime           @default(now()) @map("created_at")
-  council            Council            @relation(fields: [councilId], references: [id])
-  group              Group              @relation(fields: [groupId], references: [id])
-  documents          Document[]         @relation("DefenseScheduleDocuments") 
-  isDeleted          Boolean            @default(false)
-  memberResults DefenseMemberResult[]
+  createdAt          DateTime              @default(now()) @map("created_at")
+  council            Council               @relation(fields: [councilId], references: [id])
+  group              Group                 @relation(fields: [groupId], references: [id])
+  documents          Document[]            @relation("DefenseScheduleDocuments")
+  memberResults      DefenseMemberResult[] @relation("DefenseMemberResults") // Quan hệ với DefenseMemberResult
+  isDeleted          Boolean               @default(false)
+
   @@map("defense_schedules")
 }
 
 model DefenseMemberResult {
   id               String         @id @default(uuid())
-  defenseScheduleId String        @map("defense_schedule_id")
+  defenseScheduleId String         @map("defense_schedule_id")
   studentId        String         @map("student_id")
   result           String         // "PASS" hoặc "NOT_PASS"
   feedback         String?        @db.Text
   evaluatedBy      String?        @map("evaluated_by") // Người đánh giá (tùy chọn)
   evaluatedAt      DateTime?      @map("evaluated_at") // Thời gian đánh giá (tùy chọn)
-  defenseSchedule  DefenseSchedule @relation(fields: [defenseScheduleId], references: [id])
-  student          Student        @relation(fields: [studentId], references: [id])
+  defenseSchedule  DefenseSchedule @relation("DefenseMemberResults", fields: [defenseScheduleId], references: [id]) // Đồng bộ tên quan hệ
+  student          Student        @relation("StudentDefenseResults", fields: [studentId], references: [id])
   isDeleted        Boolean        @default(false)
 }
 model NotificationRecipient {
