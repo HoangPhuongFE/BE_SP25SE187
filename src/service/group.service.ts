@@ -477,22 +477,41 @@ export class GroupService {
                 members: {
                     include: {
                         student: {
-                            include: { user: true },
+                            include: { 
+                                user: true,
+                                major: true // Thêm quan hệ major để lấy thông tin Major
+                            },
                         },
                         role: true,
                     },
                 },
+                semester: true, // Đã thêm trong gợi ý trước
             },
         });
-
+    
         if (!group) throw new Error("Nhóm không tồn tại.");
-
+    
+        // Kiểm tra và cập nhật groupCode nếu cần
+        const majorName = group.members[0]?.student?.major?.name || "Unknown";
+        const newGroupCode = await this.generateUniqueGroupCode(
+            majorName,
+            group.semesterId,
+            group.semester.startDate
+        );
+    
+        if (newGroupCode !== group.groupCode) {
+            await prisma.group.update({
+                where: { id: groupId },
+                data: { groupCode: newGroupCode },
+            });
+            group.groupCode = newGroupCode; // Cập nhật giá trị trong object trả về
+        }
+    
         return {
             ...group,
             totalMembers: group._count.members,
         };
     }
-
     // getInvitationById
     async getInvitationById(invitationId: string) {
         return prisma.groupInvitation.findUnique({

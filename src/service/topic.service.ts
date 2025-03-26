@@ -1494,7 +1494,7 @@ export class TopicService {
     });
 
     if (topics.length === 0) {
-      return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Không tìm thấy đề tài khả dụng!' };
+      return { success: false, status: HTTP_STATUS.OK, message: 'Không tìm thấy đề tài khả dụng!' };
     }
 
     return { success: true, status: HTTP_STATUS.OK, message: 'Lấy danh sách đề tài thành công!', data: topics };
