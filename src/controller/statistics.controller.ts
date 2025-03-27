@@ -341,51 +341,67 @@ const getCouncilTopicStatsBySubmissionPeriod = async () => {
 
 // Hàm helper để lấy thống kê thành viên hội đồng
 const getCouncilTopicMemberStats = async () => {
-  const members = await prisma.councilMember.findMany({
+  const councils = await prisma.council.findMany({
     where: {
       isDeleted: false,
-      council: {
-        type: "topic",
-        isDeleted: false
-      }
+      type: "topic"
     },
     include: {
-      user: {
-        select: {
-          id: true,
-          fullName: true,
-          email: true
-        }
-      },
-      role: {
-        select: {
-          id: true,
-          name: true
+      members: {
+        where: {
+          isDeleted: false
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true
+            }
+          },
+          role: {
+            select: {
+              id: true,
+              name: true
+            }
+          }
         }
       }
     }
   });
 
-  // Thống kê theo vai trò
-  const statsByRole = members.reduce((acc, member) => {
-    const roleName = member.role.name;
-    if (!acc[roleName]) {
-      acc[roleName] = {
-        roleName,
-        totalMembers: 0,
-        members: []
-      };
-    }
-    acc[roleName].totalMembers++;
-    acc[roleName].members.push({
-      id: member.user.id,
-      fullName: member.user.fullName,
-      email: member.user.email
-    });
-    return acc;
-  }, {} as Record<string, any>);
+  // Thống kê theo hội đồng
+  const statsByCouncil = councils.map(council => {
+    // Nhóm thành viên theo vai trò trong hội đồng
+    const membersByRole = council.members.reduce((acc, member) => {
+      const roleName = member.role.name;
+      if (!acc[roleName]) {
+        acc[roleName] = {
+          roleName,
+          totalMembers: 0,
+          members: []
+        };
+      }
+      acc[roleName].totalMembers++;
+      acc[roleName].members.push({
+        id: member.user.id,
+        fullName: member.user.fullName,
+        email: member.user.email
+      });
+      return acc;
+    }, {} as Record<string, any>);
 
-  return Object.values(statsByRole);
+    return {
+      councilId: council.id,
+      councilName: council.name,
+      councilCode: council.code,
+      status: council.status,
+      totalMembers: council.members.length,
+      membersByRole: Object.values(membersByRole)
+    };
+  });
+
+  return statsByCouncil;
 };
 
 // Hàm helper để lấy thống kê tổng quan về hội đồng bảo vệ
