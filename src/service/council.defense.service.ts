@@ -688,7 +688,7 @@ export class CouncilDefenseService {
             if (!activeSemester) {
                 return {
                     success: false,
-                    status: HTTP_STATUS.NOT_FOUND,
+                    status: HTTP_STATUS.OK,
                     message: "Hiện tại không có học kỳ nào đang hoạt động!",
                 };
             }
@@ -702,7 +702,7 @@ export class CouncilDefenseService {
             if (!student) {
                 return {
                     success: false,
-                    status: HTTP_STATUS.NOT_FOUND,
+                    status: HTTP_STATUS.OK,
                     message: "Không tìm thấy thông tin sinh viên!",
                 };
             }
@@ -720,7 +720,7 @@ export class CouncilDefenseService {
             if (!groupMember) {
                 return {
                     success: false,
-                    status: HTTP_STATUS.NOT_FOUND,
+                    status: HTTP_STATUS.OK,
                     message: "Bạn hiện không thuộc nhóm nào trong kỳ hiện tại!",
                 };
             }
@@ -1087,92 +1087,133 @@ export class CouncilDefenseService {
         }
     }
     // Thay đổi thành viên hội đồng bảo vệ
-    async updateDefenseCouncilMembers(councilId: string, members: { email: string; role: string }[], updatedBy: string) {
+    async updateDefenseCouncilMembers(
+        councilId: string, 
+        members: { email: string; role: string }[], 
+    ) {
         try {
-            const council = await prisma.council.findUnique({ where: { id: councilId, type: "DEFENSE", isDeleted: false } });
-            if (!council) {
-                return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Hội đồng bảo vệ không tồn tại!" };
-            }
-
-            // Lấy cấu hình từ SystemConfigService
-            const minChairman = await systemConfigService.getMinDefenseChairman(); // 1
-            const maxChairman = await systemConfigService.getMaxDefenseChairman(); // 1
-            const minSecretary = await systemConfigService.getMinDefenseSecretary(); // 1
-            const maxSecretary = await systemConfigService.getMaxDefenseSecretary(); // 1
-            const minReviewers = await systemConfigService.getMinDefenseReviewers(); // 3
-            const maxReviewers = await systemConfigService.getMaxDefenseReviewers(); // 3
-            const maxDefenseMembers = await systemConfigService.getMaxDefenseMembers(); // 5
-
-            // Xóa toàn bộ thành viên hiện tại (soft delete)
-            await prisma.councilMember.updateMany({
-                where: { councilId, isDeleted: false },
-                data: { isDeleted: true },
+            // Kiểm tra hội đồng
+            const council = await prisma.council.findUnique({ 
+                where: { 
+                    id: councilId, 
+                    type: "DEFENSE", 
+                    isDeleted: false 
+                } 
             });
-
-            // Thêm lại danh sách thành viên mới trong transaction
-            const updatedMembers = await prisma.$transaction(async (tx) => {
-                const newMembers: any[] | PromiseLike<any[]> = [];
-
-                // Lấy roleId của các vai trò trước
-                const chairmanRole = await tx.role.findUnique({ where: { name: "council_chairman" } });
-                const secretaryRole = await tx.role.findUnique({ where: { name: "council_secretary" } });
-                const memberRole = await tx.role.findUnique({ where: { name: "council_member" } });
-
+            if (!council) {
+                return { 
+                    success: false, 
+                    status: 404,
+                    message: "Hội đồng bảo vệ không tồn tại!" 
+                };
+            }
+    
+            // Lấy cấu hình
+            const systemConfigService = new SystemConfigService();
+            const [
+                minChairman, 
+                maxChairman, 
+                minSecretary, 
+                maxSecretary, 
+                minReviewers, 
+                maxReviewers, 
+                maxDefenseMembers
+            ] = await Promise.all([
+                systemConfigService.getMinDefenseChairman(),
+                systemConfigService.getMaxDefenseChairman(),
+                systemConfigService.getMinDefenseSecretary(),
+                systemConfigService.getMaxDefenseSecretary(),
+                systemConfigService.getMinDefenseReviewers(),
+                systemConfigService.getMaxDefenseReviewers(),
+                systemConfigService.getMaxDefenseMembers()
+            ]);
+    
+            // Transaction
+            const result = await prisma.$transaction(async (tx) => {
+                // Soft delete thành viên hiện tại
+                await tx.councilMember.updateMany({
+                    where: { councilId, isDeleted: false },
+                    data: { 
+                        isDeleted: true
+                    }
+                });
+    
+                // Lấy roles
+                const [chairmanRole, secretaryRole, memberRole] = await Promise.all([
+                    tx.role.findUnique({ where: { name: "council_chairman" } }),
+                    tx.role.findUnique({ where: { name: "council_secretary" } }),
+                    tx.role.findUnique({ where: { name: "council_member" } })
+                ]);
+    
+                if (!chairmanRole || !secretaryRole || !memberRole) {
+                    throw new Error("Không tìm thấy thông tin vai trò cần thiết!");
+                }
+    
+                // Kiểm tra số lượng
+                const roleCounts = { chairman: 0, secretary: 0, reviewer: 0 };
+                members.forEach(member => {
+                    if (member.role === "council_chairman") roleCounts.chairman++;
+                    else if (member.role === "council_secretary") roleCounts.secretary++;
+                    else if (member.role === "council_member") roleCounts.reviewer++;
+                    else throw new Error(`Vai trò ${member.role} không hợp lệ!`);
+                });
+    
+                if (roleCounts.chairman < minChairman || roleCounts.chairman > maxChairman) {
+                    throw new Error(`Số lượng chủ tịch phải từ ${minChairman} đến ${maxChairman}!`);
+                }
+                if (roleCounts.secretary < minSecretary || roleCounts.secretary > maxSecretary) {
+                    throw new Error(`Số lượng thư ký phải từ ${minSecretary} đến ${maxSecretary}!`);
+                }
+                if (roleCounts.reviewer < minReviewers || roleCounts.reviewer > maxReviewers) {
+                    throw new Error(`Số lượng thành viên phản biện phải từ ${minReviewers} đến ${maxReviewers}!`);
+                }
+                if (members.length > maxDefenseMembers) {
+                    throw new Error(`Tổng số thành viên không được vượt quá ${maxDefenseMembers}!`);
+                }
+    
                 // Thêm thành viên mới
-                for (const member of members) {
-                    const user = await tx.user.findUnique({ where: { email: member.email }, select: { id: true } });
-                    if (!user) {
-                        throw new Error(`Không tìm thấy người dùng với email: ${member.email}`);
-                    }
-
-                    const role = await tx.role.findUnique({ where: { name: member.role } });
-                    if (!role) {
-                        throw new Error(`Vai trò ${member.role} không tồn tại!`);
-                    }
-
-                    const newMember = await tx.councilMember.create({
-                        data: {
-                            councilId,
-                            userId: user.id,
-                            roleId: role.id,
-                            assignedAt: new Date(),
-                            status: "ACTIVE",
-                            semesterId: council.semesterId || '',
-                        },
-                    });
-                    newMembers.push(newMember);
-                }
-
-                // Kiểm tra số lượng thành viên sau khi thêm
-                const chairmanCount = newMembers.filter(m => m.roleId === chairmanRole?.id).length;
-                const secretaryCount = newMembers.filter(m => m.roleId === secretaryRole?.id).length;
-                const reviewerCount = newMembers.filter(m => m.roleId === memberRole?.id).length;
-                const totalMemberCount = newMembers.length;
-
-                if (
-                    totalMemberCount !== maxDefenseMembers ||
-                    chairmanCount !== minChairman ||
-                    secretaryCount !== minSecretary ||
-                    reviewerCount !== minReviewers
-                ) {
-                    throw new Error(`Hội đồng phải có đúng ${minChairman} chủ tịch, ${minSecretary} thư ký, và ${minReviewers} thành viên thường (tổng cộng ${maxDefenseMembers} người)!`);
-                }
-
+                const newMembers = await Promise.all(
+                    members.map(async (member) => {
+                        const user = await tx.user.findUnique({ 
+                            where: { email: member.email }, 
+                            select: { id: true } 
+                        });
+                        if (!user) {
+                            throw new Error(`Không tìm thấy người dùng với email: ${member.email}`);
+                        }
+    
+                        const roleId = member.role === "council_chairman" ? chairmanRole.id :
+                                    member.role === "council_secretary" ? secretaryRole.id :
+                                    memberRole.id;
+    
+                        return tx.councilMember.create({
+                            data: {
+                                councilId,
+                                userId: user.id,
+                                roleId,
+                                assignedAt: new Date(),
+                                status: "ACTIVE",
+                                semesterId: council.semesterId || ''
+                            }
+                        });
+                    })
+                );
+    
                 return newMembers;
             });
-
+    
             return {
                 success: true,
-                status: HTTP_STATUS.OK,
-                message: "Thay đổi thành viên hội đồng thành công!",
-                data: updatedMembers,
+                status: 200,
+                message: "Cập nhật thành viên hội đồng thành công!",
+                data: result
             };
         } catch (error) {
-            console.error("Lỗi khi thay đổi thành viên hội đồng:", error);
+            console.error("Lỗi khi cập nhật thành viên hội đồng:", error);
             return {
                 success: false,
-                status: HTTP_STATUS.BAD_REQUEST,
-                message: error instanceof Error ? error.message : "Lỗi hệ thống khi thay đổi thành viên hội đồng!",
+                status: 400,
+                message: error instanceof Error ? error.message : "Lỗi hệ thống khi cập nhật thành viên hội đồng!"
             };
         }
     }

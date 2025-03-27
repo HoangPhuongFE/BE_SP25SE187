@@ -477,36 +477,16 @@ export class GroupService {
                 members: {
                     include: {
                         student: {
-                            include: { 
-                                user: true,
-                                major: true // Thêm quan hệ major để lấy thông tin Major
-                            },
+                            include: { user: true },
                         },
                         role: true,
                     },
                 },
-                semester: true, // Đã thêm trong gợi ý trước
             },
         });
-    
+
         if (!group) throw new Error("Nhóm không tồn tại.");
-    
-        // Kiểm tra và cập nhật groupCode nếu cần
-        const majorName = group.members[0]?.student?.major?.name || "Unknown";
-        const newGroupCode = await this.generateUniqueGroupCode(
-            majorName,
-            group.semesterId,
-            group.semester.startDate
-        );
-    
-        if (newGroupCode !== group.groupCode) {
-            await prisma.group.update({
-                where: { id: groupId },
-                data: { groupCode: newGroupCode },
-            });
-            group.groupCode = newGroupCode; // Cập nhật giá trị trong object trả về
-        }
-    
+
         return {
             ...group,
             totalMembers: group._count.members,
@@ -559,17 +539,17 @@ export class GroupService {
             include: { roles: { include: { role: true } } },
         });
         if (!user) throw new Error("Người dùng không tồn tại.");
-    
+
         const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
-    
+
         const baseInclude = {
             members: {
                 include: {
-                    student: { 
-                        include: { 
+                    student: {
+                        include: {
                             user: true,
                             major: true // Thêm để lấy thông tin Major
-                        } 
+                        }
                     },
                     role: true,
                 },
@@ -582,7 +562,7 @@ export class GroupService {
             },
             semester: true, // Thêm để lấy thông tin Semester
         };
-    
+
         let groups;
         if (
             userRoles.includes("graduation_thesis_manager") ||
@@ -599,7 +579,7 @@ export class GroupService {
                 select: { id: true },
             });
             if (!student) throw new Error("Không tìm thấy sinh viên.");
-    
+
             groups = await prisma.group.findMany({
                 where: {
                     semesterId,
@@ -618,11 +598,11 @@ export class GroupService {
                     select: { groupId: true },
                 })
             ).map((gm) => gm.groupId);
-    
+
             if (mentorGroupIds.length === 0) {
                 return [];
             }
-    
+
             groups = await prisma.group.findMany({
                 where: {
                     semesterId,
@@ -633,7 +613,7 @@ export class GroupService {
         } else {
             throw new Error("Bạn không có quyền truy cập danh sách nhóm.");
         }
-    
+
         // Cập nhật groupCode nếu cần
         for (const group of groups) {
             const majorName = group.members[0]?.student?.major?.name || "Unknown";
@@ -642,7 +622,7 @@ export class GroupService {
                 group.semesterId,
                 group.semester.startDate
             );
-    
+
             if (newGroupCode !== group.groupCode) {
                 await prisma.group.update({
                     where: { id: group.id },
@@ -651,7 +631,7 @@ export class GroupService {
                 group.groupCode = newGroupCode; // Cập nhật giá trị trong object trả về
             }
         }
-    
+
         return groups;
     }
 
@@ -1259,253 +1239,253 @@ export class GroupService {
 
     async deleteGroup(groupId: string, userId: string, ipAddress?: string) {
         try {
-          // Kiểm tra thông tin người dùng và vai trò
-          const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: { roles: { include: { role: true } } },
-          });
-          if (!user) {
-            await prisma.systemLog.create({
-              data: {
-                userId,
-                action: "DELETE_GROUP_ATTEMPT",
-                entityType: "Group",
-                entityId: groupId,
-                description: "Thử xóa nhóm nhưng người dùng không tồn tại",
-                severity: "ERROR",
-                ipAddress: ipAddress || "unknown",
-              },
+            // Kiểm tra thông tin người dùng và vai trò
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                include: { roles: { include: { role: true } } },
             });
-            throw new Error("Người dùng không tồn tại.");
-          }
-      
-          const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
-          const isAdmin = userRoles.includes("academic_officer") || userRoles.includes("graduation_thesis_manager");
-      
-          const student = await prisma.student.findUnique({ where: { userId } });
-          let isLeader = false;
-          if (student) {
-            const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
-            if (!leaderRole) {
-              await prisma.systemLog.create({
-                data: {
-                  userId,
-                  action: "DELETE_GROUP_ATTEMPT",
-                  entityType: "Group",
-                  entityId: groupId,
-                  description: 'Vai trò "leader" không tồn tại trong hệ thống',
-                  severity: "ERROR",
-                  ipAddress: ipAddress || "unknown",
-                },
-              });
-              throw new Error('Vai trò "leader" không tồn tại.');
+            if (!user) {
+                await prisma.systemLog.create({
+                    data: {
+                        userId,
+                        action: "DELETE_GROUP_ATTEMPT",
+                        entityType: "Group",
+                        entityId: groupId,
+                        description: "Thử xóa nhóm nhưng người dùng không tồn tại",
+                        severity: "ERROR",
+                        ipAddress: ipAddress || "unknown",
+                    },
+                });
+                throw new Error("Người dùng không tồn tại.");
             }
-            const leader = await prisma.groupMember.findFirst({
-              where: { groupId, studentId: student.id, roleId: leaderRole.id, isActive: true, isDeleted: false },
+
+            const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
+            const isAdmin = userRoles.includes("academic_officer") || userRoles.includes("graduation_thesis_manager");
+
+            const student = await prisma.student.findUnique({ where: { userId } });
+            let isLeader = false;
+            if (student) {
+                const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
+                if (!leaderRole) {
+                    await prisma.systemLog.create({
+                        data: {
+                            userId,
+                            action: "DELETE_GROUP_ATTEMPT",
+                            entityType: "Group",
+                            entityId: groupId,
+                            description: 'Vai trò "leader" không tồn tại trong hệ thống',
+                            severity: "ERROR",
+                            ipAddress: ipAddress || "unknown",
+                        },
+                    });
+                    throw new Error('Vai trò "leader" không tồn tại.');
+                }
+                const leader = await prisma.groupMember.findFirst({
+                    where: { groupId, studentId: student.id, roleId: leaderRole.id, isActive: true, isDeleted: false },
+                });
+                if (leader) isLeader = true;
+            }
+
+            if (!isAdmin && !isLeader) {
+                await prisma.systemLog.create({
+                    data: {
+                        userId,
+                        action: "DELETE_GROUP_ATTEMPT",
+                        entityType: "Group",
+                        entityId: groupId,
+                        description: "Thử xóa nhóm nhưng không có quyền (chỉ leader hoặc academic_officer)",
+                        severity: "WARNING",
+                        ipAddress: ipAddress || "unknown",
+                        metadata: { userRoles },
+                    },
+                });
+                throw new Error("Bạn không có quyền xóa nhóm (chỉ leader hoặc graduation_thesis_manager/academic_officer).");
+            }
+
+            const group = await prisma.group.findUnique({
+                where: { id: groupId, isDeleted: false },
+                include: { members: true, topicAssignments: true },
             });
-            if (leader) isLeader = true;
-          }
-      
-          if (!isAdmin && !isLeader) {
-            await prisma.systemLog.create({
-              data: {
-                userId,
-                action: "DELETE_GROUP_ATTEMPT",
-                entityType: "Group",
-                entityId: groupId,
-                description: "Thử xóa nhóm nhưng không có quyền (chỉ leader hoặc academic_officer)",
-                severity: "WARNING",
-                ipAddress: ipAddress || "unknown",
-                metadata: { userRoles },
-              },
+            if (!group) {
+                await prisma.systemLog.create({
+                    data: {
+                        userId,
+                        action: "DELETE_GROUP_ATTEMPT",
+                        entityType: "Group",
+                        entityId: groupId,
+                        description: "Thử xóa nhóm nhưng không tìm thấy hoặc đã bị đánh dấu xóa",
+                        severity: "WARNING",
+                        ipAddress: ipAddress || "unknown",
+                    },
+                });
+                throw new Error("Nhóm không tồn tại.");
+            }
+
+            if (!isAdmin && group.members.length > 1) {
+                await prisma.systemLog.create({
+                    data: {
+                        userId,
+                        action: "DELETE_GROUP_ATTEMPT",
+                        entityType: "Group",
+                        entityId: groupId,
+                        description: "Thử xóa nhóm nhưng nhóm vẫn còn thành viên",
+                        severity: "WARNING",
+                        ipAddress: ipAddress || "unknown",
+                        metadata: { memberCount: group.members.length },
+                    },
+                });
+                throw new Error("Nhóm vẫn còn thành viên, chỉ graduation_thesis_manager hoặc academic_officer mới có thể xóa.");
+            }
+
+            const updatedGroup = await prisma.$transaction(async (tx) => {
+                const updatedCounts = {
+                    reviewSchedules: 0,
+                    defenseSchedules: 0,
+                    defenseMemberResults: 0, // Thêm để đếm số bản ghi DefenseMemberResult bị xóa
+                    progressReports: 0,
+                    topicAssignments: 0,
+                    groupMentors: 0,
+                    groupInvitations: 0,
+                    groupMembers: 0,
+                    meetingSchedules: 0,
+                    documents: 0,
+                    topics: 0,
+                };
+
+                updatedCounts.reviewSchedules = await tx.reviewSchedule
+                    .updateMany({
+                        where: { groupId, isDeleted: false },
+                        data: { isDeleted: true },
+                    })
+                    .then((res) => res.count);
+
+                const defenseScheduleIds = await tx.defenseSchedule
+                    .findMany({
+                        where: { groupId, isDeleted: false },
+                        select: { id: true },
+                    })
+                    .then((schedules) => schedules.map((s) => s.id));
+
+                updatedCounts.defenseSchedules = await tx.defenseSchedule
+                    .updateMany({
+                        where: { groupId, isDeleted: false },
+                        data: { isDeleted: true },
+                    })
+                    .then((res) => res.count);
+
+                updatedCounts.defenseMemberResults = await tx.defenseMemberResult
+                    .updateMany({
+                        where: { defenseScheduleId: { in: defenseScheduleIds }, isDeleted: false },
+                        data: { isDeleted: true },
+                    })
+                    .then((res) => res.count);
+
+                updatedCounts.progressReports = await tx.progressReport
+                    .updateMany({
+                        where: { groupId, isDeleted: false },
+                        data: { isDeleted: true },
+                    })
+                    .then((res) => res.count);
+
+                updatedCounts.topicAssignments = await tx.topicAssignment
+                    .updateMany({
+                        where: { groupId, isDeleted: false },
+                        data: { isDeleted: true },
+                    })
+                    .then((res) => res.count);
+
+                updatedCounts.groupMentors = await tx.groupMentor
+                    .updateMany({
+                        where: { groupId, isDeleted: false },
+                        data: { isDeleted: true },
+                    })
+                    .then((res) => res.count);
+
+                updatedCounts.groupInvitations = await tx.groupInvitation
+                    .updateMany({
+                        where: { groupId, isDeleted: false },
+                        data: { isDeleted: true },
+                    })
+                    .then((res) => res.count);
+
+                updatedCounts.groupMembers = await tx.groupMember
+                    .updateMany({
+                        where: { groupId, isDeleted: false },
+                        data: { isDeleted: true },
+                    })
+                    .then((res) => res.count);
+
+                updatedCounts.meetingSchedules = await tx.meetingSchedule
+                    .updateMany({
+                        where: { groupId, isDeleted: false },
+                        data: { isDeleted: true },
+                    })
+                    .then((res) => res.count);
+
+                updatedCounts.documents = await tx.document
+                    .updateMany({
+                        where: { groupId, isDeleted: false },
+                        data: { isDeleted: true },
+                    })
+                    .then((res) => res.count);
+
+                updatedCounts.topics = await tx.topic
+                    .updateMany({
+                        where: { proposedGroupId: groupId, isDeleted: false },
+                        data: { isDeleted: true },
+                    })
+                    .then((res) => res.count);
+
+                await tx.group.update({
+                    where: { id: groupId },
+                    data: { isDeleted: true },
+                });
+
+                await tx.systemLog.create({
+                    data: {
+                        userId,
+                        action: "DELETE_GROUP",
+                        entityType: "Group",
+                        entityId: groupId,
+                        description: `Nhóm "${group.groupCode}" đã được đánh dấu xóa bởi ${isAdmin ? "admin" : "leader"}`,
+                        severity: "INFO",
+                        ipAddress: ipAddress || "unknown",
+                        metadata: {
+                            deletedByRole: isAdmin ? "admin" : "leader",
+                            groupCode: group.groupCode,
+                            memberCount: group.members.length,
+                            topicAssignmentsCount: group.topicAssignments.length,
+                            deletedDefenseMemberResultCount: updatedCounts.defenseMemberResults,
+                            updatedCounts,
+                        },
+                        oldValues: JSON.stringify(group),
+                    },
+                });
+
+                return await tx.group.findUnique({
+                    where: { id: groupId },
+                    include: { members: true, topicAssignments: true },
+                });
             });
-            throw new Error("Bạn không có quyền xóa nhóm (chỉ leader hoặc graduation_thesis_manager/academic_officer).");
-          }
-      
-          const group = await prisma.group.findUnique({
-            where: { id: groupId, isDeleted: false },
-            include: { members: true, topicAssignments: true },
-          });
-          if (!group) {
-            await prisma.systemLog.create({
-              data: {
-                userId,
-                action: "DELETE_GROUP_ATTEMPT",
-                entityType: "Group",
-                entityId: groupId,
-                description: "Thử xóa nhóm nhưng không tìm thấy hoặc đã bị đánh dấu xóa",
-                severity: "WARNING",
-                ipAddress: ipAddress || "unknown",
-              },
-            });
-            throw new Error("Nhóm không tồn tại.");
-          }
-      
-          if (!isAdmin && group.members.length > 1) {
-            await prisma.systemLog.create({
-              data: {
-                userId,
-                action: "DELETE_GROUP_ATTEMPT",
-                entityType: "Group",
-                entityId: groupId,
-                description: "Thử xóa nhóm nhưng nhóm vẫn còn thành viên",
-                severity: "WARNING",
-                ipAddress: ipAddress || "unknown",
-                metadata: { memberCount: group.members.length },
-              },
-            });
-            throw new Error("Nhóm vẫn còn thành viên, chỉ graduation_thesis_manager hoặc academic_officer mới có thể xóa.");
-          }
-      
-          const updatedGroup = await prisma.$transaction(async (tx) => {
-            const updatedCounts = {
-              reviewSchedules: 0,
-              defenseSchedules: 0,
-              defenseMemberResults: 0, // Thêm để đếm số bản ghi DefenseMemberResult bị xóa
-              progressReports: 0,
-              topicAssignments: 0,
-              groupMentors: 0,
-              groupInvitations: 0,
-              groupMembers: 0,
-              meetingSchedules: 0,
-              documents: 0,
-              topics: 0,
-            };
-      
-            updatedCounts.reviewSchedules = await tx.reviewSchedule
-              .updateMany({
-                where: { groupId, isDeleted: false },
-                data: { isDeleted: true },
-              })
-              .then((res) => res.count);
-      
-            const defenseScheduleIds = await tx.defenseSchedule
-              .findMany({
-                where: { groupId, isDeleted: false },
-                select: { id: true },
-              })
-              .then((schedules) => schedules.map((s) => s.id));
-      
-            updatedCounts.defenseSchedules = await tx.defenseSchedule
-              .updateMany({
-                where: { groupId, isDeleted: false },
-                data: { isDeleted: true },
-              })
-              .then((res) => res.count);
-      
-            updatedCounts.defenseMemberResults = await tx.defenseMemberResult
-              .updateMany({
-                where: { defenseScheduleId: { in: defenseScheduleIds }, isDeleted: false },
-                data: { isDeleted: true },
-              })
-              .then((res) => res.count);
-      
-            updatedCounts.progressReports = await tx.progressReport
-              .updateMany({
-                where: { groupId, isDeleted: false },
-                data: { isDeleted: true },
-              })
-              .then((res) => res.count);
-      
-            updatedCounts.topicAssignments = await tx.topicAssignment
-              .updateMany({
-                where: { groupId, isDeleted: false },
-                data: { isDeleted: true },
-              })
-              .then((res) => res.count);
-      
-            updatedCounts.groupMentors = await tx.groupMentor
-              .updateMany({
-                where: { groupId, isDeleted: false },
-                data: { isDeleted: true },
-              })
-              .then((res) => res.count);
-      
-            updatedCounts.groupInvitations = await tx.groupInvitation
-              .updateMany({
-                where: { groupId, isDeleted: false },
-                data: { isDeleted: true },
-              })
-              .then((res) => res.count);
-      
-            updatedCounts.groupMembers = await tx.groupMember
-              .updateMany({
-                where: { groupId, isDeleted: false },
-                data: { isDeleted: true },
-              })
-              .then((res) => res.count);
-      
-            updatedCounts.meetingSchedules = await tx.meetingSchedule
-              .updateMany({
-                where: { groupId, isDeleted: false },
-                data: { isDeleted: true },
-              })
-              .then((res) => res.count);
-      
-            updatedCounts.documents = await tx.document
-              .updateMany({
-                where: { groupId, isDeleted: false },
-                data: { isDeleted: true },
-              })
-              .then((res) => res.count);
-      
-            updatedCounts.topics = await tx.topic
-              .updateMany({
-                where: { proposedGroupId: groupId, isDeleted: false },
-                data: { isDeleted: true },
-              })
-              .then((res) => res.count);
-      
-            await tx.group.update({
-              where: { id: groupId },
-              data: { isDeleted: true },
-            });
-      
-            await tx.systemLog.create({
-              data: {
-                userId,
-                action: "DELETE_GROUP",
-                entityType: "Group",
-                entityId: groupId,
-                description: `Nhóm "${group.groupCode}" đã được đánh dấu xóa bởi ${isAdmin ? "admin" : "leader"}`,
-                severity: "INFO",
-                ipAddress: ipAddress || "unknown",
-                metadata: {
-                  deletedByRole: isAdmin ? "admin" : "leader",
-                  groupCode: group.groupCode,
-                  memberCount: group.members.length,
-                  topicAssignmentsCount: group.topicAssignments.length,
-                  deletedDefenseMemberResultCount: updatedCounts.defenseMemberResults,
-                  updatedCounts,
-                },
-                oldValues: JSON.stringify(group),
-              },
-            });
-      
-            return await tx.group.findUnique({
-              where: { id: groupId },
-              include: { members: true, topicAssignments: true },
-            });
-          });
-      
-          return { message: "Nhóm đã được đánh dấu xóa thành công.", data: updatedGroup };
+
+            return { message: "Nhóm đã được đánh dấu xóa thành công.", data: updatedGroup };
         } catch (error) {
-          await prisma.systemLog.create({
-            data: {
-              userId,
-              action: "DELETE_GROUP_ERROR",
-              entityType: "Group",
-              entityId: groupId,
-              description: "Lỗi hệ thống khi đánh dấu xóa nhóm",
-              severity: "ERROR",
-              error: error instanceof Error ? error.message : "Unknown error",
-              stackTrace: (error as Error).stack || "No stack trace",
-              ipAddress: ipAddress || "unknown",
-            },
-          });
-          throw error;
+            await prisma.systemLog.create({
+                data: {
+                    userId,
+                    action: "DELETE_GROUP_ERROR",
+                    entityType: "Group",
+                    entityId: groupId,
+                    description: "Lỗi hệ thống khi đánh dấu xóa nhóm",
+                    severity: "ERROR",
+                    error: error instanceof Error ? error.message : "Unknown error",
+                    stackTrace: (error as Error).stack || "No stack trace",
+                    ipAddress: ipAddress || "unknown",
+                },
+            });
+            throw error;
         }
-      }
+    }
     // 12) leaveGroup
     async leaveGroup(groupId: string, userId: string) {
         const group = await prisma.group.findUnique({ where: { id: groupId } });

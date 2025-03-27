@@ -276,7 +276,7 @@ export class CouncilReviewController {
   async updateReviewSchedule(req: Request, res: Response) {
     const { scheduleId } = req.params;
     const { status, room, reviewTime, note, groupId, groupCode } = req.body; 
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     const result = await councilReviewService.updateReviewSchedule(
       scheduleId,

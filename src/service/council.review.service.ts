@@ -929,7 +929,7 @@ export class CouncilReviewService {
       if (!activeSemester) {
         return {
           success: false,
-          status: HTTP_STATUS.NOT_FOUND,
+          status: HTTP_STATUS.OK,
           message: "Hiện tại không có học kỳ nào đang hoạt động!",
         };
       }
@@ -959,7 +959,7 @@ export class CouncilReviewService {
       if (!groupMember) {
         return {
           success: false,
-          status: HTTP_STATUS.NOT_FOUND,
+          status: HTTP_STATUS.OK,
           message: "Bạn hiện không thuộc nhóm nào trong kỳ hiện tại!",
         };
       }
@@ -1308,38 +1308,18 @@ export class CouncilReviewService {
 
   async updateReviewSchedule(
     scheduleId: string,
-    data: { status?: string; room?: string; reviewTime?: Date; note?: string; groupId?: string; groupCode?: string }, // Sửa notes thành note
+    data: { status?: string; room?: string; reviewTime?: Date; note?: string; groupId?: string; groupCode?: string },
     userId: string
   ) {
     try {
-      // 1. Kiểm tra vai trò từ UserRole
-      const userRoles = await prisma.userRole.findMany({
-        where: { userId, isActive: true, isDeleted: false },
-        include: { role: true },
-      });
-
-      const roleNames = userRoles.map((ur) => ur.role.name);
-      console.log("User roles:", roleNames);
-
-      const allowedRoles = ["lecturer", "council_member"];
-      const hasPermission = roleNames.some((role) => allowedRoles.includes(role));
-
-      if (!hasPermission) {
-        return {
-          success: false,
-          status: HTTP_STATUS.FORBIDDEN,
-          message: "Bạn không có quyền cập nhật lịch chấm điểm (yêu cầu lecturer hoặc vai trò hội đồng)!",
-        };
-      }
-
-      // 2. Tìm ReviewSchedule
+      // 1. Tìm ReviewSchedule
       const schedule = await prisma.reviewSchedule.findFirst({
         where: { id: scheduleId, isDeleted: false },
         include: {
           council: { include: { members: true } },
           group: true,
           topic: true,
-          assignments: true, // Include assignments để truy cập sau
+          assignments: true,
         },
       });
 
@@ -1351,8 +1331,9 @@ export class CouncilReviewService {
         };
       }
 
-      // 3. Kiểm tra user là thành viên hội đồng
+      // 2. Kiểm tra user là thành viên hội đồng
       const isCouncilMember = schedule.council.members.some(member => member.userId === userId && !member.isDeleted);
+      console.log(`User ${userId} - isCouncilMember: ${isCouncilMember}, Council Members:`, schedule.council.members);
       if (!isCouncilMember) {
         return {
           success: false,
@@ -1361,7 +1342,7 @@ export class CouncilReviewService {
         };
       }
 
-      // 4. Xử lý linh hoạt groupId hoặc groupCode
+      // 3. Xử lý linh hoạt groupId hoặc groupCode
       let newGroupId = schedule.groupId;
       if (data.groupId || data.groupCode) {
         let targetGroupId: string | undefined;
@@ -1424,17 +1405,19 @@ export class CouncilReviewService {
           newGroupId = targetGroupId;
         }
       }
-
-      // 5. Cập nhật ReviewSchedule
+    
+      // 4. Cập nhật ReviewSchedule
       const updatedSchedule = await prisma.reviewSchedule.update({
         where: { id: scheduleId },
         data: {
           status: data.status || schedule.status,
           room: data.room || schedule.room,
           reviewTime: data.reviewTime || schedule.reviewTime,
-          note: data.note !== undefined ? data.note : schedule.note, // Sửa notes thành note
+          note: data.note !== undefined ? data.note : schedule.note,
           groupId: newGroupId,
-          topicId: newGroupId === schedule.groupId ? schedule.topicId : (await prisma.topicAssignment.findFirst({ where: { groupId: newGroupId } }))?.topicId,
+          topicId: newGroupId === schedule.groupId
+            ? schedule.topicId
+            : (await prisma.topicAssignment.findFirst({ where: { groupId: newGroupId, isDeleted: false } }))?.topicId,
         },
         include: {
           topic: { select: { topicCode: true, name: true } },
@@ -1444,8 +1427,8 @@ export class CouncilReviewService {
         },
       });
 
-      // 6. Nếu thay đổi nhóm, cập nhật ReviewAssignment
-      if (newGroupId !== schedule.groupId && schedule.assignments.length > 0) { // schedule.assignments đã được include
+      // 5. Nếu thay đổi nhóm, cập nhật ReviewAssignment
+      if (newGroupId !== schedule.groupId && schedule.assignments.length > 0) {
         await prisma.reviewAssignment.updateMany({
           where: { reviewScheduleId: scheduleId },
           data: { topicId: updatedSchedule.topicId },
@@ -1468,79 +1451,80 @@ export class CouncilReviewService {
     }
   }
 
-
   async confirmDefenseRound(groupCode: string, defenseRound: number, userId: string) {
-    try {
-      // Kiểm tra defenseRound hợp lệ (1 hoặc 2)
-      if (defenseRound !== 1 && defenseRound !== 2) {
+      try {
+        // Kiểm tra defenseRound hợp lệ (1 hoặc 2)
+        if (defenseRound !== 1 && defenseRound !== 2) {
+          return {
+            success: false,
+            status: HTTP_STATUS.BAD_REQUEST,
+            message: "Vòng bảo vệ chỉ có thể là 1 hoặc 2!",
+          };
+        }
+
+        // Tìm nhóm bằng groupCode
+        const group = await prisma.group.findFirst({
+          where: { groupCode, isDeleted: false },
+        });
+        if (!group) {
+          return {
+            success: false,
+            status: HTTP_STATUS.BAD_REQUEST,
+            message: "Không tìm thấy nhóm với mã groupCode này!",
+          };
+        }
+
+        // Kiểm tra quyền mentor
+        const mentorGroup = await prisma.groupMentor.findFirst({
+          where: { mentorId: userId, groupId: group.id, isDeleted: false },
+        });
+        if (!mentorGroup) {
+          return {
+            success: false,
+            status: HTTP_STATUS.FORBIDDEN,
+            message: "Bạn không phải mentor của nhóm này!",
+          };
+        }
+
+        // Tìm phân công đề tài
+        const topicAssignment = await prisma.topicAssignment.findFirst({
+          where: { groupId: group.id, isDeleted: false },
+        });
+        if (!topicAssignment) {
+          return {
+            success: false,
+            status: HTTP_STATUS.BAD_REQUEST,
+            message: "Nhóm chưa được phân công đề tài!",
+          };
+        }
+
+        // Cập nhật vòng bảo vệ (không kiểm tra vòng trước)
+        const updatedAssignment = await prisma.topicAssignment.update({
+          where: { id: topicAssignment.id },
+          data: {
+            defenseRound: defenseRound.toString(),
+            defendStatus: "CONFIRMED",
+          },
+        });
+
+        return {
+          success: true,
+          status: HTTP_STATUS.OK,
+          message: `Xác nhận nhóm đi bảo vệ vòng ${defenseRound} thành công!`,
+          data: updatedAssignment,
+        };
+      } catch (error) {
+        console.error("Lỗi khi xác nhận vòng bảo vệ:", error);
         return {
           success: false,
-          status: HTTP_STATUS.BAD_REQUEST,
-          message: "Vòng bảo vệ chỉ có thể là 1 hoặc 2!",
+          status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+          message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
         };
       }
-
-      // Tìm nhóm bằng groupCode
-      const group = await prisma.group.findFirst({
-        where: { groupCode, isDeleted: false },
-      });
-      if (!group) {
-        return {
-          success: false,
-          status: HTTP_STATUS.BAD_REQUEST,
-          message: "Không tìm thấy nhóm với mã groupCode này!",
-        };
-      }
-
-      // Kiểm tra quyền mentor
-      const mentorGroup = await prisma.groupMentor.findFirst({
-        where: { mentorId: userId, groupId: group.id, isDeleted: false },
-      });
-      if (!mentorGroup) {
-        return {
-          success: false,
-          status: HTTP_STATUS.FORBIDDEN,
-          message: "Bạn không phải mentor của nhóm này!",
-        };
-      }
-
-      // Tìm phân công đề tài
-      const topicAssignment = await prisma.topicAssignment.findFirst({
-        where: { groupId: group.id, isDeleted: false },
-      });
-      if (!topicAssignment) {
-        return {
-          success: false,
-          status: HTTP_STATUS.BAD_REQUEST,
-          message: "Nhóm chưa được phân công đề tài!",
-        };
-      }
-
-      // Cập nhật vòng bảo vệ (không kiểm tra vòng trước)
-      const updatedAssignment = await prisma.topicAssignment.update({
-        where: { id: topicAssignment.id },
-        data: {
-          defenseRound: defenseRound.toString(),
-          defendStatus: "CONFIRMED",
-        },
-      });
-
-      return {
-        success: true,
-        status: HTTP_STATUS.OK,
-        message: `Xác nhận nhóm đi bảo vệ vòng ${defenseRound} thành công!`,
-        data: updatedAssignment,
-      };
-    } catch (error) {
-      console.error("Lỗi khi xác nhận vòng bảo vệ:", error);
-      return {
-        success: false,
-        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
-      };
     }
   }
 
-}
+
+
 
 

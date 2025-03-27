@@ -72,7 +72,7 @@ export class CouncilDefenseController {
   async deleteDefenseCouncil(req: Request, res: Response) {
     try {
       const { councilId } = req.params;
-      const userId = req.user?.id;
+      const userId = req.user?.userId;
       const result = await councilDefenseService.deleteDefenseCouncil(councilId, userId!);
       res.status(result.status).json(result);
     } catch (error) {
@@ -102,7 +102,7 @@ export class CouncilDefenseController {
 
   async getDefenseScheduleForMentor(req: Request, res: Response) {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.userId;
       const result = await councilDefenseService.getDefenseScheduleForMentor(userId!);
       res.status(result.status).json(result);
     } catch (error) {
@@ -117,7 +117,7 @@ export class CouncilDefenseController {
 
   async getDefenseScheduleForStudent(req: Request, res: Response) {
     try {
-      const userId = req.user?.id;
+      const userId = req.user?.userId;
       const result = await councilDefenseService.getDefenseScheduleForStudent(userId!);
       res.status(result.status).json(result);
     } catch (error) {
@@ -134,7 +134,7 @@ export class CouncilDefenseController {
     try {
       const { scheduleId } = req.params;
       const { url } = req.body;
-      const userId = req.user?.id;
+      const userId = req.user?.userId;
       const result = await councilDefenseService.addUrlToDefenseSchedule(scheduleId, url, userId!);
       res.status(result.status).json(result);
     } catch (error) {
@@ -218,8 +218,8 @@ export class CouncilDefenseController {
     try {
       const { councilId } = req.params;
       const { members } = req.body;
-      const updatedBy = req.user?.id;
-      const result = await councilDefenseService.updateDefenseCouncilMembers(councilId, members, updatedBy!);
+      const updatedBy = req.user?.userId;
+      const result = await councilDefenseService.updateDefenseCouncilMembers(councilId, members!);
       res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi trong controller updateDefenseCouncilMembers:', error);

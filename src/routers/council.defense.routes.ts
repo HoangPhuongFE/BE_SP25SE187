@@ -101,7 +101,7 @@ router.put(
 );
 // Route mới: Thay đổi thành viên hội đồng
 router.put(
-    '/:councilId/members',
+    '/council/:councilId/members',
     checkRole(["examination_officer", "graduation_thesis_manager"]),
     councilDefenseController.updateDefenseCouncilMembers.bind(councilDefenseController)
 );
