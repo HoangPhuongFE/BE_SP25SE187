@@ -535,32 +535,48 @@ export class GroupService {
 
     // 5) getGroupsBySemester
     async getGroupsBySemester(semesterId: string, userId: string) {
+        // Kiểm tra user
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: { roles: { include: { role: true } } },
         });
         if (!user) throw new Error("Người dùng không tồn tại.");
 
-
         const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
+        //  console.log(`User ID: ${userId}, Roles: ${JSON.stringify(userRoles)}`);
 
-        if (userRoles.includes("graduation_thesis_manager") || userRoles.includes("academic_officer")) {
+        // Base query: luôn bao gồm members và mentors
+        const baseInclude = {
+            members: {
+                include: {
+                    student: { include: { user: true } },
+                    role: true,
+                },
+            },
+            mentors: {
+                include: {
+                    mentor: { select: { id: true, fullName: true, email: true } },
+                    role: true,
+                },
+            },
+        };
+
+        // Vai trò quản lý: trả về tất cả nhóm trong kỳ
+        if (
+            userRoles.includes("graduation_thesis_manager") ||
+            userRoles.includes("academic_officer") ||
+            userRoles.includes("examination_officer")
+        ) {
+            //  console.log("Fetching all groups for manager role...");
             return prisma.group.findMany({
                 where: { semesterId },
-                include: {
-                    members: {
-                        include: {
-                            student: { include: { user: true } },
-                            role: true,
-                        },
-
-                    },
-                },
+                include: baseInclude,
             });
         }
 
-        // Student => chỉ xem nhóm của họ
+        // Vai trò sinh viên: chỉ trả về nhóm của sinh viên
         if (userRoles.includes("student")) {
+            console.log("Fetching groups for student role...");
             const student = await prisma.student.findUnique({
                 where: { userId },
                 select: { id: true },
@@ -572,77 +588,155 @@ export class GroupService {
                     semesterId,
                     members: { some: { studentId: student.id } },
                 },
-                include: {
-                    members: {
-                        include: {
-                            student: { include: { user: true } },
-                            role: true,
-                        },
-
-                    },
-                },
+                include: baseInclude,
             });
         }
 
-        // Lecturer/Mentor => xem nhóm do họ hướng dẫn
-        if (userRoles.includes("lecturer") || userRoles.includes("mentor_main") || userRoles.includes("mentor_sub")) {
+        // Vai trò mentor: chỉ trả về nhóm mà mentor hướng dẫn
+        if (
+            userRoles.includes("lecturer") ||
+            userRoles.includes("mentor_main") ||
+            userRoles.includes("mentor_sub")
+        ) {
+            //    console.log("Fetching groups for mentor role...");
+            const mentorGroupIds = (
+                await prisma.groupMentor.findMany({
+                    where: { mentorId: userId },
+                    select: { groupId: true },
+                })
+            ).map((gm) => gm.groupId);
+
+            console.log(`Mentor Group IDs: ${JSON.stringify(mentorGroupIds)}`);
+
+            if (mentorGroupIds.length === 0) {
+                console.log("No groups found for this mentor.");
+                return [];
+            }
+
             return prisma.group.findMany({
                 where: {
                     semesterId,
-                    id: {
-                        in: (
-                            await prisma.groupMentor.findMany({
-                                where: { mentorId: userId },
-                                select: { groupId: true },
-                            })
-                        ).map((gm) => gm.groupId),
-                    },
+                    id: { in: mentorGroupIds },
                 },
-                include: {
-                    members: {
-                        include: {
-                            student: { include: { user: true } },
-                            role: true
-                        }
-                    },
-                },
+                include: baseInclude,
             });
         }
-
 
         throw new Error("Bạn không có quyền truy cập danh sách nhóm.");
     }
 
-    // 6) getStudentsWithoutGroup
+    // 6) getStudentsWithoutGroup - Lấy danh sách sinh viên chưa có nhóm và đủ điều kiện
     async getStudentsWithoutGroup(semesterId: string) {
-        const students = await prisma.student.findMany({
-            where: {
-                semesterStudents: {
-                    some: { semesterId },
+        try {
+            // 1. Kiểm tra học kỳ có tồn tại và không bị xóa
+            const semesterExists = await prisma.semester.findUnique({
+                where: {
+                    id: semesterId,
+                    isDeleted: false
                 },
-                NOT: {
-                    groupMembers: {
+                select: { id: true }
+            });
+
+            if (!semesterExists) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.NOT_FOUND,
+                    message: "Học kỳ không tồn tại hoặc đã bị xóa."
+                };
+            }
+
+            // 2. Lấy danh sách sinh viên đủ điều kiện nhưng chưa có nhóm
+            const students = await prisma.student.findMany({
+                where: {
+                    // Sinh viên thuộc học kỳ này
+                    semesterStudents: {
                         some: {
-                            group: {
-                                semesterId: semesterId,
-                            },
+                            semesterId,
+                            isEligible: true, // Đủ điều kiện
+                            qualificationStatus: "qualified", // Trạng thái đủ điều kiện
+                            semester: {
+                                isDeleted: false // Học kỳ không bị xóa
+                            }
+                        }
+                    },
+                    // Sinh viên chưa có nhóm trong học kỳ này
+                    NOT: {
+                        groupMembers: {
+                            some: {
+                                group: {
+                                    semesterId,
+                                    isDeleted: false // Nhóm không bị xóa
+                                }
+                            }
+                        }
+                    },
+                    isDeleted: false // Sinh viên không bị xóa
+                },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            username: true,
+                            email: true,
+                        }
+                    },
+                    major: {
+                        select: {
+                            id: true,
+                            name: true
+                        }
+                    },
+                    specialization: {
+                        select: {
+                            id: true,
+                            name: true
+                        }
+                    },
+                    semesterStudents: {
+                        where: {
+                            semesterId,
+                            isEligible: true,
+                            qualificationStatus: "qualified"
                         },
-                    },
+                        select: {
+                            status: true,
+                            isEligible: true,
+                            qualificationStatus: true
+                        }
+                    }
                 },
-            },
-            include: {
-                user: true,
-                major: true,
-                specialization: true,
-                groupMembers: {
-                    include: {
-                        group: true,
-                    },
-                },
-            },
-        });
-        //     console.log(JSON.stringify(students, null, 2));
-        return students;
+                orderBy: {
+                    studentCode: 'asc' // Sắp xếp theo mã sinh viên
+                }
+            });
+
+            // 3. Format dữ liệu trả về
+            const formattedStudents = students.map(student => ({
+                id: student.id,
+                studentCode: student.studentCode,
+                username: student.user?.username || 'Không có tên',
+                email: student.user?.email || 'Không có email',
+                major: student.major?.name || 'Không có chuyên ngành',
+                specialization: student.specialization?.name || 'Không có chuyên ngành hẹp',
+                qualificationStatus: student.semesterStudents[0]?.qualificationStatus || '',
+                status: student.semesterStudents[0]?.status || '',
+                isEligible: student.semesterStudents[0]?.isEligible || false
+            }));
+
+            return {
+                success: true,
+                status: HTTP_STATUS.OK,
+                message: "Danh sách sinh viên chưa có nhóm và đủ điều kiện.",
+                data: formattedStudents
+            };
+        } catch (error) {
+            console.error("Lỗi khi lấy danh sách sinh viên chưa có nhóm:", error);
+            return {
+                success: false,
+                status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+                message: "Lỗi hệ thống khi lấy danh sách sinh viên chưa có nhóm."
+            };
+        }
     }
     // Hàm tạo mã nhóm duy nhất theo học kỳ và tên ngành
     private async generateUniqueGroupCode(
@@ -1236,65 +1330,78 @@ export class GroupService {
 
             // Xóa mềm trong transaction
             const updatedGroup = await prisma.$transaction(async (tx) => {
+                const updatedCounts = {
+                    reviewSchedules: 0,
+                    defenseSchedules: 0,
+                    progressReports: 0,
+                    topicAssignments: 0,
+                    groupMentors: 0,
+                    groupInvitations: 0,
+                    groupMembers: 0,
+                    meetingSchedules: 0,
+                    documents: 0,
+                    topics: 0,
+                };
+
                 // 1. Đánh dấu xóa các ReviewSchedule liên quan
-                await tx.reviewSchedule.updateMany({
+                updatedCounts.reviewSchedules = await tx.reviewSchedule.updateMany({
                     where: { groupId, isDeleted: false },
                     data: { isDeleted: true },
-                });
+                }).then(res => res.count);
 
                 // 2. Đánh dấu xóa các DefenseSchedule liên quan
-                await tx.defenseSchedule.updateMany({
+                updatedCounts.defenseSchedules = await tx.defenseSchedule.updateMany({
                     where: { groupId, isDeleted: false },
                     data: { isDeleted: true },
-                });
+                }).then(res => res.count);
 
                 // 3. Đánh dấu xóa các ProgressReport liên quan
-                await tx.progressReport.updateMany({
+                updatedCounts.progressReports = await tx.progressReport.updateMany({
                     where: { groupId, isDeleted: false },
                     data: { isDeleted: true },
-                });
+                }).then(res => res.count);
 
                 // 4. Đánh dấu xóa các TopicAssignment liên quan
-                await tx.topicAssignment.updateMany({
+                updatedCounts.topicAssignments = await tx.topicAssignment.updateMany({
                     where: { groupId, isDeleted: false },
                     data: { isDeleted: true },
-                });
+                }).then(res => res.count);
 
                 // 5. Đánh dấu xóa các GroupMentor liên quan
-                await tx.groupMentor.updateMany({
+                updatedCounts.groupMentors = await tx.groupMentor.updateMany({
                     where: { groupId, isDeleted: false },
                     data: { isDeleted: true },
-                });
+                }).then(res => res.count);
 
                 // 6. Đánh dấu xóa các GroupInvitation liên quan
-                await tx.groupInvitation.updateMany({
+                updatedCounts.groupInvitations = await tx.groupInvitation.updateMany({
                     where: { groupId, isDeleted: false },
                     data: { isDeleted: true },
-                });
+                }).then(res => res.count);
 
                 // 7. Đánh dấu xóa các GroupMember liên quan
-                await tx.groupMember.updateMany({
+                updatedCounts.groupMembers = await tx.groupMember.updateMany({
                     where: { groupId, isDeleted: false },
                     data: { isDeleted: true },
-                });
+                }).then(res => res.count);
 
                 // 8. Đánh dấu xóa các MeetingSchedule liên quan
-                await tx.meetingSchedule.updateMany({
+                updatedCounts.meetingSchedules = await tx.meetingSchedule.updateMany({
                     where: { groupId, isDeleted: false },
                     data: { isDeleted: true },
-                });
+                }).then(res => res.count);
 
                 // 9. Đánh dấu xóa các Document liên quan đến Group
-                await tx.document.updateMany({
+                updatedCounts.documents = await tx.document.updateMany({
                     where: { groupId, isDeleted: false },
                     data: { isDeleted: true },
-                });
+                }).then(res => res.count);
 
                 // 10. Đánh dấu xóa các Topic có proposedGroupId liên quan
-                await tx.topic.updateMany({
+                updatedCounts.topics = await tx.topic.updateMany({
                     where: { proposedGroupId: groupId, isDeleted: false },
                     data: { isDeleted: true },
-                });
+                }).then(res => res.count);
 
                 // 11. Đánh dấu xóa Group
                 await tx.group.update({
@@ -1317,6 +1424,7 @@ export class GroupService {
                             groupCode: group.groupCode,
                             memberCount: group.members.length,
                             topicAssignmentsCount: group.topicAssignments.length,
+                            updatedCounts,
                         },
                         oldValues: JSON.stringify(group),
                     },
@@ -1347,7 +1455,6 @@ export class GroupService {
             throw error;
         }
     }
-
     // 12) leaveGroup
     async leaveGroup(groupId: string, userId: string) {
         const group = await prisma.group.findUnique({ where: { id: groupId } });
@@ -1870,6 +1977,7 @@ export class GroupService {
     }
     // 22) getStudentsWithoutGroupForStudent (by student)
     async getStudentsWithoutGroupForStudent(userId: string) {
+        // Kiểm tra sinh viên hiện tại
         const currentStudent = await prisma.student.findUnique({
             where: { userId },
             include: {
@@ -1877,14 +1985,14 @@ export class GroupService {
                 semesterStudents: {
                     where: {
                         semester: {
-                            isDeleted: false
-                        }
+                            isDeleted: false,
+                        },
                     },
                     include: {
-                        semester: true
-                    }
-                }
-            }
+                        semester: true,
+                    },
+                },
+            },
         });
 
         if (!currentStudent) {
@@ -1896,41 +2004,44 @@ export class GroupService {
             throw new Error("Không tìm thấy học kỳ hiện tại.");
         }
 
+        // Truy vấn sinh viên chưa có nhóm và đủ điều kiện (isEligible từ SemesterStudent)
         const students = await prisma.student.findMany({
             where: {
                 semesterStudents: {
                     some: {
                         semesterId: currentSemester.id,
+                        isEligible: true, // Điều kiện đủ điều kiện từ SemesterStudent
                         semester: {
-                            isDeleted: false
-                        }
-                    }
+                            isDeleted: false,
+                        },
+                    },
                 },
                 NOT: {
                     groupMembers: {
                         some: {
                             group: {
                                 semesterId: currentSemester.id,
-                                isDeleted: false
-                            }
-                        }
-                    }
-                }
+                                isDeleted: false,
+                            },
+                        },
+                    },
+                },
             },
             include: {
                 user: true,
                 major: true,
-                specialization: true
-            }
+                specialization: true,
+            },
         });
 
-        return students.map(student => ({
+        // Định dạng dữ liệu trả về
+        return students.map((student) => ({
             id: student.id,
             studentCode: student.studentCode,
-            studentName: student.user?.fullName || "Không có tên",
+            studentName: student.user?.username || "",
             email: student.user?.email || "",
             major: student.major?.name || "",
-            specialization: student.specialization?.name || ""
+            specialization: student.specialization?.name || "",
         }));
     }
 
@@ -2053,6 +2164,169 @@ export class GroupService {
                         ? error.message
                         : "Lỗi hệ thống khi thay đổi trạng thái thành viên.",
             };
+        }
+    }
+
+
+    async getMyGroups(userId: string) {
+        try {
+            // Tìm thông tin sinh viên dựa trên userId
+            const student = await prisma.student.findUnique({
+                where: {
+                    userId,
+                    isDeleted: false,
+                },
+                select: {
+                    id: true,
+                },
+            });
+
+            if (!student) {
+                throw new Error("Không tìm thấy sinh viên.");
+            }
+
+            // Truy vấn tất cả nhóm mà sinh viên tham gia
+            const groups = await prisma.group.findMany({
+                where: {
+                    members: {
+                        some: {
+                            studentId: student.id,
+                            isDeleted: false,
+                        },
+                    },
+                    isDeleted: false,
+                },
+                select: {
+                    // Lấy toàn bộ các trường của Group
+                    id: true,
+                    groupCode: true,
+                    semesterId: true,
+                    status: true,
+                    isAutoCreated: true,
+                    createdBy: true,
+                    maxMembers: true,
+                    isMultiMajor: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    isLocked: true,
+                    // Thông tin quan hệ
+                    semester: {
+                        select: {
+                            code: true,
+                            startDate: true,
+                            endDate: true,
+                        },
+                    },
+                    members: {
+                        where: { isDeleted: false },
+                        select: {
+                            studentId: true,
+                            status: true,
+                            role: {
+                                select: {
+                                    name: true,
+                                },
+                            },
+                            student: {
+                                select: {
+                                    user: {
+                                        select: {
+                                            fullName: true,
+                                            email: true,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                    creator: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            email: true,
+                        },
+                    },
+                    mentors: {
+                        where: { isDeleted: false },
+                        select: {
+                            mentorId: true,
+                            role: {
+                                select: {
+                                    name: true,
+                                },
+                            },
+                            mentor: {
+                                select: {
+                                    fullName: true,
+                                    email: true,
+                                },
+                            },
+                        },
+                    },
+                    topicAssignments: {
+                        where: { isDeleted: false },
+                        select: {
+                            topicId: true,
+                            status: true,
+                            topic: {
+                                select: {
+                                    name: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+
+            // Format dữ liệu trả về
+            const formattedGroups = groups.map((group) => ({
+                group: {
+                    id: group.id,
+                    groupCode: group.groupCode,
+                    semesterId: group.semesterId,
+                    status: group.status,
+                    isAutoCreated: group.isAutoCreated,
+                    createdBy: group.createdBy,
+                    maxMembers: group.maxMembers,
+                    isMultiMajor: group.isMultiMajor,
+                    createdAt: group.createdAt,
+                    updatedAt: group.updatedAt,
+                    isLocked: group.isLocked,
+                },
+                semester: {
+                    code: group.semester.code,
+                    startDate: group.semester.startDate,
+                    endDate: group.semester.endDate,
+                },
+                members: group.members.map((member) => ({
+                    studentId: member.studentId,
+                    fullName: member.student?.user?.fullName ?? "Không có tên",
+                    email: member.student?.user?.email ?? "Không có email",
+                    role: member.role.name,
+                    status: member.status,
+                })),
+                creator: {
+                    id: group.creator.id,
+                    fullName: group.creator.fullName ?? "Không có tên",
+                    email: group.creator.email ?? "Không có email",
+                },
+                mentors: group.mentors.map((mentor) => ({
+                    mentorId: mentor.mentorId,
+                    fullName: mentor.mentor.fullName ?? "Không có tên",
+                    email: mentor.mentor.email ?? "Không có email",
+                    role: mentor.role.name,
+                })),
+                topicAssignments: group.topicAssignments.map((assignment) => ({
+                    topicId: assignment.topicId,
+                    topicName: assignment.topic.name,
+                    status: assignment.status,
+                })),
+            }));
+
+            return formattedGroups;
+        } catch (error) {
+            console.error("Lỗi trong getMyGroups:", error);
+            throw error;
         }
     }
 }

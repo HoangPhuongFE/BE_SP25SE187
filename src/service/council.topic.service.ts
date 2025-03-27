@@ -465,7 +465,21 @@ export class CouncilTopicService {
 
   async deleteTopicCouncil(councilId: string, userId: string, ipAddress?: string): Promise<{ success: boolean; status: number; message: string; data?: any }> {
     try {
-      // Kiểm tra xem Council có tồn tại và chưa bị đánh dấu xóa
+      // Kiểm tra quyền người dùng
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { roles: { include: { role: true } } },
+      });
+      if (!user) {
+        throw new Error('Người dùng không tồn tại');
+      }
+      const userRoles = user.roles.map(r => r.role.name.toLowerCase());
+      const isAuthorized = userRoles.includes('admin') || userRoles.includes('academic_officer');
+      if (!isAuthorized) {
+        throw new Error('Chỉ admin hoặc academic_officer mới có quyền xóa hội đồng');
+      }
+  
+      // Kiểm tra hội đồng
       const council = await prisma.council.findUnique({
         where: { id: councilId, isDeleted: false },
       });
@@ -486,49 +500,50 @@ export class CouncilTopicService {
   
       // Xóa mềm trong transaction
       const updatedCouncil = await prisma.$transaction(async (tx) => {
-        // 1. Đánh dấu xóa các ReviewSchedule liên quan
-        await tx.reviewSchedule.updateMany({
+        const updatedCounts = {
+          reviewSchedules: 0,
+          defenseSchedules: 0,
+          reviewAssignments: 0,
+          reviewDefenseCouncils: 0,
+          councilMembers: 0,
+          documents: 0,
+        };
+  
+        updatedCounts.reviewSchedules = await tx.reviewSchedule.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 2. Đánh dấu xóa các DefenseSchedule liên quan
-        await tx.defenseSchedule.updateMany({
+        updatedCounts.defenseSchedules = await tx.defenseSchedule.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 3. Đánh dấu xóa các ReviewAssignment liên quan
-        await tx.reviewAssignment.updateMany({
+        updatedCounts.reviewAssignments = await tx.reviewAssignment.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 4. Đánh dấu xóa các ReviewDefenseCouncil liên quan
-        await tx.reviewDefenseCouncil.updateMany({
+        updatedCounts.reviewDefenseCouncils = await tx.reviewDefenseCouncil.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 5. Đánh dấu xóa các CouncilMember liên quan
-        await tx.councilMember.updateMany({
+        updatedCounts.councilMembers = await tx.councilMember.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 6. Đánh dấu xóa các Document liên quan
-        await tx.document.updateMany({
+        updatedCounts.documents = await tx.document.updateMany({
           where: { councilId, isDeleted: false },
           data: { isDeleted: true },
-        });
+        }).then(res => res.count);
   
-        // 7. Đánh dấu xóa Council
         await tx.council.update({
           where: { id: councilId },
           data: { isDeleted: true },
         });
   
-        // 8. Ghi log hành động thành công
         await tx.systemLog.create({
           data: {
             userId,
@@ -541,15 +556,14 @@ export class CouncilTopicService {
             metadata: {
               councilCode: council.code,
               councilName: council.name,
+              updatedCounts,
+              deletedBy: userRoles.join(', '),
             },
             oldValues: JSON.stringify(council),
           },
         });
   
-        // Trả về dữ liệu Council sau khi cập nhật
-        return await tx.council.findUnique({
-          where: { id: councilId },
-        });
+        return await tx.council.findUnique({ where: { id: councilId } });
       });
   
       return { success: true, status: HTTP_STATUS.OK, message: COUNCIL_MESSAGE.COUNCIL_DELETED, data: updatedCouncil };

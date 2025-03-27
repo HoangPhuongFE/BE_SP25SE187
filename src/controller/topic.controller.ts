@@ -340,7 +340,9 @@ export class TopicController {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: 'Không tìm thấy thông tin người dùng!' });
       }
 
-      const result = await topicService.getRegisteredTopicsByMentor(mentorId);
+      const semesterId = req.query.semesterId as string; // Extract semesterId from query
+      const round = req.query.round ? Number(req.query.round) : undefined; // Extract round if provided
+      const result = await topicService.getRegisteredTopicsByMentor(mentorId, semesterId, round);
       return res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi khi lấy danh sách đề tài đã đăng ký:', error);

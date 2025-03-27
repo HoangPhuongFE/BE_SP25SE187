@@ -76,9 +76,8 @@ CREATE TABLE `Student` (
     `student_code` VARCHAR(191) NOT NULL,
     `major_id` VARCHAR(191) NOT NULL,
     `specialization_id` VARCHAR(191) NULL,
-    `is_eligible` BOOLEAN NOT NULL DEFAULT false,
     `personal_email` VARCHAR(191) NULL,
-    `status` ENUM('PENDING', 'ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'PENDING',
+    `status` ENUM('PENDING', 'ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
     `import_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `import_source` VARCHAR(191) NOT NULL,
     `is_imported` BOOLEAN NOT NULL DEFAULT true,
@@ -119,7 +118,7 @@ CREATE TABLE `SemesterStudent` (
     `id` VARCHAR(191) NOT NULL,
     `semester_id` VARCHAR(191) NOT NULL,
     `student_id` VARCHAR(191) NOT NULL,
-    `status` VARCHAR(191) NOT NULL DEFAULT 'active',
+    `status` VARCHAR(191) NOT NULL DEFAULT 'PENDING',
     `isEligible` BOOLEAN NOT NULL DEFAULT false,
     `qualificationStatus` VARCHAR(191) NOT NULL DEFAULT 'not qualified',
     `registeredAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -300,22 +299,6 @@ CREATE TABLE `topic_assignments` (
     `assigned_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
-    `isDeleted` BOOLEAN NOT NULL DEFAULT false,
-
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `review_schedules` (
-    `id` VARCHAR(191) NOT NULL,
-    `council_id` VARCHAR(191) NOT NULL,
-    `group_id` VARCHAR(191) NOT NULL,
-    `review_time` DATETIME(3) NOT NULL,
-    `room` VARCHAR(191) NOT NULL,
-    `status` VARCHAR(191) NOT NULL,
-    `reviewRound` INTEGER NOT NULL,
-    `notes` VARCHAR(191) NULL,
-    `topicId` VARCHAR(191) NOT NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
     PRIMARY KEY (`id`)
@@ -515,17 +498,34 @@ CREATE TABLE `decisions` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `review_schedules` (
+    `id` VARCHAR(191) NOT NULL,
+    `council_id` VARCHAR(191) NOT NULL,
+    `group_id` VARCHAR(191) NOT NULL,
+    `review_time` DATETIME(3) NOT NULL,
+    `room` VARCHAR(191) NOT NULL,
+    `reviewRound` INTEGER NOT NULL,
+    `note` VARCHAR(191) NULL,
+    `status` VARCHAR(191) NOT NULL DEFAULT 'PENDING',
+    `topicId` VARCHAR(191) NOT NULL,
+    `isDeleted` BOOLEAN NOT NULL DEFAULT false,
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `review_assignment` (
     `id` VARCHAR(191) NOT NULL,
     `council_id` VARCHAR(191) NOT NULL,
     `topic_id` VARCHAR(191) NOT NULL,
-    `reviewer_id` VARCHAR(191) NOT NULL,
+    `reviewer_id` VARCHAR(191) NULL,
     `score` DOUBLE NULL,
     `feedback` TEXT NULL,
-    `status` VARCHAR(191) NOT NULL,
+    `status` VARCHAR(191) NOT NULL DEFAULT 'PENDING',
     `reviewRound` INTEGER NOT NULL,
     `assigned_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `reviewed_at` DATETIME(3) NULL,
+    `review_schedule_id` VARCHAR(191) NOT NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
     PRIMARY KEY (`id`)
@@ -544,6 +544,7 @@ CREATE TABLE `documents` (
     `topic_id` VARCHAR(191) NULL,
     `council_id` VARCHAR(191) NULL,
     `group_id` VARCHAR(191) NULL,
+    `review_schedule_id` VARCHAR(191) NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
     PRIMARY KEY (`id`)
@@ -740,15 +741,6 @@ ALTER TABLE `topic_assignments` ADD CONSTRAINT `topic_assignments_topic_id_fkey`
 ALTER TABLE `topic_assignments` ADD CONSTRAINT `topic_assignments_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `review_schedules` ADD CONSTRAINT `review_schedules_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `review_schedules` ADD CONSTRAINT `review_schedules_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `review_schedules` ADD CONSTRAINT `review_schedules_topicId_fkey` FOREIGN KEY (`topicId`) REFERENCES `topics`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE `groups` ADD CONSTRAINT `groups_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -818,13 +810,25 @@ ALTER TABLE `decisions` ADD CONSTRAINT `decisions_semesterId_fkey` FOREIGN KEY (
 ALTER TABLE `decisions` ADD CONSTRAINT `decisions_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `review_schedules` ADD CONSTRAINT `review_schedules_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `review_schedules` ADD CONSTRAINT `review_schedules_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `review_schedules` ADD CONSTRAINT `review_schedules_topicId_fkey` FOREIGN KEY (`topicId`) REFERENCES `topics`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `review_assignment` ADD CONSTRAINT `review_assignment_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `review_assignment` ADD CONSTRAINT `review_assignment_topic_id_fkey` FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `review_assignment` ADD CONSTRAINT `review_assignment_reviewer_id_fkey` FOREIGN KEY (`reviewer_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `review_assignment` ADD CONSTRAINT `review_assignment_reviewer_id_fkey` FOREIGN KEY (`reviewer_id`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `review_assignment` ADD CONSTRAINT `review_assignment_review_schedule_id_fkey` FOREIGN KEY (`review_schedule_id`) REFERENCES `review_schedules`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `documents` ADD CONSTRAINT `documents_uploaded_by_fkey` FOREIGN KEY (`uploaded_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -837,6 +841,9 @@ ALTER TABLE `documents` ADD CONSTRAINT `documents_council_id_fkey` FOREIGN KEY (
 
 -- AddForeignKey
 ALTER TABLE `documents` ADD CONSTRAINT `documents_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `documents` ADD CONSTRAINT `documents_review_schedule_id_fkey` FOREIGN KEY (`review_schedule_id`) REFERENCES `review_schedules`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `council_members` ADD CONSTRAINT `council_members_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
