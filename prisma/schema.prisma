@@ -743,6 +743,7 @@ model SubmissionPeriod {
   id                 String              @id @default(uuid())
   semesterId         String              @map("semester_id")
   roundNumber        Int                 @map("round_number")
+  type               String               // TOPIC CHECK_TOPIC REVIEW  DEFENSE
   startDate          DateTime            @map("start_date")
   endDate            DateTime            @map("end_date")
   createdBy          String              @map("created_by")
