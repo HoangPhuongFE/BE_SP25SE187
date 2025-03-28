@@ -434,9 +434,9 @@ export class CouncilReviewService {
         throw new Error("Người dùng không tồn tại");
       }
       const userRoles = user.roles.map((r) => r.role.name.toLowerCase());
-      const isAuthorized = userRoles.includes("admin") || userRoles.includes("academic_officer");
+      const isAuthorized = userRoles.includes("graduation_thesis_manager") || userRoles.includes("examination_officer");
       if (!isAuthorized) {
-        throw new Error("Chỉ admin hoặc academic_officer mới có quyền xóa hội đồng");
+        throw new Error("Chỉ graduation_thesis_manager hoặc examination_officer mới có quyền xóa hội đồng");
       }
 
       const council = await prisma.council.findUnique({
@@ -461,7 +461,7 @@ export class CouncilReviewService {
         const updatedCounts = {
           reviewSchedules: 0,
           defenseSchedules: 0,
-          defenseMemberResults: 0, // Thêm để đếm số bản ghi DefenseMemberResult bị xóa
+          defenseMemberResults: 0, 
           reviewAssignments: 0,
           councilMembers: 0,
           documents: 0,

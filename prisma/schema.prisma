@@ -525,6 +525,7 @@ model EmailLog {
   errorMessage   String?  @map("error_message") @db.Text
   errorAt        DateTime @map("error_at")
   user           User     @relation(fields: [userId], references: [id])
+  metadata        Json?
   isDeleted      Boolean  @default(false)
 
   @@map("email_logs")
