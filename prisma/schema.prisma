@@ -24,7 +24,6 @@ model User {
   gender                 String?
   phone                  String?
   personal_Email         String?
-  semester_user          String?
   isActive               Boolean                 @default(true)
   lastLogin              DateTime?
   createdAt              DateTime                @default(now())
