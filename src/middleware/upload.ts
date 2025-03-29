@@ -2,7 +2,7 @@ import multer, { FileFilterCallback } from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { Request, Response } from 'express';
-import cloudinary from '../config/cloudinary'; // Giả sử đã cấu hình như trước
+import cloudinary from '../config/cloudinary'; 
 import  HTTP_STATUS  from '../constants/httpStatus';
 
 const uploadDir = 'uploads/';

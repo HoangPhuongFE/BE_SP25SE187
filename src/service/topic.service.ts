@@ -1926,7 +1926,7 @@ export class TopicService {
   }
   async getRegisteredTopicsByMentor(mentorId: string, semesterId: string, round?: number) {
     try {
-      // Kiểm tra học kỳ
+      // Check if the semester exists
       const semester = await prisma.semester.findUnique({
         where: { id: semesterId, isDeleted: false },
         select: { id: true },
@@ -1938,15 +1938,19 @@ export class TopicService {
           message: 'Học kỳ không tồn tại.',
         };
       }
-
-      // Xây dựng điều kiện lọc
+  
+      // Build the where clause
       let whereClause: any = {
-        createdBy: mentorId, // Chỉ lấy đề tài do mentor tạo
-        semesterId, // Lọc theo học kỳ
+        OR: [
+          { createdBy: mentorId }, // Topics created by the mentor
+          { mainSupervisor: mentorId }, // Topics where mentor is the main supervisor
+          { subSupervisor: mentorId }, // Topics where mentor is the sub-supervisor
+        ],
+        semesterId, // Filter by semester
         isDeleted: false,
       };
-
-      // Nếu có round, lọc theo submissionPeriodId
+  
+      // Filter by submission period if round is provided
       if (round !== undefined) {
         const submissionPeriod = await prisma.submissionPeriod.findFirst({
           where: { semesterId, roundNumber: round, isDeleted: false },
@@ -1961,8 +1965,8 @@ export class TopicService {
         }
         whereClause.submissionPeriodId = submissionPeriod.id;
       }
-
-      // Lấy danh sách đề tài
+  
+      // Fetch registered topics with relations
       const registeredTopics = await prisma.topic.findMany({
         where: whereClause,
         select: {
@@ -1973,7 +1977,10 @@ export class TopicService {
           description: true,
           status: true,
           createdAt: true,
-          creator: { // Thông tin mentor tạo đề tài
+          createdBy: true, // Scalar field for creator ID
+          mainSupervisor: true, // Scalar field for main supervisor ID
+          subSupervisor: true, // Scalar field for sub-supervisor ID
+          creator: { // Relation to User
             select: { id: true, fullName: true, email: true },
           },
           topicRegistrations: {
@@ -1992,7 +1999,14 @@ export class TopicService {
                   id: true,
                   groupCode: true,
                   members: {
-                    select: { student: { select: { studentCode: true, user: { select: { fullName: true } } } } },
+                    select: {
+                      student: {
+                        select: {
+                          studentCode: true,
+                          user: { select: { fullName: true } },
+                        },
+                      },
+                    },
                   },
                 },
               },
@@ -2000,8 +2014,21 @@ export class TopicService {
           },
         },
       });
-
-      // Lấy thông tin người dùng đã đăng ký
+  
+      // Fetch user info for mainSupervisor and subSupervisor
+      const supervisorIds = [
+        ...new Set(
+          registeredTopics
+            .flatMap(topic => [topic.mainSupervisor, topic.subSupervisor])
+            .filter((id): id is string => id !== null) // Type guard to filter out null
+        ),
+      ];
+      const supervisors = await prisma.user.findMany({
+        where: { id: { in: supervisorIds } },
+        select: { id: true, fullName: true, email: true },
+      });
+  
+      // Fetch user info for registrants
       const userIds = [
         ...new Set(registeredTopics.flatMap(topic => topic.topicRegistrations.map(reg => reg.userId))),
       ];
@@ -2009,29 +2036,31 @@ export class TopicService {
         where: { id: { in: userIds } },
         select: { id: true, fullName: true, email: true },
       });
-
-      // Định dạng dữ liệu
+  
+      // Format the response data
       const topicsWithDetails = registeredTopics.map(topic => ({
         ...topic,
+        mainSupervisor: supervisors.find(user => user.id === topic.mainSupervisor) || null,
+        subSupervisor: supervisors.find(user => user.id === topic.subSupervisor) || null,
         topicRegistrations: topic.topicRegistrations.map(reg => ({
           ...reg,
           user: users.find(user => user.id === reg.userId) || null,
         })),
         groups: topic.topicAssignments.map(ass => ass.group),
       }));
-
-      // Kiểm tra kết quả
+  
+      // Return response based on results
       if (topicsWithDetails.length === 0) {
         return {
           success: true,
           status: HTTP_STATUS.OK,
           message: round !== undefined
-            ? `Không có đề tài nào trong đợt xét duyệt ${round} của học kỳ này do bạn tạo.`
-            : 'Không có đề tài nào trong học kỳ này do bạn tạo.',
+            ? `Không có đề tài nào trong đợt xét duyệt ${round} của học kỳ này liên quan đến bạn.`
+            : 'Không có đề tài nào trong học kỳ này liên quan đến bạn.',
           data: [],
         };
       }
-
+  
       return {
         success: true,
         status: HTTP_STATUS.OK,
@@ -2532,7 +2561,7 @@ export class TopicService {
         where: { userId },
         select: { id: true },
       });
-
+  
       if (!student) {
         return {
           success: false,
@@ -2540,13 +2569,12 @@ export class TopicService {
           message: "Bạn không phải là sinh viên!",
         };
       }
-
-      // Ngày hiện tại
+  
       const currentDate = new Date();
-
+  
       // 2. Lấy danh sách nhóm của sinh viên
       const groupMemberships = await prisma.groupMember.findMany({
-        where: { studentId: student.id },
+        where: { studentId: student.id, isDeleted: false },
         include: {
           group: {
             select: {
@@ -2557,7 +2585,7 @@ export class TopicService {
           },
         },
       });
-
+  
       if (groupMemberships.length === 0) {
         return {
           success: false,
@@ -2565,37 +2593,58 @@ export class TopicService {
           message: "Bạn không thuộc nhóm nào!",
         };
       }
-
-      // 3. Xác định trạng thái thực tế của học kỳ
+  
+      const groupIds = groupMemberships.map(m => m.group.id);
+  
+      // 3. Xác định trạng thái học kỳ
       const semesters = groupMemberships.map(m => {
         const semester = m.group.semester;
         const startDate = new Date(semester.startDate);
         const endDate = new Date(semester.endDate || Infinity);
-
         let effectiveStatus = "COMPLETE";
         if (currentDate < startDate) effectiveStatus = "UPCOMING";
         else if (currentDate >= startDate && currentDate <= endDate) effectiveStatus = "ACTIVE";
-
-        return { ...semester, effectiveStatus, groupId: m.groupId };
+        return { ...semester, effectiveStatus, groupId: m.group.id };
       });
-
-      const groupIds = groupMemberships.map(m => m.groupId);
-
-      // 4. Lấy danh sách đề tài liên quan đến các nhóm
+  
+      // 4. Lấy tất cả đề tài liên quan (đăng ký và phân công)
       const topics = await prisma.topic.findMany({
         where: {
-          topicAssignments: {
-            some: {
-              groupId: { in: groupIds },
-              approvalStatus: { in: ["PENDING", "APPROVED", "REJECTED"] },
+          OR: [
+            // Đề tài đã đăng ký bởi sinh viên
+            {
+              topicRegistrations: {
+                some: {
+                  userId: userId,
+                  status: { in: ["PENDING", "APPROVED", "REJECTED"] },
+                  isDeleted: false,
+                },
+              },
             },
-          },
+            // Đề tài đã phân công cho nhóm của sinh viên
+            {
+              topicAssignments: {
+                some: {
+                  groupId: { in: groupIds },
+                  approvalStatus: { in: ["PENDING", "APPROVED", "REJECTED"] },
+                  isDeleted: false,
+                },
+              },
+            },
+          ],
           semester: {
-            isDeleted: false
-          }
+            isDeleted: false,
+          },
         },
         include: {
+          topicRegistrations: {
+            where: { userId, isDeleted: false },
+            include: {
+              SubmissionPeriod: { select: { id: true, roundNumber: true, startDate: true, endDate: true } },
+            },
+          },
           topicAssignments: {
+            where: { groupId: { in: groupIds }, isDeleted: false },
             include: {
               group: {
                 select: {
@@ -2618,29 +2667,30 @@ export class TopicService {
           semester: { select: { id: true, code: true, startDate: true, endDate: true } },
         },
       });
-
+  
       if (topics.length === 0) {
         return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: "Không tìm thấy đề tài nào liên quan đến nhóm của bạn!",
+          success: true,
+          status: HTTP_STATUS.OK,
+          message: "Bạn chưa đăng ký hoặc chưa có đề tài nào liên quan đến nhóm của bạn!",
+          data: [],
         };
       }
-
-      // 5. Định dạng dữ liệu trả về, xử lý trường hợp semester undefined
+  
+      // 5. Định dạng dữ liệu
       const formattedTopics = topics.map(topic => {
-        const assignment = topic.topicAssignments[0]; // Lấy assignment đầu tiên liên quan đến nhóm
-        const semester = semesters.find(s => s.id === assignment.group.semester.id);
-
-        // Nếu không tìm thấy semester, sử dụng thông tin từ assignment.group.semester
-        const semesterData = semester || {
-          id: assignment.group.semester.id,
-          code: assignment.group.semester.code,
-          startDate: assignment.group.semester.startDate,
-          endDate: assignment.group.semester.endDate,
-          effectiveStatus: "UNKNOWN", // Trạng thái mặc định nếu không tính được
-        };
-
+        const registration = topic.topicRegistrations[0]; // Đăng ký của sinh viên
+        const assignment = topic.topicAssignments[0]; // Phân công cho nhóm của sinh viên
+        const semester = assignment
+          ? semesters.find(s => s.id === assignment.group.semester.id) || {
+              id: assignment.group.semester.id,
+              code: assignment.group.semester.code,
+              startDate: assignment.group.semester.startDate,
+              endDate: assignment.group.semester.endDate,
+              effectiveStatus: "UNKNOWN",
+            }
+          : topic.semester;
+  
         return {
           id: topic.id,
           topicCode: topic.topicCode,
@@ -2648,33 +2698,44 @@ export class TopicService {
           nameEn: topic.nameEn,
           description: topic.description,
           status: topic.status,
-          approvalStatus: assignment.approvalStatus,
+          registrationStatus: registration ? registration.status : null, // Trạng thái đăng ký
+          approvalStatus: assignment ? assignment.approvalStatus : null, // Trạng thái phân công
           semester: {
-            id: semesterData.id,
-            code: semesterData.code,
-            startDate: semesterData.startDate,
-            endDate: semesterData.endDate,
-            effectiveStatus: semesterData.effectiveStatus,
+            id: semester.id,
+            code: semester.code,
+            startDate: semester.startDate,
+            endDate: semester.endDate,
+            effectiveStatus: 'effectiveStatus' in semester ? semester.effectiveStatus : "UNKNOWN",
           },
           createdBy: topic.creator,
           subSupervisor: topic.subMentor,
           majors: topic.majors,
-          group: {
-            id: assignment.group.id,
-            groupCode: assignment.group.groupCode,
-            members: assignment.group.members,
-          },
+          registration: registration
+            ? {
+                registeredAt: registration.registeredAt,
+                submissionPeriod: registration.SubmissionPeriod,
+                reason: registration.reason,
+                reviewedAt: registration.reviewedAt,
+              }
+            : null,
+          group: assignment
+            ? {
+                id: assignment.group.id,
+                groupCode: assignment.group.groupCode,
+                members: assignment.group.members,
+              }
+            : null,
         };
       });
-
+  
       return {
         success: true,
         status: HTTP_STATUS.OK,
-        message: "Lấy danh sách đề tài liên quan đến nhóm thành công!",
+        message: "Lấy danh sách đề tài thành công!",
         data: formattedTopics,
       };
     } catch (error) {
-      console.error("Lỗi khi lấy danh sách đề tài cho sinh viên:", error);
+      console.error("Lỗi khi lấy danh sách đề tài:", error);
       return {
         success: false,
         status: HTTP_STATUS.INTERNAL_SERVER_ERROR,

@@ -129,7 +129,7 @@ router.get(
   '/student/topics/approved',
   authenticateToken,
   checkRole(['student', 'leader', 'member'], false),
-  topicController.getApprovedTopicsFortudent.bind(topicController)
+  topicController.getApprovedTopicsForStudent.bind(topicController)
 );
 
 // Route mới: Tất cả đề tài đã duyệt
