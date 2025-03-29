@@ -10,7 +10,7 @@ export class SubmissionPeriodController {
     const createdBy = req.user!.userId;
 
     // Kiểm tra xem type có được cung cấp không
-    if (!["TOPIC", "REVIEW", "DEFENSE"].includes(type)) {
+    if (!["TOPIC", " CHECK-TOPIC" , "REVIEW", "DEFENSE"].includes(type)) {
       return res.status(HTTP_STATUS.BAD_REQUEST).json({
         success: false,
         message: "Type phải là một trong các giá trị: TOPIC, REVIEW, DEFENSE",
