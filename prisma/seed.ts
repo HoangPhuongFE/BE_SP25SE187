@@ -32,7 +32,7 @@ async function createDefaultUsers() {
   // Xóa dữ liệu cũ trong bảng User và UserRole
   await prisma.userRole.deleteMany();
   await prisma.user.deleteMany();
-
+// Tạo người dùng mặc định
   const defaultUsers = [
     {
       email: 'admin@gmail.com',
