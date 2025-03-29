@@ -242,24 +242,6 @@ CREATE TABLE `councils` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `review_defense_councils` (
-    `id` VARCHAR(191) NOT NULL,
-    `council_id` VARCHAR(191) NOT NULL,
-    `semester_id` VARCHAR(191) NOT NULL,
-    `defense_review_round` VARCHAR(191) NOT NULL,
-    `URL` VARCHAR(191) NOT NULL,
-    `status` VARCHAR(191) NOT NULL,
-    `created_by` VARCHAR(191) NOT NULL,
-    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `time_review` DATETIME(3) NOT NULL,
-    `TopicAssignments_id` INTEGER NOT NULL,
-    `isDeleted` BOOLEAN NOT NULL DEFAULT false,
-
-    UNIQUE INDEX `review_defense_councils_council_id_key`(`council_id`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
 CREATE TABLE `topics` (
     `id` VARCHAR(191) NOT NULL,
     `semester_id` VARCHAR(191) NOT NULL,
@@ -294,7 +276,7 @@ CREATE TABLE `topic_assignments` (
     `status` VARCHAR(191) NOT NULL DEFAULT 'ASSIGNED',
     `approval_status` VARCHAR(191) NOT NULL,
     `defendStatus` VARCHAR(191) NULL,
-    `URL` VARCHAR(191) NULL,
+    `defenseRound` VARCHAR(191) NULL,
     `assigned_by` VARCHAR(191) NOT NULL,
     `assigned_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -545,6 +527,7 @@ CREATE TABLE `documents` (
     `council_id` VARCHAR(191) NULL,
     `group_id` VARCHAR(191) NULL,
     `review_schedule_id` VARCHAR(191) NULL,
+    `defense_schedule_id` VARCHAR(191) NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
     PRIMARY KEY (`id`)
@@ -578,7 +561,7 @@ CREATE TABLE `feedback` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `DefenseSchedule` (
+CREATE TABLE `defense_schedules` (
     `id` VARCHAR(191) NOT NULL,
     `council_id` VARCHAR(191) NOT NULL,
     `group_id` VARCHAR(191) NOT NULL,
@@ -590,9 +573,23 @@ CREATE TABLE `DefenseSchedule` (
     `result` VARCHAR(191) NULL,
     `feedback` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `confirmation_status` VARCHAR(191) NOT NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `DefenseMemberResult` (
+    `id` VARCHAR(191) NOT NULL,
+    `defense_schedule_id` VARCHAR(191) NOT NULL,
+    `student_id` VARCHAR(191) NOT NULL,
+    `result` VARCHAR(191) NOT NULL,
+    `feedback` TEXT NULL,
+    `evaluated_by` VARCHAR(191) NULL,
+    `evaluated_at` DATETIME(3) NULL,
+    `isDeleted` BOOLEAN NOT NULL DEFAULT false,
+
+    UNIQUE INDEX `DefenseMemberResult_defense_schedule_id_student_id_key`(`defense_schedule_id`, `student_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -712,12 +709,6 @@ ALTER TABLE `councils` ADD CONSTRAINT `councils_topicass_id_fkey` FOREIGN KEY (`
 
 -- AddForeignKey
 ALTER TABLE `councils` ADD CONSTRAINT `councils_submission_period_id_fkey` FOREIGN KEY (`submission_period_id`) REFERENCES `submission_periods`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `review_defense_councils` ADD CONSTRAINT `review_defense_councils_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `review_defense_councils` ADD CONSTRAINT `review_defense_councils_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `topics` ADD CONSTRAINT `topics_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -846,6 +837,9 @@ ALTER TABLE `documents` ADD CONSTRAINT `documents_group_id_fkey` FOREIGN KEY (`g
 ALTER TABLE `documents` ADD CONSTRAINT `documents_review_schedule_id_fkey` FOREIGN KEY (`review_schedule_id`) REFERENCES `review_schedules`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `documents` ADD CONSTRAINT `documents_defense_schedule_id_fkey` FOREIGN KEY (`defense_schedule_id`) REFERENCES `defense_schedules`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `council_members` ADD CONSTRAINT `council_members_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -858,10 +852,16 @@ ALTER TABLE `council_members` ADD CONSTRAINT `council_members_role_id_fkey` FORE
 ALTER TABLE `feedback` ADD CONSTRAINT `feedback_meeting_id_fkey` FOREIGN KEY (`meeting_id`) REFERENCES `meeting_schedules`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `DefenseSchedule` ADD CONSTRAINT `DefenseSchedule_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `DefenseSchedule` ADD CONSTRAINT `DefenseSchedule_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `DefenseMemberResult` ADD CONSTRAINT `DefenseMemberResult_defense_schedule_id_fkey` FOREIGN KEY (`defense_schedule_id`) REFERENCES `defense_schedules`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `DefenseMemberResult` ADD CONSTRAINT `DefenseMemberResult_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `Student`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `notification_recipients` ADD CONSTRAINT `notification_recipients_notification_id_fkey` FOREIGN KEY (`notification_id`) REFERENCES `notifications`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

@@ -29,6 +29,7 @@ import progressReportRouter from './routers/progress-report.router';
 import councilReivewRotuer from './routers/council.review.routes';
 import aiRouter from './routers/ai.router';
 import statisticsRouter from './routers/statistics.router';
+import councilDenfeseRotuer from './routers/council.defense.routes';
 
 config();
 const app = express();
@@ -73,6 +74,10 @@ app.use('/api/progress-report', progressReportRouter);
 app.use('/api/council-review', councilReivewRotuer);
 app.use('/api/ai', aiRouter);
 app.use('/api/statistics', statisticsRouter);
+app.use('/api/council-defense', councilDenfeseRotuer);
+
+
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
