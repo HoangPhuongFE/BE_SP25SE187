@@ -7,6 +7,7 @@ import { AuthenticatedRequest } from '~/middleware/user.middleware';
 const councilReviewService = new CouncilReviewService();
 
 export class CouncilReviewController {
+  // API 1: Tạo hội đồng (Giữ nguyên)
   async createCouncil(req: Request, res: Response) {
     const { name, semesterId, submissionPeriodId, startDate, endDate, status, type, round } = req.body;
     const createdBy = req.user!.userId;
@@ -26,6 +27,7 @@ export class CouncilReviewController {
     return res.status(result.status).json(result);
   }
 
+  // API: Cập nhật hội đồng (Giữ nguyên)
   async updateCouncil(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -48,15 +50,16 @@ export class CouncilReviewController {
     }
   }
 
+  // API: Lấy danh sách hội đồng (Giữ nguyên)
   async getCouncils(req: AuthenticatedRequest, res: Response) {
     try {
       const { semesterId, submissionPeriodId, round } = req.query;
-      const user = req.user; // Lấy thông tin user từ middleware authenticateToken
+      const user = req.user;
       const result = await councilReviewService.getReviewCouncils({
         semesterId: semesterId as string,
         submissionPeriodId: submissionPeriodId as string,
         round: round ? Number(round) : undefined,
-        user, // Truyền user vào service
+        user,
       });
       return res.status(result.status).json(result);
     } catch (error) {
@@ -68,6 +71,7 @@ export class CouncilReviewController {
     }
   }
 
+  // API: Lấy chi tiết hội đồng theo ID (Giữ nguyên)
   async getCouncilById(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -82,6 +86,7 @@ export class CouncilReviewController {
     }
   }
 
+  // API: Xóa hội đồng (Giữ nguyên)
   async deleteCouncil(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -106,6 +111,7 @@ export class CouncilReviewController {
     }
   }
 
+  // API 2: Thêm thành viên vào hội đồng (Giữ nguyên)
   async addMemberToCouncil(req: Request, res: Response) {
     try {
       const { councilId } = req.params;
@@ -124,6 +130,7 @@ export class CouncilReviewController {
     }
   }
 
+  // API: Xóa thành viên khỏi hội đồng (Giữ nguyên)
   async removeMemberFromCouncil(req: Request, res: Response) {
     try {
       const { councilId, userId } = req.params;
@@ -140,6 +147,7 @@ export class CouncilReviewController {
     }
   }
 
+  // API: Lấy chi tiết hội đồng cho giảng viên (Giữ nguyên)
   async getCouncilDetailsForLecturer(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -156,10 +164,10 @@ export class CouncilReviewController {
     }
   }
 
-
+  // API 3: Tạo lịch chấm điểm (Giữ nguyên)
   async createReviewSchedule(req: Request, res: Response) {
     try {
-      const { councilId, groups, room } = req.body; // Đổi topics thành groups
+      const { councilId, groups, room } = req.body;
       const createdBy = req.user!.userId;
 
       const formattedGroups = groups.map((g: { groupId: string; reviewTime: string }) => ({
@@ -183,7 +191,23 @@ export class CouncilReviewController {
       });
     }
   }
-  // API cho mentor xem lịch nhóm
+
+  // API 4: Student xem lịch nhóm (Chỉnh sửa để phù hợp với service)
+  async getReviewScheduleForStudent(req: Request, res: Response) {
+    try {
+      const userId = req.user!.userId;
+      const result = await councilReviewService.getReviewScheduleForStudent(userId);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error("Lỗi trong getReviewScheduleForStudent:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Lỗi hệ thống khi lấy lịch chấm điểm!",
+      });
+    }
+  }
+
+  // API 5: Mentor xem lịch nhóm (Chỉnh sửa để phù hợp với service)
   async getReviewScheduleForMentor(req: Request, res: Response) {
     try {
       const userId = req.user!.userId;
@@ -198,17 +222,92 @@ export class CouncilReviewController {
     }
   }
 
-  // API cho student xem lịch nhóm
-  async getReviewScheduleForStudent(req: Request, res: Response) {
+  // API 6: Leader thêm URL (API mới)
+  async addUrlToReviewSchedule(req: Request, res: Response) {
     try {
+      const { scheduleId } = req.params;
+      const { url } = req.body;
       const userId = req.user!.userId;
-      const result = await councilReviewService.getReviewScheduleForStudent(userId);
+
+      if (!scheduleId || !url) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: "Thiếu scheduleId hoặc url!",
+        });
+      }
+
+      const result = await councilReviewService.addUrlToReviewSchedule(scheduleId, url, userId);
       return res.status(result.status).json(result);
     } catch (error) {
-      console.error("Lỗi trong getReviewScheduleForStudent:", error);
+      console.error("Lỗi trong addUrlToReviewSchedule:", error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         success: false,
-        message: "Lỗi hệ thống khi lấy lịch chấm điểm!",
+        message: "Lỗi hệ thống khi thêm URL!",
+      });
+    }
+  }
+
+  // API 7: Hội đồng cập nhật trạng thái, note, điểm số (API mới)
+  async updateReviewAssignment(req: Request, res: Response) {
+    try {
+      const { assignmentId } = req.params;
+      const { score, feedback, status } = req.body;
+      const userId = req.user!.userId;
+
+      if (!assignmentId) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: "Thiếu assignmentId!",
+        });
+      }
+
+      const result = await councilReviewService.updateReviewAssignment(assignmentId, { score, feedback, status }, userId);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      //console.error("Lỗi trong updateReviewAssignment:", error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: "Lỗi hệ thống khi cập nhật assignment!",
+      });
+    }
+  }
+
+  // API: Hội đồng cập nhật trạng thái của ReviewSchedule (hỗ trợ groupId hoặc groupCode) (API mới)
+  async updateReviewSchedule(req: Request, res: Response) {
+    const { scheduleId } = req.params;
+    const { status, room, reviewTime, note, groupId, groupCode } = req.body; 
+    const userId = req.user?.userId;
+
+    const result = await councilReviewService.updateReviewSchedule(
+      scheduleId,
+      { status, room, reviewTime: reviewTime ? new Date(reviewTime) : undefined, note, groupId, groupCode }, 
+      userId
+    );
+
+    return res.status(result.status).json(result);
+  }
+
+  // Trong CouncilReviewController
+  async confirmDefenseRound(req: Request, res: Response) {
+    try {
+      const { groupCode, defenseRound } = req.body;
+
+      // Kiểm tra dữ liệu đầu vào
+      if (!groupCode || !defenseRound) {
+        return res.status(400).json({
+          success: false,
+          message: "Thiếu groupCode hoặc defenseRound!",
+        });
+      }
+
+      // Gọi service để xử lý
+      const userId = req.user!.userId;
+      const result = await councilReviewService.confirmDefenseRound(groupCode, defenseRound, userId);
+      return res.status(result.status).json(result);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
       });
     }
   }
