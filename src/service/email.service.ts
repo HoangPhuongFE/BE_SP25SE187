@@ -63,7 +63,7 @@ export class EmailService {
     return { successCount, failedCount, errors };
   }
 
-  // ✅ Gửi email hàng loạt mà không cần tham số động
+  // Gửi email hàng loạt mà không cần tham số động
   async sendBulkEmails(emailType: string, emails: string[], userId: string) {
     if (emails.length === 0) {
       throw new Error("Danh sách email không được để trống.");

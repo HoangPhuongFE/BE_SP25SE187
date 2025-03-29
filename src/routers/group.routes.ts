@@ -72,11 +72,10 @@ router.post(
 );
 
 // 9️ Xóa nhóm
-router.delete( 
-  "/delete/:groupId",
-    authenticateToken,
-  checkRole(["leader", "student",  "graduation_thesis_manager", "academic_officer"]),
-
+router.put(
+  '/delete/:groupId', 
+  authenticateToken,
+  checkRole(['leader', 'student', 'graduation_thesis_manager', 'academic_officer']),
   groupController.deleteGroup.bind(groupController)
 );
 
@@ -181,4 +180,21 @@ router.get(
   checkRole(["student"],false), // Chỉ cho phép sinh viên truy cập
   groupController.getStudentsWithoutGroupForStudent.bind(groupController)
 );
+
+
+// Mentor thay đổi status của member trong học kì 
+router.post(
+  "/toggle-member-status",
+  authenticateToken, 
+  checkRole (["lecturer"]),
+  groupController.toggleMemberStatusByMentor.bind(groupController)
+);
+
+router.get(
+  "/my-groups",
+  authenticateToken,
+  checkRole(["student"], false),
+  groupController.getMyGroups.bind(groupController)
+);
+
 export default router;

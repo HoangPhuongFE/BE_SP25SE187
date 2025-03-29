@@ -25,8 +25,18 @@ export class ImportStudentController {
     try {
       const result = await this.importStudentService.importExcel(filePath, req.user.userId, semesterId);
       
+      if (result.status === 'error') {
+        return res.status(400).json({
+          message: result.message,
+          totalRecords: result.totalRecords || 0,
+          successRecords: result.successRecords || 0,
+          errorRecords: result.errorRecords || result.errors.length,
+          errors: result.errors,
+        });
+      }
+
       return res.status(200).json({
-        message: DATA_MESSAGE.IMPORT_SUCCESS,
+        message: result.message,
         totalRecords: result.totalRecords,
         successRecords: result.successRecords,
         errorRecords: result.errorRecords,

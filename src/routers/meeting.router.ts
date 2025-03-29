@@ -25,13 +25,12 @@ router.put(
 );
 
 // Xóa meeting
-router.delete(
-  "/:id",
+router.put(
+  '/:id/delete', // Chuyển từ DELETE sang PUT để phù hợp với xóa mềm
   authenticateToken,
-  checkRole(["lecturer"]),
+  checkRole(['lecturer']),
   meetingController.deleteMeeting.bind(meetingController)
 );
-
 // Lấy danh sách meetings theo groupId hoặc groupCode
 router.get(
   "/group/:groupId",

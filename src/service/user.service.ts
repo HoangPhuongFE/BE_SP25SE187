@@ -75,10 +75,22 @@ export class UserService {
       isActive: r.isActive,
     }));
 
+    const accessToken = this.generateAccessToken(user);
+    const refreshToken = this.generateRefreshToken(user);
+
+    // Lưu refresh token vào database
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 ngày
+      },
+    });
+
     return {
       message: "Login successful",
-      accessToken: this.generateAccessToken(user),
-      refreshToken: this.generateRefreshToken(user),
+      accessToken,
+      refreshToken,
       roles,
       user: {
         id: user.id,
@@ -145,7 +157,16 @@ export class UserService {
     }
 
     const accessToken = this.generateAccessToken(user);
-    const refreshToken = await this.generateRefreshToken(user);
+    const refreshToken = this.generateRefreshToken(user);
+
+    // Lưu refresh token vào database
+    await prisma.refreshToken.create({
+      data: {
+        token: refreshToken,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 ngày
+      },
+    });
 
     return { accessToken, refreshToken };
   }
@@ -344,7 +365,7 @@ export class UserService {
             id: true,
             majorId: true,
             specializationId: true,
-            isEligible: true,
+           // isEligible: true,
           },
         },
         groupMemberships: {
@@ -389,7 +410,7 @@ export class UserService {
             id: true,
             majorId: true,
             specializationId: true,
-            isEligible: true,
+            //isEligible: true,
           },
         },
         groupMemberships: {

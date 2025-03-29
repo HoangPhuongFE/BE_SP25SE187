@@ -12,20 +12,34 @@ export class ExportTopicService {
       // Xác định submissionPeriodId từ query
       if (query.submissionPeriodId) {
         submissionPeriodId = query.submissionPeriodId;
-        const submissionPeriod = await prisma.submissionPeriod.findUnique({ where: { id: submissionPeriodId } });
-        if (!submissionPeriod) {
-          return { success: false, status: 404, message: 'Không tìm thấy đợt xét duyệt!' };
-        }
-      } else if (query.round !== undefined && query.semesterId) {
-        const semester = await prisma.semester.findUnique({ where: { id: query.semesterId } });
-        if (!semester) {
-          return { success: false, status: 404, message: 'Không tìm thấy học kỳ!' };
-        }
-        const submissionPeriod = await prisma.submissionPeriod.findFirst({
-          where: { semesterId: query.semesterId, roundNumber: query.round },
+        const submissionPeriod = await prisma.submissionPeriod.findUnique({ 
+            where: { 
+                id: submissionPeriodId,
+                isDeleted: false 
+            } 
         });
         if (!submissionPeriod) {
-          return { success: false, status: 404, message: 'Không tìm thấy đợt xét duyệt!' };
+            return { success: false, status: 404, message: 'Không tìm thấy đợt xét duyệt!' };
+        }
+      } else if (query.round !== undefined && query.semesterId) {
+        const semester = await prisma.semester.findUnique({ 
+            where: { 
+                id: query.semesterId,
+                isDeleted: false 
+            } 
+        });
+        if (!semester) {
+            return { success: false, status: 404, message: 'Không tìm thấy học kỳ!' };
+        }
+        const submissionPeriod = await prisma.submissionPeriod.findFirst({
+            where: { 
+                semesterId: query.semesterId, 
+                roundNumber: query.round,
+                isDeleted: false
+            },
+        });
+        if (!submissionPeriod) {
+            return { success: false, status: 404, message: 'Không tìm thấy đợt xét duyệt!' };
         }
         submissionPeriodId = submissionPeriod.id;
       } else {
@@ -34,32 +48,42 @@ export class ExportTopicService {
   
       // Truy vấn danh sách đề tài, bao gồm các thông tin liên quan để hiển thị tên thay vì ID
       const topics = await prisma.topic.findMany({
-        where: { submissionPeriodId, status: 'PENDING' },
+        where: { 
+            submissionPeriodId, 
+            status: 'PENDING',
+            isDeleted: false,
+            semester: {
+                isDeleted: false
+            }
+        },
         include: {
-          documents: { 
-            where: { documentType: 'draft' }, 
-            select: { fileUrl: true } 
-          },
-          semester: { 
-            select: { code: true } // Lấy mã học kỳ thay vì id
-          },
-          creator: { 
-            select: { fullName: true ,  email: true } // Lấy tên người tạo
-          },
-          group: { 
-            select: { groupCode: true } // Lấy mã nhóm đề xuất
-          },
-          majors: { 
-            select: { name: true } // Lấy tên chuyên ngành; nếu có nhiều chuyên ngành, chúng ta sẽ lấy chuyên ngành đầu tiên
-          },
-          subMentor: {
-            select: {
-              email: true,
-              fullName: true, // nếu muốn lấy cả tên
+            documents: {
+                select: { fileUrl: true },
+                where: { 
+                    documentType: 'draft',
+                    isDeleted: false 
+                }
             },
-          },
-
-
+            semester: {
+                select: { code: true }
+            },
+            creator: {
+                select: { fullName: true, email: true }
+            },
+            group: {
+                select: { groupCode: true },
+                where: { isDeleted: false }
+            },
+            majors: {
+                select: { name: true },
+                where: { isDeleted: false }
+            },
+            subMentor: {
+                select: {
+                    email: true,
+                    fullName: true,
+                }
+            },
         }
       });
   

@@ -463,44 +463,123 @@ export class CouncilTopicService {
     }
   }
 
-  // Xóa hội đồng topic, kể cả khi vẫn còn thành viên
-  async deleteTopicCouncil(councilId: string) {
+  async deleteTopicCouncil(councilId: string, userId: string, ipAddress?: string): Promise<{ success: boolean; status: number; message: string; data?: any }> {
     try {
-      // Kiểm tra xem hội đồng có tồn tại không
-      const council = await prisma.council.findUnique({
-        where: { id: councilId },
-        include: { members: true }
+      // Kiểm tra quyền người dùng
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { roles: { include: { role: true } } },
       });
-
-      if (!council) {
-        return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: COUNCIL_MESSAGE.COUNCIL_NOT_FOUND
-        };
+      if (!user) {
+        throw new Error('Người dùng không tồn tại');
       }
+      const userRoles = user.roles.map(r => r.role.name.toLowerCase());
+      const isAuthorized = userRoles.includes('admin') || userRoles.includes('academic_officer');
+      if (!isAuthorized) {
+        throw new Error('Chỉ admin hoặc academic_officer mới có quyền xóa hội đồng');
+      }
+  
+      // Kiểm tra hội đồng
+      const council = await prisma.council.findUnique({
+        where: { id: councilId, isDeleted: false },
+      });
+      if (!council) {
+        await prisma.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_TOPIC_COUNCIL_ATTEMPT',
+            entityType: 'Council',
+            entityId: councilId,
+            description: 'Thử xóa hội đồng topic nhưng không tìm thấy hoặc đã bị đánh dấu xóa',
+            severity: 'WARNING',
+            ipAddress: ipAddress || 'unknown',
+          },
+        });
+        return { success: false, status: HTTP_STATUS.NOT_FOUND, message: COUNCIL_MESSAGE.COUNCIL_NOT_FOUND };
+      }
+  
+      // Xóa mềm trong transaction
+      const updatedCouncil = await prisma.$transaction(async (tx) => {
+        const updatedCounts = {
+          reviewSchedules: 0,
+          defenseSchedules: 0,
+          reviewAssignments: 0,
+          reviewDefenseCouncils: 0,
+          councilMembers: 0,
+          documents: 0,
+        };
+  
+        updatedCounts.reviewSchedules = await tx.reviewSchedule.updateMany({
+          where: { councilId, isDeleted: false },
+          data: { isDeleted: true },
+        }).then(res => res.count);
+  
+        updatedCounts.defenseSchedules = await tx.defenseSchedule.updateMany({
+          where: { councilId, isDeleted: false },
+          data: { isDeleted: true },
+        }).then(res => res.count);
+  
+        updatedCounts.reviewAssignments = await tx.reviewAssignment.updateMany({
+          where: { councilId, isDeleted: false },
+          data: { isDeleted: true },
+        }).then(res => res.count);
+  
+        updatedCounts.councilMembers = await tx.councilMember.updateMany({
+          where: { councilId, isDeleted: false },
+          data: { isDeleted: true },
+        }).then(res => res.count);
 
-      // Sử dụng transaction để xóa cascade các thành viên và sau đó xóa hội đồng
-      await prisma.$transaction([
-        prisma.councilMember.deleteMany({ where: { councilId } }),
-        prisma.council.delete({ where: { id: councilId } })
-      ]);
+        updatedCounts.documents = await tx.document.updateMany({
+          where: { councilId, isDeleted: false },
+          data: { isDeleted: true },
+        }).then(res => res.count);
 
-      return {
-        success: true,
-        status: HTTP_STATUS.OK,
-        message: COUNCIL_MESSAGE.COUNCIL_DELETED
-      };
+        await tx.council.update({
+          where: { id: councilId },
+          data: { isDeleted: true },
+        });
+  
+        await tx.systemLog.create({
+          data: {
+            userId,
+            action: 'DELETE_TOPIC_COUNCIL',
+            entityType: 'Council',
+            entityId: councilId,
+            description: `Hội đồng topic "${council.name}" đã được đánh dấu xóa`,
+            severity: 'INFO',
+            ipAddress: ipAddress || 'unknown',
+            metadata: {
+              councilCode: council.code,
+              councilName: council.name,
+              updatedCounts,
+              deletedBy: userRoles.join(', '),
+            },
+            oldValues: JSON.stringify(council),
+          },
+        });
+  
+        return await tx.council.findUnique({ where: { id: councilId } });
+      });
+  
+      return { success: true, status: HTTP_STATUS.OK, message: COUNCIL_MESSAGE.COUNCIL_DELETED, data: updatedCouncil };
     } catch (error) {
-      console.error("Lỗi khi xóa hội đồng topic:", error);
-      return {
-        success: false,
-        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        message: "Lỗi hệ thống khi xóa hội đồng."
-      };
+      await prisma.systemLog.create({
+        data: {
+          userId,
+          action: 'DELETE_TOPIC_COUNCIL_ERROR',
+          entityType: 'Council',
+          entityId: councilId,
+          description: 'Lỗi hệ thống khi đánh dấu xóa hội đồng topic',
+          severity: 'ERROR',
+          error: error instanceof Error ? error.message : 'Unknown error',
+          stackTrace: (error as Error).stack || 'No stack trace',
+          ipAddress: ipAddress || 'unknown',
+        },
+      });
+      console.error('Lỗi khi đánh dấu xóa hội đồng topic:', error);
+      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: 'Lỗi hệ thống khi đánh dấu xóa hội đồng.' };
     }
   }
-
 
   async removeMemberFromCouncil(councilId: string, userId: string) {
     try {

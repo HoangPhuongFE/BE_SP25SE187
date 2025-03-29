@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { TopicController } from '../controller/topic.controller'; // Đảm bảo đường dẫn đúng
 import { authenticateToken, checkRole } from '../middleware/user.middleware';
-import upload from '../middleware/upload'; // Middleware để xử lý upload file
 
 const router = Router();
 const topicController = new TopicController();
@@ -34,7 +33,7 @@ router.get(
 router.get(
   '/semester/:semesterId',
   authenticateToken,
-  checkRole( ['academic_officer', 'graduation_thesis_manager',  'lecturer']),
+  checkRole(['academic_officer', 'graduation_thesis_manager', 'lecturer']),
   topicController.getTopicsBySemester.bind(topicController)
 );
 
@@ -50,7 +49,7 @@ router.get(
 router.get(
   '/registered-topics',
   authenticateToken,
-  checkRole([ 'academic_officer', 'graduation_thesis_manager','lecturer']),
+  checkRole(['academic_officer', 'graduation_thesis_manager', 'lecturer']),
   topicController.getRegisteredTopicsByMentor.bind(topicController)
 );
 
@@ -116,13 +115,12 @@ router.get(
 );
 
 //    e) Xóa đề tài
-router.delete(
-  '/:topicId',
+router.put(
+  '/:topicId/delete', // Thay đổi từ DELETE sang PUT để phù hợp với xóa mềm
   authenticateToken,
   checkRole(['admin', 'graduation_thesis_manager', 'academic_officer', 'lecturer']),
   topicController.deleteTopic.bind(topicController)
 );
-
 
 // 11. Các route liên quan đến đợt đăng ký đề tài
 //    a) Lấy danh sách đợt đăng ký đề tài
@@ -130,7 +128,7 @@ router.delete(
 router.get(
   '/student/topics/approved',
   authenticateToken,
-  checkRole(['student', 'leader', 'member'],false),
+  checkRole(['student', 'leader', 'member'], false),
   topicController.getApprovedTopicsFortudent.bind(topicController)
 );
 
@@ -138,7 +136,24 @@ router.get(
 router.get(
   '/student/topics/approved/all',
   authenticateToken,
-  checkRole(['student', 'leader', 'member'],false),
+  checkRole(['student', 'leader', 'member'], false),
   topicController.getAllApprovedTopicsForStudent.bind(topicController)
 );
+
+
+router.post('/create-with-mentors',
+  authenticateToken,
+  checkRole(['academic_officer',  'graduation_thesis_manager']),
+  topicController.createTopicWithMentors.bind(topicController));
+
+//  gán mentor hoặc nhóm vào đề tài
+router.post(
+  '/:topicId/assign',
+  authenticateToken,
+  checkRole(['academic_officer', 'graduation_thesis_manager']),
+  topicController.assignMentorsOrGroup.bind(topicController)
+);
+
+
+
 export default router;
