@@ -2,7 +2,7 @@ import multer, { FileFilterCallback } from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { Request, Response } from 'express';
-import cloudinary from '../config/cloudinary'; // Giả sử đã cấu hình như trước
+import cloudinary from '../config/cloudinary'; 
 import  HTTP_STATUS  from '../constants/httpStatus';
 
 const uploadDir = 'uploads/';
@@ -56,13 +56,7 @@ const upload = multer({
 
 export const uploadFile = async (req: Request, res: Response) => {
   try {
-   // console.log('Request headers:', req.headers);
-   // console.log('Request body:', req.body);
-
     upload.single('file')(req, res, async (err: any) => {
-     // console.log('Upload middleware error:', err);
-    //  console.log('Request file:', req.file);
-
       if (err) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({
           success: false,
@@ -92,7 +86,10 @@ export const uploadFile = async (req: Request, res: Response) => {
         success: true,
         message: 'Tải file thành công!',
         status: HTTP_STATUS.CREATED,
-        data: { fileUrl: uploadResult.secure_url },
+        data: {
+          fileUrl: uploadResult.secure_url,
+          fileName: req.file.originalname, // Trả về tên file gốc
+        },
       });
     });
   } catch (error) {

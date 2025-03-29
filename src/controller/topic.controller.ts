@@ -438,7 +438,7 @@ export class TopicController {
 
 
   // Lấy danh sách đề tài đã duyệt cho nhóm sinh viên 
-  async getApprovedTopicsFortudent(req: Request, res: Response) {
+  async getApprovedTopicsForStudent(req: Request, res: Response) {
     try {
       const userId = req.user?.userId;
       if (!userId) {
