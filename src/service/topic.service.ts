@@ -595,6 +595,7 @@ export class TopicService {
       };
     }
   }
+  
   async getTopicsBySemester(semesterId: string, submissionPeriodId?: string) {
     try {
       const semester = await prisma.semester.findUnique({
@@ -615,7 +616,7 @@ export class TopicService {
   
       let whereClause: any = { 
         semesterId,
-        isDeleted: false, // Thêm điều kiện lọc đề tài chưa bị xóa
+        isDeleted: false, 
       };
   
       if (submissionPeriodId) {
@@ -656,6 +657,7 @@ export class TopicService {
           creator: { select: { fullName: true, email: true } },
           proposedGroupId: true,
           group: { select: { id: true, groupCode: true } }, // Nhóm đề xuất
+          isDeleted: true,
           topicAssignments: { // Nhóm thực tế
             select: {
               group: { select: { id: true, groupCode: true } },

@@ -742,52 +742,69 @@ export class GroupService {
         professionName: string,
         semesterId: string,
         semesterStartDate: Date
-    ): Promise<string> {
-        // Lấy 2 chữ số cuối của năm từ startDate của học kỳ
-        const yearSuffix = semesterStartDate.getFullYear().toString().slice(-2);
-        // Tạo mã chuyên ngành: nếu tên chuyên ngành là "Software Engineering" => "SE", "Artificial Intelligence" => "AI", ngược lại lấy 2 ký tự đầu của tên chuyên ngành
-        let majorCode: string;
-        if (professionName === "Software Engineering") {
-            majorCode = "SE";
-        } else if (professionName === "Artificial Intelligence") {
-            majorCode = "AI";
-        } else {
-            majorCode = professionName.slice(0, 2).toUpperCase();
+      ): Promise<string> {
+        // Kiểm tra đầu vào
+        if (!professionName || !semesterId || !semesterStartDate) {
+          throw new Error("Thiếu thông tin cần thiết để tạo mã nhóm: professionName, semesterId, hoặc semesterStartDate.");
         }
-        // Xây dựng tiền tố cho mã nhóm
+      
+        // Lấy 2 chữ số cuối của năm
+        const yearSuffix = semesterStartDate.getFullYear().toString().slice(-2);
+      
+        // Tạo mã ngành
+        let majorCode: string;
+        const professionMap: { [key: string]: string } = {
+          "Software Engineering": "SE",
+          "Artificial Intelligence": "AI",
+        };
+        if (professionMap[professionName]) {
+          majorCode = professionMap[professionName];
+        } else {
+          majorCode = professionName.length >= 2
+            ? professionName.slice(0, 2).toUpperCase()
+            : (professionName[0] + "X").toUpperCase(); // Bổ sung "X" nếu tên ngành quá ngắn
+        }
+      
+        // Xây dựng tiền tố mã nhóm
         const groupCodePrefix = `G${yearSuffix}${majorCode}`;
-
-        // Tính số thứ tự dựa trên số nhóm đã có trong học kỳ với tiền tố này
+      
+        // Tính số thứ tự
         const count = await prisma.group.count({
-            where: {
-                semesterId,
-                groupCode: { startsWith: groupCodePrefix },
-            },
+          where: {
+            semesterId,
+            groupCode: { startsWith: groupCodePrefix },
+            isDeleted: false, // Chỉ đếm nhóm chưa bị xóa
+          },
         });
         let sequenceNumber = (count + 1).toString().padStart(3, "0");
         let groupCode = groupCodePrefix + sequenceNumber;
-
-        // Kiểm tra xem mã nhóm đã tồn tại trong học kỳ chưa (sử dụng composite key)
+      
+        // Kiểm tra tính duy nhất với giới hạn số lần thử
         let existingGroup = await prisma.group.findUnique({
-            where: { semesterId_groupCode: { semesterId, groupCode } },
+          where: { semesterId_groupCode: { semesterId, groupCode } },
         });
-        if (existingGroup) {
-            let seq = count + 1;
-            while (true) {
-                seq++;
-                sequenceNumber = seq.toString().padStart(3, "0");
-                const newGroupCode = groupCodePrefix + sequenceNumber;
-                const checkGroup = await prisma.group.findUnique({
-                    where: { semesterId_groupCode: { semesterId, groupCode: newGroupCode } },
-                });
-                if (!checkGroup) {
-                    groupCode = newGroupCode;
-                    break;
-                }
+        if (existingGroup && !existingGroup.isDeleted) {
+          let seq = count + 1;
+          const maxAttempts = 1000; 
+          for (let i = 0; i < maxAttempts; i++) {
+            seq++;
+            sequenceNumber = seq.toString().padStart(3, "0");
+            const newGroupCode = groupCodePrefix + sequenceNumber;
+            const checkGroup = await prisma.group.findUnique({
+              where: { semesterId_groupCode: { semesterId, groupCode: newGroupCode } },
+            });
+            if (!checkGroup || checkGroup.isDeleted) {
+              groupCode = newGroupCode;
+              break;
             }
+            if (i === maxAttempts - 1) {
+              throw new Error(`Không thể tạo mã nhóm duy nhất sau ${maxAttempts} lần thử cho ${groupCodePrefix}.`);
+            }
+          }
         }
+      
         return groupCode;
-    }
+      }
 
     // 7) randomizeGroups
     async randomizeGroups(semesterId: string, createdBy: string): Promise<any> {
