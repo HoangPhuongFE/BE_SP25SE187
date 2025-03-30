@@ -23,6 +23,7 @@ export class TopicController {
       groupId?: string;
       groupCode?: string;
       draftFileUrl?: string;
+      submissionPeriodId: string; // Bắt buộc, không tùy chọn
     }> & { user?: { userId: string } },
     res: Response
   ) {
@@ -35,7 +36,7 @@ export class TopicController {
           status: HTTP_STATUS.UNAUTHORIZED,
         });
       }
-
+  
       const {
         nameVi,
         nameEn,
@@ -51,8 +52,18 @@ export class TopicController {
         groupId,
         groupCode,
         draftFileUrl,
+        submissionPeriodId,
       } = req.body;
-
+  
+      // Kiểm tra các trường bắt buộc
+      if (!nameVi || !nameEn || !description || !semesterId || !majorId || !submissionPeriodId) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'Thiếu thông tin bắt buộc: nameVi, nameEn, description, semesterId, majorId, hoặc submissionPeriodId!',
+          status: HTTP_STATUS.BAD_REQUEST,
+        });
+      }
+  
       const result = await topicService.createTopic({
         nameVi,
         nameEn,
@@ -69,8 +80,9 @@ export class TopicController {
         draftFileUrl,
         groupId,
         groupCode,
+        submissionPeriodId,
       });
-
+  
       return res.status(result.status).json(result);
     } catch (error) {
       console.error('Lỗi trong createTopic:', error);
@@ -497,6 +509,7 @@ async getTopicsBySemester(req: Request, res: Response) {
         description: string;
         semesterId: string;
         majorId: string;
+        submissionPeriodId: string;
         isBusiness?: string | boolean;
         businessPartner?: string;
         source?: string;
@@ -525,6 +538,7 @@ async getTopicsBySemester(req: Request, res: Response) {
         description,
         semesterId,
         majorId,
+        submissionPeriodId,
         isBusiness,
         businessPartner,
         source,
@@ -550,6 +564,7 @@ async getTopicsBySemester(req: Request, res: Response) {
         description,
         semesterId,
         majorId,
+        submissionPeriodId, 
         isBusiness: isBusiness === 'true' || isBusiness === true,
         businessPartner,
         source,
