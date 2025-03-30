@@ -178,24 +178,26 @@ export class TopicController {
     }
   }
 
-  async getTopicsBySemester(req: Request, res: Response) {
-    try {
-      const { semesterId } = req.params;
-      const { round } = req.query;
-      if (!semesterId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Thiếu ID học kỳ.' });
-      }
-
-      const result = await topicService.getTopicsBySemester(semesterId, round ? Number(round) : undefined);
-      return res.status(result.status).json(result);
-    } catch (error) {
-      console.error('Lỗi khi lấy danh sách đề tài:', error);
-      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: 'Lỗi khi lấy danh sách đề tài.',
-      });
+ // Controller
+async getTopicsBySemester(req: Request, res: Response) {
+  try {
+    const { semesterId } = req.params;
+    const { submissionPeriodId } = req.query; // Dùng submissionPeriodId thay cho round
+    if (!semesterId) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({ success: false, message: 'Thiếu ID học kỳ.' });
     }
+
+    const result = await topicService.getTopicsBySemester(semesterId, submissionPeriodId as string | undefined);
+    return res.status(result.status).json(result);
+  } catch (error) {
+    console.error('Lỗi khi lấy danh sách đề tài:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Lỗi khi lấy danh sách đề tài.',
+    });
   }
+}
+
 
   async approveTopicByAcademic(req: Request, res: Response) {
     try {

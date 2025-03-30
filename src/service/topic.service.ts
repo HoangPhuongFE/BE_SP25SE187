@@ -609,7 +609,7 @@ export class TopicService {
       };
     }
   }
-  async getTopicsBySemester(semesterId: string, round?: number) {
+  async getTopicsBySemester(semesterId: string, submissionPeriodId?: string) {
     try {
       const semester = await prisma.semester.findUnique({
         where: {
@@ -618,6 +618,7 @@ export class TopicService {
         },
         select: { id: true },
       });
+  
       if (!semester) {
         return {
           success: false,
@@ -625,23 +626,27 @@ export class TopicService {
           message: 'Học kỳ không tồn tại.',
         };
       }
-
+  
       let whereClause: any = { semesterId };
-      if (round !== undefined) {
-        const submissionPeriod = await prisma.submissionPeriod.findFirst({
-          where: { semesterId, roundNumber: round },
+  
+      if (submissionPeriodId) {
+        // Kiểm tra tồn tại submissionPeriodId
+        const submissionPeriod = await prisma.submissionPeriod.findUnique({
+          where: { id: submissionPeriodId },
           select: { id: true },
         });
+  
         if (!submissionPeriod) {
           return {
             success: false,
             status: HTTP_STATUS.NOT_FOUND,
-            message: `Không tìm thấy đợt xét duyệt ${round} trong học kỳ này.`,
+            message: `Không tìm thấy đợt xét duyệt tương ứng.`,
           };
         }
-        whereClause.submissionPeriodId = submissionPeriod.id;
+  
+        whereClause.submissionPeriodId = submissionPeriodId;
       }
-
+  
       const topics = await prisma.topic.findMany({
         where: whereClause,
         select: {
@@ -667,18 +672,17 @@ export class TopicService {
             select: {
               group: { select: { id: true, groupCode: true } },
             },
-            take: 1, // Lấy assignment đầu tiên
+            take: 1,
           },
-          majors: { // Thêm để lấy majorId và majorCode
+          majors: {
             select: {
-              id: true,    // majorId
-              name: true,  // majorCode
+              id: true,
+              name: true,
             },
           },
         },
       });
-
-      // Định dạng dữ liệu để hiển thị nhóm hợp lý
+  
       const formattedTopics = topics.map(topic => ({
         ...topic,
         group: topic.topicAssignments.length > 0
@@ -687,23 +691,23 @@ export class TopicService {
         topicAssignments: undefined,
         majors: topic.majors,
       }));
-
+  
       if (formattedTopics.length === 0) {
         return {
           success: true,
           status: HTTP_STATUS.OK,
-          message: round !== undefined
-            ? `Không có đề tài nào trong đợt xét duyệt ${round} của học kỳ này.`
+          message: submissionPeriodId
+            ? `Không có đề tài nào trong đợt xét duyệt này của học kỳ.`
             : 'Không có đề tài nào trong học kỳ này.',
           data: [],
         };
       }
-
+  
       return {
         success: true,
         status: HTTP_STATUS.OK,
-        message: round !== undefined
-          ? `Lấy danh sách đề tài trong đợt xét duyệt ${round} thành công.`
+        message: submissionPeriodId
+          ? `Lấy danh sách đề tài trong đợt xét duyệt thành công.`
           : 'Lấy danh sách đề tài trong học kỳ thành công.',
         data: formattedTopics,
       };
@@ -716,6 +720,7 @@ export class TopicService {
       };
     }
   }
+  
   async getTopicById(topicId: string) {
     try {
       const topic = await prisma.topic.findUnique({
