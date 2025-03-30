@@ -599,7 +599,7 @@ export class TopicService {
       const semester = await prisma.semester.findUnique({
         where: {
           id: semesterId,
-          isDeleted: false
+          isDeleted: false,
         },
         select: { id: true },
       });
@@ -612,10 +612,12 @@ export class TopicService {
         };
       }
   
-      let whereClause: any = { semesterId };
+      let whereClause: any = { 
+        semesterId,
+        isDeleted: false, // Thêm điều kiện lọc đề tài chưa bị xóa
+      };
   
       if (submissionPeriodId) {
-        // Kiểm tra tồn tại submissionPeriodId
         const submissionPeriod = await prisma.submissionPeriod.findUnique({
           where: { id: submissionPeriodId },
           select: { id: true },
@@ -738,7 +740,7 @@ export class TopicService {
       if (!topic) {
         return {
           success: false,
-          status: HTTP_STATUS.NOT_FOUND,
+          status: HTTP_STATUS.OK,
           message: 'Không tìm thấy đề tài.',
         };
       }
