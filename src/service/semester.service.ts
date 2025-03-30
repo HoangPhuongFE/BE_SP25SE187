@@ -211,13 +211,13 @@ export class SemesterService {
           where: { semesterId: id, isDeleted: false },
           data: { isDeleted: true },
         }).then(res => res.count);
-  
+        /*
         // 16. Đánh dấu xóa các SemesterTopicMajor liên quan đến Semester
         updatedCounts.semesterTopicMajors = await tx.semesterTopicMajor.updateMany({
           where: { semesterId: id, isDeleted: false },
           data: { isDeleted: true },
         }).then(res => res.count);
-  
+        */
         // 17. Đánh dấu xóa các ProgressReport liên quan đến Group
         updatedCounts.progressReports = await tx.progressReport.updateMany({
           where: { groupId: { in: groupIds }, isDeleted: false },

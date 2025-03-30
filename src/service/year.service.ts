@@ -161,12 +161,12 @@ export class YearService {
           })
           .then((res) => res.count);
   
-        updatedCounts.semesterTopicMajors = await tx.semesterTopicMajor
-          .updateMany({
-            where: { semesterId: { in: semesterIds }, isDeleted: false },
-            data: { isDeleted: true },
-          })
-          .then((res) => res.count);
+        // updatedCounts.semesterTopicMajors = await tx.semesterTopicMajor
+        //   .updateMany({
+        //     where: { semesterId: { in: semesterIds }, isDeleted: false },
+        //     data: { isDeleted: true },
+        //   })
+        //   .then((res) => res.count);
   
         // 8. Xóa mềm các bảng phụ thuộc Groups
         updatedCounts.groupMembers = await tx.groupMember
