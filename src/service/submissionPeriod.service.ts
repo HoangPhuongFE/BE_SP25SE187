@@ -55,6 +55,7 @@ export class SubmissionPeriodService {
           semesterId: data.semesterId,
           roundNumber: data.roundNumber,
           type: data.type,
+          isDeleted: false, //
           semester: { isDeleted: false },
         },
       });
