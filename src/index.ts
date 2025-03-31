@@ -43,6 +43,9 @@ app.use(
     credentials: true,
   })
 );
+// Cho phép xử lý preflight OPTIONS request từ trình duyệt
+app.options('*', cors());
+
 app.use(morgan('dev'));  
 app.use(express.json()); // Chỉ giữ nếu cần cho các route JSON
 app.use(express.urlencoded({ extended: true })); // Chỉ giữ nếu cần cho các route form-urlencoded
