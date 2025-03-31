@@ -74,7 +74,7 @@ app.use('/api/council-defense', councilDenfeseRotuer);
 
 
 
-// deloy FE BE
+// deloy FE BE v1
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
