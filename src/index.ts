@@ -35,7 +35,9 @@ const app = express();
 // Chỉ cần middleware cơ bản, không cần Multer toàn cục
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://localhost:5173','https://final-capstone-project-git-main-anhphis-projects.vercel.app'],
+    origin: ['http://localhost:3000',
+       'http://localhost:5173',
+       'https://final-capstone-project-git-main-anhphis-projects.vercel.app'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
