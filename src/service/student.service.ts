@@ -249,6 +249,8 @@ export class StudentService {
       qualificationStatus: entry.qualificationStatus,
       isEligible: entry.isEligible,
       semester: entry.semester?.year.year + " - " + entry.semester?.code,
+      semesterId: entry.semesterId,
+      
 
     }));
   }
