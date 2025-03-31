@@ -156,6 +156,7 @@ model SemesterStudent {
   status              String   @default("PENDING")
   isEligible          Boolean  @default(false)
   qualificationStatus String   @default("not qualified")
+  block3              Boolean  @default(false) 
   registeredAt        DateTime @default(now())
   semester            Semester @relation(fields: [semesterId], references: [id])
   student             Student  @relation(fields: [studentId], references: [id])

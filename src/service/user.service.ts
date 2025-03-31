@@ -112,64 +112,69 @@ export class UserService {
       idToken,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
-
+  
     const payload = ticket.getPayload();
     if (!payload?.email) throw new Error('Invalid Google token');
-
+  
     let user = await prisma.user.findUnique({
       where: { email: payload.email },
       include: {
         roles: {
-          include: {
-            role: true,
-          },
+          include: { role: true },
         },
       },
     });
-
-    const studentRole = await prisma.role.findFirst({ where: { name: 'student' } });
-    if (!studentRole) throw new Error('Student role not found');
-
+  
+    // Nếu tài khoản chưa tồn tại, theo chính sách của bạn có thể quăng lỗi thay vì tự tạo mới.
     if (!user) {
-      user = await prisma.user.create({
+      throw new Error('Tài khoản có trong hệ thống . Vui lòng liên hệ bộ phận hỗ trợ.');
+    } else {
+      // Tùy chọn: cập nhật thông tin từ Google (avatar, fullName, …) nếu cần
+      user = await prisma.user.update({
+        where: { id: user.id },
         data: {
-          email: payload.email,
-          username: payload.email.split('@')[0],
-          fullName: payload.name,
-          avatar: payload.picture,
-          passwordHash: await hashPassword(Math.random().toString(36)),
-          roles: {
-            create: {
-              roleId: studentRole.id,
-              semesterId: DEFAULT_STUDENT_SEMESTER_ID, // Mặc định cho student
-              isActive: true,
-            },
-          },
+          fullName: payload.name || user.fullName,
+          avatar: payload.picture || user.avatar,
         },
         include: {
           roles: {
-            include: {
-              role: true,
-            },
+            include: { role: true },
           },
         },
       });
     }
-
+  
+    // Kiểm tra hoặc tạo UserRole nếu cần cho học kỳ hiện tại
+    const currentSemesterId = '...' // Lấy từ ngữ cảnh hiện tại nếu cần
+    const existRole = await prisma.userRole.findFirst({
+      where: { userId: user.id, roleId: user.roles[0]?.role?.id, semesterId: currentSemesterId },
+    });
+    if (!existRole) {
+      await prisma.userRole.create({
+        data: {
+          userId: user.id,
+          roleId: user.roles[0]?.role?.id,
+          semesterId: currentSemesterId,
+          isActive: true,
+        },
+      });
+    }
+  
     const accessToken = this.generateAccessToken(user);
     const refreshToken = this.generateRefreshToken(user);
-
-    // Lưu refresh token vào database
+  
+    // Lưu refresh token vào DB nếu cần
     await prisma.refreshToken.create({
       data: {
         token: refreshToken,
         userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 ngày
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
-
+  
     return { accessToken, refreshToken };
   }
+  
 
   generateAccessToken(user: any) {
     return jwt.sign(
