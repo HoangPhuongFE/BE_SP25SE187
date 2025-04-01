@@ -6,6 +6,7 @@ import { CouncilTopicService } from '../service/council.topic.service';
 const councilTopicService = new CouncilTopicService();
 
 export class CouncilTopicController {
+  [x: string]: any;
 
   async createCouncil(req: Request, res: Response) {
     const { name, semesterId, submissionPeriodId, startDate, endDate, status, type, round } = req.body;
@@ -160,6 +161,39 @@ export class CouncilTopicController {
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         success: false,
         message: COUNCIL_MESSAGE.COUNCIL_LIST_FAILED,
+      });
+    }
+  }
+
+  // Duyệt đề tài bởi thành viên hội đồng
+  async reviewTopicByCouncilMember(req: Request, res: Response) {
+    try {
+      const { topicId } = req.params;
+      const { status, reviewReason } = req.body;
+      const userId = req.user!.userId;
+
+      if (!userId) {
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          status: HTTP_STATUS.UNAUTHORIZED,
+          message: 'Bạn cần đăng nhập để thực hiện hành động này!',
+        });
+      }
+
+      const result = await councilTopicService.reviewTopicByCouncilMember(
+        topicId,
+        status,
+        userId,
+        reviewReason
+      );
+
+      return res.status(result.status).json(result);
+    } catch (error) {
+      console.error('Lỗi trong controller khi duyệt đề tài:', error);
+      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: 'Lỗi hệ thống trong controller!',
       });
     }
   }

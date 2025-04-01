@@ -67,4 +67,13 @@ router.get(
   checkRole(['lecturer', 'council_member']),
   councilTopicController.getCouncilDetailsForLecturer.bind(councilTopicController)
 );
+
+// Duyệt đề tài bởi thành viên hội đồng
+router.put(
+  '/councils/:councilId/topics/:topicId/review',
+  authenticateToken,
+  checkRole(['council_member',"lecturer"]),
+  councilTopicController.reviewTopicByCouncilMember.bind(councilTopicController)
+
+);
 export default router;
