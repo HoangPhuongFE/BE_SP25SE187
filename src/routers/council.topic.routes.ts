@@ -70,7 +70,7 @@ router.get(
 
 // Duyệt đề tài bởi thành viên hội đồng
 router.put(
-  '/councils/:councilId/topics/:topicId/review',
+  'topics/:topicId/review',
   authenticateToken,
   checkRole(['council_member',"lecturer"]),
   councilTopicController.reviewTopicByCouncilMember.bind(councilTopicController)
