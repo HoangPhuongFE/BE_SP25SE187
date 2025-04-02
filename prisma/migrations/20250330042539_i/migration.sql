@@ -16,7 +16,6 @@ CREATE TABLE `users` (
     `gender` VARCHAR(191) NULL,
     `phone` VARCHAR(191) NULL,
     `personal_Email` VARCHAR(191) NULL,
-    `semester_user` VARCHAR(191) NULL,
     `isActive` BOOLEAN NOT NULL DEFAULT true,
     `lastLogin` DATETIME(3) NULL,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -29,7 +28,7 @@ CREATE TABLE `users` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `Role` (
+CREATE TABLE `roles` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
     `description` VARCHAR(191) NULL,
@@ -39,12 +38,12 @@ CREATE TABLE `Role` (
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
-    UNIQUE INDEX `Role_name_key`(`name`),
+    UNIQUE INDEX `roles_name_key`(`name`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `UserRole` (
+CREATE TABLE `users_roles` (
     `id` VARCHAR(191) NOT NULL,
     `userId` VARCHAR(191) NOT NULL,
     `roleId` VARCHAR(191) NOT NULL,
@@ -53,12 +52,12 @@ CREATE TABLE `UserRole` (
     `isActive` BOOLEAN NOT NULL DEFAULT true,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
-    INDEX `UserRole_userId_semester_id_roleId_idx`(`userId`, `semester_id`, `roleId`),
+    INDEX `users_roles_userId_semester_id_roleId_idx`(`userId`, `semester_id`, `roleId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `RefreshToken` (
+CREATE TABLE `refresh_token` (
     `id` VARCHAR(191) NOT NULL,
     `token` TEXT NOT NULL,
     `userId` VARCHAR(191) NOT NULL,
@@ -70,7 +69,7 @@ CREATE TABLE `RefreshToken` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `Student` (
+CREATE TABLE `students` (
     `id` VARCHAR(191) NOT NULL,
     `userId` VARCHAR(191) NULL,
     `student_code` VARCHAR(191) NOT NULL,
@@ -83,8 +82,8 @@ CREATE TABLE `Student` (
     `is_imported` BOOLEAN NOT NULL DEFAULT true,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
-    UNIQUE INDEX `Student_userId_key`(`userId`),
-    UNIQUE INDEX `Student_student_code_key`(`student_code`),
+    UNIQUE INDEX `students_userId_key`(`userId`),
+    UNIQUE INDEX `students_student_code_key`(`student_code`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -114,7 +113,7 @@ CREATE TABLE `Year` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `SemesterStudent` (
+CREATE TABLE `semester_students` (
     `id` VARCHAR(191) NOT NULL,
     `semester_id` VARCHAR(191) NOT NULL,
     `student_id` VARCHAR(191) NOT NULL,
@@ -124,7 +123,7 @@ CREATE TABLE `SemesterStudent` (
     `registeredAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
-    UNIQUE INDEX `SemesterStudent_semester_id_student_id_key`(`semester_id`, `student_id`),
+    UNIQUE INDEX `semester_students_semester_id_student_id_key`(`semester_id`, `student_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -242,24 +241,6 @@ CREATE TABLE `councils` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `review_defense_councils` (
-    `id` VARCHAR(191) NOT NULL,
-    `council_id` VARCHAR(191) NOT NULL,
-    `semester_id` VARCHAR(191) NOT NULL,
-    `defense_review_round` VARCHAR(191) NOT NULL,
-    `URL` VARCHAR(191) NOT NULL,
-    `status` VARCHAR(191) NOT NULL,
-    `created_by` VARCHAR(191) NOT NULL,
-    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `time_review` DATETIME(3) NOT NULL,
-    `TopicAssignments_id` INTEGER NOT NULL,
-    `isDeleted` BOOLEAN NOT NULL DEFAULT false,
-
-    UNIQUE INDEX `review_defense_councils_council_id_key`(`council_id`),
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
 CREATE TABLE `topics` (
     `id` VARCHAR(191) NOT NULL,
     `semester_id` VARCHAR(191) NOT NULL,
@@ -294,7 +275,7 @@ CREATE TABLE `topic_assignments` (
     `status` VARCHAR(191) NOT NULL DEFAULT 'ASSIGNED',
     `approval_status` VARCHAR(191) NOT NULL,
     `defendStatus` VARCHAR(191) NULL,
-    `URL` VARCHAR(191) NULL,
+    `defenseRound` VARCHAR(191) NULL,
     `assigned_by` VARCHAR(191) NOT NULL,
     `assigned_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -324,7 +305,7 @@ CREATE TABLE `groups` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `GroupMentor` (
+CREATE TABLE `group_mentors` (
     `id` VARCHAR(191) NOT NULL,
     `group_id` VARCHAR(191) NOT NULL,
     `mentor_id` VARCHAR(191) NOT NULL,
@@ -334,12 +315,12 @@ CREATE TABLE `GroupMentor` (
     `defenseRoundDecision` VARCHAR(191) NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
-    UNIQUE INDEX `GroupMentor_group_id_mentor_id_key`(`group_id`, `mentor_id`),
+    UNIQUE INDEX `group_mentors_group_id_mentor_id_key`(`group_id`, `mentor_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `GroupInvitation` (
+CREATE TABLE `group_invitations` (
     `id` VARCHAR(191) NOT NULL,
     `group_id` VARCHAR(191) NOT NULL,
     `student_id` VARCHAR(191) NOT NULL,
@@ -353,7 +334,7 @@ CREATE TABLE `GroupInvitation` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `ProgressReportMentor` (
+CREATE TABLE `progress_report_mentors` (
     `id` VARCHAR(191) NOT NULL,
     `reportId` VARCHAR(191) NOT NULL,
     `mentorId` VARCHAR(191) NOT NULL,
@@ -362,7 +343,7 @@ CREATE TABLE `ProgressReportMentor` (
     `feedback` TEXT NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
-    UNIQUE INDEX `ProgressReportMentor_reportId_mentorId_key`(`reportId`, `mentorId`),
+    UNIQUE INDEX `progress_report_mentors_reportId_mentorId_key`(`reportId`, `mentorId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -441,17 +422,6 @@ CREATE TABLE `system_logs` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `semester_topic_major` (
-    `semester_id` VARCHAR(191) NOT NULL,
-    `topic_id` VARCHAR(191) NOT NULL,
-    `major_id` VARCHAR(191) NOT NULL,
-    `status` VARCHAR(191) NOT NULL,
-    `isDeleted` BOOLEAN NOT NULL DEFAULT false,
-
-    PRIMARY KEY (`semester_id`, `topic_id`, `major_id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
 CREATE TABLE `email_logs` (
     `id` VARCHAR(191) NOT NULL,
     `user_id` VARCHAR(191) NOT NULL,
@@ -461,6 +431,7 @@ CREATE TABLE `email_logs` (
     `status` VARCHAR(191) NOT NULL,
     `error_message` TEXT NULL,
     `error_at` DATETIME(3) NOT NULL,
+    `metadata` JSON NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
     PRIMARY KEY (`id`)
@@ -545,6 +516,7 @@ CREATE TABLE `documents` (
     `council_id` VARCHAR(191) NULL,
     `group_id` VARCHAR(191) NULL,
     `review_schedule_id` VARCHAR(191) NULL,
+    `defense_schedule_id` VARCHAR(191) NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
     PRIMARY KEY (`id`)
@@ -565,7 +537,7 @@ CREATE TABLE `council_members` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `feedback` (
+CREATE TABLE `feedbacks` (
     `id` VARCHAR(191) NOT NULL,
     `meeting_id` VARCHAR(191) NOT NULL,
     `review_assignment_id` VARCHAR(191) NULL,
@@ -578,7 +550,7 @@ CREATE TABLE `feedback` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `DefenseSchedule` (
+CREATE TABLE `defense_schedules` (
     `id` VARCHAR(191) NOT NULL,
     `council_id` VARCHAR(191) NOT NULL,
     `group_id` VARCHAR(191) NOT NULL,
@@ -590,9 +562,23 @@ CREATE TABLE `DefenseSchedule` (
     `result` VARCHAR(191) NULL,
     `feedback` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `confirmation_status` VARCHAR(191) NOT NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
+CREATE TABLE `defense_member_results` (
+    `id` VARCHAR(191) NOT NULL,
+    `defense_schedule_id` VARCHAR(191) NOT NULL,
+    `student_id` VARCHAR(191) NOT NULL,
+    `result` VARCHAR(191) NOT NULL,
+    `feedback` TEXT NULL,
+    `evaluated_by` VARCHAR(191) NULL,
+    `evaluated_at` DATETIME(3) NULL,
+    `isDeleted` BOOLEAN NOT NULL DEFAULT false,
+
+    UNIQUE INDEX `defense_member_results_defense_schedule_id_student_id_key`(`defense_schedule_id`, `student_id`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -605,16 +591,6 @@ CREATE TABLE `notification_recipients` (
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
     PRIMARY KEY (`notification_id`, `user_id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
--- CreateTable
-CREATE TABLE `detail_major_topic` (
-    `major_id` VARCHAR(191) NOT NULL,
-    `topic_id` VARCHAR(191) NOT NULL,
-    `status` VARCHAR(191) NOT NULL,
-    `isDeleted` BOOLEAN NOT NULL DEFAULT false,
-
-    PRIMARY KEY (`major_id`, `topic_id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
@@ -638,6 +614,7 @@ CREATE TABLE `submission_periods` (
     `id` VARCHAR(191) NOT NULL,
     `semester_id` VARCHAR(191) NOT NULL,
     `round_number` INTEGER NOT NULL,
+    `type` VARCHAR(191) NOT NULL,
     `start_date` DATETIME(3) NOT NULL,
     `end_date` DATETIME(3) NOT NULL,
     `created_by` VARCHAR(191) NOT NULL,
@@ -660,34 +637,34 @@ CREATE TABLE `_MajorTopics` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
-ALTER TABLE `UserRole` ADD CONSTRAINT `UserRole_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `users_roles` ADD CONSTRAINT `users_roles_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `UserRole` ADD CONSTRAINT `UserRole_roleId_fkey` FOREIGN KEY (`roleId`) REFERENCES `Role`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `users_roles` ADD CONSTRAINT `users_roles_roleId_fkey` FOREIGN KEY (`roleId`) REFERENCES `roles`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `UserRole` ADD CONSTRAINT `UserRole_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `users_roles` ADD CONSTRAINT `users_roles_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `RefreshToken` ADD CONSTRAINT `RefreshToken_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `refresh_token` ADD CONSTRAINT `refresh_token_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `Student` ADD CONSTRAINT `Student_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `students` ADD CONSTRAINT `students_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `Student` ADD CONSTRAINT `Student_major_id_fkey` FOREIGN KEY (`major_id`) REFERENCES `majors`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `students` ADD CONSTRAINT `students_major_id_fkey` FOREIGN KEY (`major_id`) REFERENCES `majors`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `Student` ADD CONSTRAINT `Student_specialization_id_fkey` FOREIGN KEY (`specialization_id`) REFERENCES `specializations`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `students` ADD CONSTRAINT `students_specialization_id_fkey` FOREIGN KEY (`specialization_id`) REFERENCES `specializations`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `semesters` ADD CONSTRAINT `semesters_yearId_fkey` FOREIGN KEY (`yearId`) REFERENCES `Year`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `SemesterStudent` ADD CONSTRAINT `SemesterStudent_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `semester_students` ADD CONSTRAINT `semester_students_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `SemesterStudent` ADD CONSTRAINT `SemesterStudent_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `Student`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `semester_students` ADD CONSTRAINT `semester_students_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `specializations` ADD CONSTRAINT `specializations_major_id_fkey` FOREIGN KEY (`major_id`) REFERENCES `majors`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -712,12 +689,6 @@ ALTER TABLE `councils` ADD CONSTRAINT `councils_topicass_id_fkey` FOREIGN KEY (`
 
 -- AddForeignKey
 ALTER TABLE `councils` ADD CONSTRAINT `councils_submission_period_id_fkey` FOREIGN KEY (`submission_period_id`) REFERENCES `submission_periods`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `review_defense_councils` ADD CONSTRAINT `review_defense_councils_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `review_defense_councils` ADD CONSTRAINT `review_defense_councils_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `topics` ADD CONSTRAINT `topics_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -747,28 +718,28 @@ ALTER TABLE `groups` ADD CONSTRAINT `groups_semester_id_fkey` FOREIGN KEY (`seme
 ALTER TABLE `groups` ADD CONSTRAINT `groups_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `GroupMentor` ADD CONSTRAINT `GroupMentor_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `group_mentors` ADD CONSTRAINT `group_mentors_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `GroupMentor` ADD CONSTRAINT `GroupMentor_mentor_id_fkey` FOREIGN KEY (`mentor_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `group_mentors` ADD CONSTRAINT `group_mentors_mentor_id_fkey` FOREIGN KEY (`mentor_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `GroupMentor` ADD CONSTRAINT `GroupMentor_added_by_fkey` FOREIGN KEY (`added_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `group_mentors` ADD CONSTRAINT `group_mentors_added_by_fkey` FOREIGN KEY (`added_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `GroupMentor` ADD CONSTRAINT `GroupMentor_role_id_fkey` FOREIGN KEY (`role_id`) REFERENCES `Role`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `group_mentors` ADD CONSTRAINT `group_mentors_role_id_fkey` FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `GroupInvitation` ADD CONSTRAINT `GroupInvitation_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `group_invitations` ADD CONSTRAINT `group_invitations_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `GroupInvitation` ADD CONSTRAINT `GroupInvitation_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `Student`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `group_invitations` ADD CONSTRAINT `group_invitations_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `ProgressReportMentor` ADD CONSTRAINT `ProgressReportMentor_reportId_fkey` FOREIGN KEY (`reportId`) REFERENCES `progress_reports`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `progress_report_mentors` ADD CONSTRAINT `progress_report_mentors_reportId_fkey` FOREIGN KEY (`reportId`) REFERENCES `progress_reports`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `ProgressReportMentor` ADD CONSTRAINT `ProgressReportMentor_mentorId_fkey` FOREIGN KEY (`mentorId`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `progress_report_mentors` ADD CONSTRAINT `progress_report_mentors_mentorId_fkey` FOREIGN KEY (`mentorId`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `progress_reports` ADD CONSTRAINT `progress_reports_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -780,25 +751,16 @@ ALTER TABLE `ai_verification_logs` ADD CONSTRAINT `ai_verification_logs_topic_id
 ALTER TABLE `group_members` ADD CONSTRAINT `group_members_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `group_members` ADD CONSTRAINT `group_members_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `Student`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE `group_members` ADD CONSTRAINT `group_members_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `group_members` ADD CONSTRAINT `group_members_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `group_members` ADD CONSTRAINT `group_members_role_id_fkey` FOREIGN KEY (`role_id`) REFERENCES `Role`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `group_members` ADD CONSTRAINT `group_members_role_id_fkey` FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `system_logs` ADD CONSTRAINT `system_logs_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `semester_topic_major` ADD CONSTRAINT `semester_topic_major_topic_id_fkey` FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `semester_topic_major` ADD CONSTRAINT `semester_topic_major_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `semester_topic_major` ADD CONSTRAINT `semester_topic_major_major_id_fkey` FOREIGN KEY (`major_id`) REFERENCES `majors`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `email_logs` ADD CONSTRAINT `email_logs_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -846,34 +808,37 @@ ALTER TABLE `documents` ADD CONSTRAINT `documents_group_id_fkey` FOREIGN KEY (`g
 ALTER TABLE `documents` ADD CONSTRAINT `documents_review_schedule_id_fkey` FOREIGN KEY (`review_schedule_id`) REFERENCES `review_schedules`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `documents` ADD CONSTRAINT `documents_defense_schedule_id_fkey` FOREIGN KEY (`defense_schedule_id`) REFERENCES `defense_schedules`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `council_members` ADD CONSTRAINT `council_members_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `council_members` ADD CONSTRAINT `council_members_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `council_members` ADD CONSTRAINT `council_members_role_id_fkey` FOREIGN KEY (`role_id`) REFERENCES `Role`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `council_members` ADD CONSTRAINT `council_members_role_id_fkey` FOREIGN KEY (`role_id`) REFERENCES `roles`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `feedback` ADD CONSTRAINT `feedback_meeting_id_fkey` FOREIGN KEY (`meeting_id`) REFERENCES `meeting_schedules`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `feedbacks` ADD CONSTRAINT `feedbacks_meeting_id_fkey` FOREIGN KEY (`meeting_id`) REFERENCES `meeting_schedules`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `DefenseSchedule` ADD CONSTRAINT `DefenseSchedule_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE `DefenseSchedule` ADD CONSTRAINT `DefenseSchedule_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `defense_member_results` ADD CONSTRAINT `defense_member_results_defense_schedule_id_fkey` FOREIGN KEY (`defense_schedule_id`) REFERENCES `defense_schedules`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `defense_member_results` ADD CONSTRAINT `defense_member_results_student_id_fkey` FOREIGN KEY (`student_id`) REFERENCES `students`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `notification_recipients` ADD CONSTRAINT `notification_recipients_notification_id_fkey` FOREIGN KEY (`notification_id`) REFERENCES `notifications`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `notification_recipients` ADD CONSTRAINT `notification_recipients_user_id_fkey` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `detail_major_topic` ADD CONSTRAINT `detail_major_topic_major_id_fkey` FOREIGN KEY (`major_id`) REFERENCES `majors`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE `detail_major_topic` ADD CONSTRAINT `detail_major_topic_topic_id_fkey` FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `email_templates` ADD CONSTRAINT `email_templates_createdBy_fkey` FOREIGN KEY (`createdBy`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;

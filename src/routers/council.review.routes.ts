@@ -117,4 +117,12 @@ router.put(
   councilReviewController.updateReviewSchedule.bind(councilReviewController)
 );
 
+// Route mới: Mentor xác nhận vòng bảo vệ
+router.post(
+  "/defense/confirm-defense-round",
+  authenticateToken,
+  checkRole(["mentor_main", "mentor_sub", "lecturer"]),
+  councilReviewController.confirmDefenseRound.bind(councilReviewController)
+);
+
 export default router;
