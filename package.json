@@ -45,7 +45,7 @@
     "typescript-eslint": "^8.18.0"
   },
   "dependencies": {
-    "@prisma/client": "^6.4.0",
+    "@prisma/client": "^6.5.0",
     "@types/multer": "^1.4.12",
     "axios": "^1.7.9",
     "bcryptjs": "^2.4.3",
@@ -64,7 +64,8 @@
     "nodemailer": "^6.10.0",
     "openai": "^4.85.2",
     "uuid": "^11.0.5",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.2"
   },
   "prisma": {
     "seed": "ts-node ./prisma/seed.ts"

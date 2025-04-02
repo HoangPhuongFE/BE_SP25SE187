@@ -535,22 +535,33 @@ model Notification {
 }
 
 model Decision {
-  id            String    @id @default(uuid())
-  decisionName  String    @map("decision_name")
-  decisionTitle String?   @map("decision_title")
-  draftFile     String?   @map("draft_file")
-  finalFile     String?   @map("final_file")
-  decisionURL   String?   @map("decisionURL")
-  status        String
-  semesterId    String?
-  semester      Semester? @relation(fields: [semesterId], references: [id])
-  createdBy     String    @map("created_by")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  creator       User      @relation(fields: [createdBy], references: [id])
-  isDeleted     Boolean   @default(false)
+  id             String   @id @default(uuid())
+
+  decisionName   String   @map("decision_name")    // Số quyết định (123)
+  decisionTitle  String?  @map("decision_title")   // Tiêu đề quyết định
+  decisionDate   DateTime? @map("decision_date")   // Ngày ký quyết định
+
+  basedOnJson    String?  @map("based_on_json")    // Mảng căn cứ (JSON.stringify)
+
+  proposal       String?  @map("proposal")         // Theo đề nghị của...
+  content        String?  @map("content")          // Nội dung phần “QUYẾT ĐỊNH”
+
+  draftFile      String?  @map("draft_file")       // File nháp (nếu có)
+  finalFile      String?  @map("final_file")       // File chính thức (nếu có)
+  decisionURL    String?  @map("decisionURL")      // URL file công khai (nếu có)
+
+  semesterId     String?
+  semester       Semester? @relation(fields: [semesterId], references: [id])
+
+  createdBy      String   @map("created_by")
+  creator        User     @relation(fields: [createdBy], references: [id])
+
+  createdAt      DateTime @default(now()) @map("created_at")
+  isDeleted      Boolean  @default(false)
 
   @@map("decisions")
 }
+
 
 model ReviewSchedule {
   id          String             @id @default(uuid())

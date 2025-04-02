@@ -28,6 +28,7 @@ import importTopicRoutes from './routers/import-topic.routes';
 import progressReportRouter from './routers/progress-report.router';
 import councilReivewRotuer from './routers/council.review.routes';
 import councilDenfeseRotuer from './routers/council.defense.routes';
+import decisionRoutes from './routers/decision.routes';
 
 config();
 const app = express();
@@ -76,7 +77,7 @@ app.use('/api', importTopicRoutes);
 app.use('/api/progress-report', progressReportRouter);
 app.use('/api/council-review', councilReivewRotuer);
 app.use('/api/council-defense', councilDenfeseRotuer);
-
+app.use("/api", decisionRoutes);  
 
 
 // deloy FE BE v1

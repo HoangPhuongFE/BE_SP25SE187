@@ -9,7 +9,7 @@ interface UserResponse {
   email: string;
   username: string;
   fullName: string | null;
-  roles: string[]; // Chỉ lấy tên role
+  roles: string[]; 
 }
 
 const adminService = new AdminService();
@@ -25,7 +25,7 @@ export class AdminController {
           email: user.email,
           username: user.username,
           fullName: user.fullName || null,
-          roles: user.roles.map((ur) => ur.role.name), // ur đã được định nghĩa trong Prisma schema
+          roles: user.roles.map((ur) => ur.role.name),
         } as UserResponse,
       });
     } catch (error) {

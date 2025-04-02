@@ -3,7 +3,6 @@ import { hashPassword } from '../utils/hash';
 import { ADMIN_MESSAGE } from '~/constants/message';
 
 const prisma = new PrismaClient();
-const SYSTEM_DEFAULT_SEMESTER_ID = 'system-default-id'; // Thay bằng ID thực tế từ seed
 
 interface CreateUserDTO {
   email: string;
@@ -43,7 +42,7 @@ export class AdminService {
       }
     }
 
-    const semesterId = data.semesterId || SYSTEM_DEFAULT_SEMESTER_ID;
+    //const semesterId = data.semesterId || SYSTEM_DEFAULT_SEMESTER_ID;
 
     return prisma.user.create({
       data: {
@@ -54,7 +53,7 @@ export class AdminService {
         roles: {
           create: roleIds.map((role) => ({
             roleId: role.id,
-            semesterId,
+           // semesterId,
             isActive: true,
           })),
         },
@@ -94,7 +93,7 @@ export class AdminService {
       }
     }
 
-    const semesterId = data.semesterId || SYSTEM_DEFAULT_SEMESTER_ID;
+    //const semesterId = data.semesterId || SYSTEM_DEFAULT_SEMESTER_ID;
 
     await prisma.userRole.deleteMany({ where: { userId: data.userId } });
 
@@ -102,7 +101,7 @@ export class AdminService {
       data: roleIds.map((role) => ({
         roleId: role.id,
         userId: data.userId,
-        semesterId,
+       // semesterId,
         isActive: true,
       })),
     });
