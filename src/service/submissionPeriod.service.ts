@@ -11,7 +11,7 @@ export class SubmissionPeriodService {
     roundNumber: number;
     startDate: Date;
     endDate: Date;
-    type: "TOPIC" | "CHECK-TOPIC" | "REVIEW" | "DEFENSE"; // Cập nhật type để bao gồm CHECK-TOPIC
+    type: "TOPIC" | "CHECK-TOPIC" | "REVIEW" | "DEFENSE";
     description?: string;
     createdBy: string;
   }) {

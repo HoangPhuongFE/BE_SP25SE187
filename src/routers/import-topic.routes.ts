@@ -11,7 +11,7 @@ const importTopicController = new ImportTopicController();
 router.post(
   '/import-topic-updates',
   authenticateToken,
-  checkRole(['academic_officer', 'graduation_thesis_manager']),
+  checkRole(['academic_officer', 'graduation_thesis_manager','lecture',"council_member"]),
   upload.single('file'), // Field name là "file"
   importTopicController.importTopicUpdates.bind(importTopicController)
 );

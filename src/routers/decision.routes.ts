@@ -17,13 +17,13 @@ router.post("/decisions",
 
 router.get("/decisions",
   authenticateToken,
-  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager"]),
+  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager","lecturer"]),
   getAllDecisionsController);
 
 
 router.get("/decisions/:id",
   authenticateToken,
-  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager"]),
+  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager","lecturer"]),
   getDecisionByIdController);
 
 router.put("/decisions/:id",
@@ -31,7 +31,7 @@ router.put("/decisions/:id",
   checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager"]),
   updateDecisionController);
 
-router.put("/decisions/:id",
+router.put("/decisions/:id/delete",
   authenticateToken,
   checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager"]),
   deleteDecisionController);

@@ -2,7 +2,6 @@ import { PrismaClient } from '@prisma/client';
 import HTTP_STATUS from '../constants/httpStatus';
 import COUNCIL_MESSAGE from '../constants/message';
 import { SystemConfigService } from './system.config.service';
-import { Realtime } from 'openai/resources/beta/realtime/realtime';
 
 const prisma = new PrismaClient();
 const systemConfigService = new SystemConfigService();

@@ -27,29 +27,36 @@ import usersemesterroleRouter from './routers/user-semester-role.routes';
 import importTopicRoutes from './routers/import-topic.routes';
 import progressReportRouter from './routers/progress-report.router';
 import councilReivewRotuer from './routers/council.review.routes';
+import aiRouter from './routers/ai.router';
+import statisticsRouter from './routers/statistics.router';
 import councilDenfeseRotuer from './routers/council.defense.routes';
 import decisionRoutes from './routers/decision.routes';
+import thesisAssignmentDecisionRouter from './routers/thesisAssignmentDecision.router';
 
+// Tải biến môi trường từ file .env
 config();
+//console.log('GOOGLE_GEMINI_API_KEY:', process.env.GOOGLE_GEMINI_API_KEY ? 'Đã tìm thấy API Key' : 'Không tìm thấy API Key');
+
 const app = express();
 
-// Chỉ cần middleware cơ bản, không cần Multer toàn cục
+// Middleware
 app.use(
   cors({
-    origin: ['http://localhost:3000',
-       'http://localhost:5173',
-       'https://final-capstone-project-git-main-anhphis-projects.vercel.app'],
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://final-capstone-project-git-main-anhphis-projects.vercel.app',
+    ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   })
 );
-// Cho phép xử lý preflight OPTIONS request từ trình duyệt
 app.options('*', cors());
 
-app.use(morgan('dev'));  
-app.use(express.json()); // Chỉ giữ nếu cần cho các route JSON
-app.use(express.urlencoded({ extended: true })); // Chỉ giữ nếu cần cho các route form-urlencoded
+app.use(morgan('dev'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/users', userRouter);
@@ -76,15 +83,14 @@ app.use('/api/semester-role', usersemesterroleRouter);
 app.use('/api', importTopicRoutes);
 app.use('/api/progress-report', progressReportRouter);
 app.use('/api/council-review', councilReivewRotuer);
+app.use('/api/ai', aiRouter);
+app.use('/api/statistics', statisticsRouter);
 app.use('/api/council-defense', councilDenfeseRotuer);
-app.use("/api", decisionRoutes);  
-
-
-// deloy FE BE v1
+app.use('/api', decisionRoutes);
+app.use('/api', thesisAssignmentDecisionRouter);
+// Khởi động server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   startCronJobs();
 });
-
-export default app;

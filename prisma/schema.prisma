@@ -107,7 +107,6 @@ model Student {
   specialization       Specialization?       @relation(fields: [specializationId], references: [id])
   specializationId     String?               @map("specialization_id")
   semesterStudents     SemesterStudent[]
-  personalEmail        String?               @map("personal_email")
   status               StudentStatus         @default(ACTIVE)
   importAt             DateTime              @default(now()) @map("import_at")
   importSource         String                @map("import_source")
@@ -489,7 +488,7 @@ model SystemLog {
   action      String
   entityType  String   @map("entity_type")
   entityId    String   @map("entity_id")
-  description String?  @map("description")
+  description String?  @map("description") @db.Text
   error       String?  @map("error") @db.Text
   stackTrace  String?  @map("stack_trace") @db.Text
   severity    String   @map("severity")
@@ -534,14 +533,17 @@ model Notification {
   @@map("notifications")
 }
 
+
 model Decision {
   id             String   @id @default(uuid())
 
   decisionName   String   @map("decision_name")    // Số quyết định (123)
-  decisionTitle  String?  @map("decision_title")   // Tiêu đề quyết định
+  decisionTitle  String?  @db.Text@map("decision_title")   // Tiêu đề quyết định
   decisionDate   DateTime? @map("decision_date")   // Ngày ký quyết định
 
-  basedOnJson    String?  @map("based_on_json")    // Mảng căn cứ (JSON.stringify)
+  basedOnJson    String?  @db.Text @map("based_on_json")    // Mảng căn cứ (JSON.stringify)
+  participantsJson String? @db.Text @map("participants_json") // Danh sách sinh viên, giảng viên, mentor (JSON.stringify)
+  clausesJson    String?  @db.Text @map("clauses_json")     // Các điều khoản (Điều 2, Điều 3, Điều 4) (JSON.stringify)
 
   proposal       String?  @map("proposal")         // Theo đề nghị của...
   content        String?  @map("content")          // Nội dung phần “QUYẾT ĐỊNH”
@@ -549,7 +551,7 @@ model Decision {
   draftFile      String?  @map("draft_file")       // File nháp (nếu có)
   finalFile      String?  @map("final_file")       // File chính thức (nếu có)
   decisionURL    String?  @map("decisionURL")      // URL file công khai (nếu có)
-
+  signature      String?  @map("signature")         // Chữ ký (ví dụ: tên người ký hoặc dữ liệu chữ ký)
   semesterId     String?
   semester       Semester? @relation(fields: [semesterId], references: [id])
 

@@ -319,6 +319,7 @@ export const PROGRESS_REPORT_MESSAGE = {
   NO_ACTIVE_PERIOD: "Không có khoảng thời gian báo cáo nào đang hoạt động",
 } as const;
 
+
 // Cập nhật vào danh sách MESSAGES chung
 export const MESSAGES = {
   STUDENT: STUDENT_MESSAGE,

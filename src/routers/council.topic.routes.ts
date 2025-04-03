@@ -72,7 +72,7 @@ router.get(
 router.put(
   'topics/:topicId/review',
   authenticateToken,
-  checkRole(['council_member',"lecturer"]),
+  checkRole(['council_member',"lecturer", "graduation_thesis_manager"]),
   councilTopicController.reviewTopicByCouncilMember.bind(councilTopicController)
 
 );
