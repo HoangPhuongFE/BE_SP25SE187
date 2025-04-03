@@ -15,7 +15,7 @@ export class AIService {
   private async initializeAI() {
     try {
       const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-      console.log('AIService - API Key:', apiKey ? 'Đã tìm thấy API Key' : 'Không tìm thấy API Key');
+     // console.log('AIService - API Key:', apiKey ? 'Đã tìm thấy API Key' : 'Không tìm thấy API Key');
       if (!apiKey) {
         console.warn('Google Gemini API key không tồn tại trong .env. AI sẽ bị tắt.');
         return;
@@ -25,7 +25,7 @@ export class AIService {
         provider: 'gemini',
         apiKey,
       });
-      console.log('Khởi tạo AI thành công với Google Gemini');
+      //console.log('Khởi tạo AI thành công với Google Gemini');
     } catch (error) {
       console.error('Lỗi khi khởi tạo AI:', error);
     }
@@ -152,7 +152,7 @@ export class AIService {
     }
 
     const aiResult = await this.aiService.validateTopicName(nameVi, nameEn, '');
-    console.log('Kết quả từ CoreAIService:', aiResult);
+    //console.log('Kết quả từ CoreAIService:', aiResult);
 
     const confidence = aiResult.confidence !== undefined ? aiResult.confidence : 0.9;
     return {
