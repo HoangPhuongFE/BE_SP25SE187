@@ -1,4 +1,4 @@
-import { AIConfig, AIProvider, AIValidationResult } from '../AI/ai.interface';
+import { AIConfig, AIProvider, AIValidationResult } from '../ai/ai.interface';
 import { GeminiProvider } from './gemini.provider';
 
 export class CoreAIService {

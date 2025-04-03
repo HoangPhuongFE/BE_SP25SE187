@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { MESSAGES } from '../constants/message';
-import { CoreAIService } from '../AI/ai.core';
+import { CoreAIService } from '../ai/ai.core';
 
 const prisma = new PrismaClient();
 

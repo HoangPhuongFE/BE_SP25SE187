@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { AIProvider, AIValidationResult } from '../AI/ai.interface';
+import { AIProvider, AIValidationResult } from '../ai/ai.interface';
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
