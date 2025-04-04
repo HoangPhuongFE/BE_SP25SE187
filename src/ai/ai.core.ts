@@ -36,6 +36,7 @@ export class CoreAIService {
       return {
         isValid: true,
         message: 'Kiểm tra cơ bản qua (AI bị tắt)',
+        confidence: 1.0,
       };
     }
     return this.provider.validateTopicName(nameVi, nameEn, '');

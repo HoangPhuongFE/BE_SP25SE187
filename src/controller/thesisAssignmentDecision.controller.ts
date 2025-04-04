@@ -1,5 +1,3 @@
-// 📁 src/controllers/thesisAssignment.controller.ts
-
 import { Request, Response } from "express";
 import { ThesisAssignmentService } from "../service/thesisAssignmentDecision.service";
 import { createThesisAssignmentSchema, updateThesisAssignmentSchema } from "../validators/thesisAssignment.schema";
@@ -17,7 +15,7 @@ export const createThesisAssignmentController = async (req: Request, res: Respon
   }
 
   try {
-    const createdBy = req.user?.userId; // Lấy userId từ token
+    const createdBy = req.user?.userId;
     if (!createdBy) {
       return res.status(401).json({ success: false, message: "Không xác định được người tạo (token thiếu userId)" });
     }
@@ -72,8 +70,8 @@ export const updateThesisAssignmentController = async (req: Request, res: Respon
 export const deleteThesisAssignmentController = async (req: Request, res: Response) => {
   try {
     const deleted = await thesisAssignmentService.deleteThesisAssignment(req.params.id);
-    return res.json({ message: "Xóa quyết định giao/hướng dẫn khóa luận thành công", data: deleted });
+    return res.json({ message: "Xóa mềm quyết định giao/hướng dẫn khóa luận thành công", data: deleted });
   } catch (error: any) {
-    return res.status(500).json({ message: "Lỗi xóa quyết định giao/hướng dẫn khóa luận", error: error.message });
+    return res.status(500).json({ message: "Lỗi xóa mềm quyết định giao/hướng dẫn khóa luận", error: error.message });
   }
 };

@@ -17,7 +17,9 @@ export const createDecisionSchema = z.object({
   finalFile: z.string().optional(),
   decisionURL: z.string().optional(),
   semesterId: z.string().optional(),
-  signature: z.string().optional(), 
+  signature: z.string().optional(),
+  type: z.enum(["DRAFT", "FINAL"]).optional(), // Nếu dùng Enum
+  // type: z.string().optional(), // Nếu dùng String
 });
 
 export const updateDecisionSchema = createDecisionSchema.partial();

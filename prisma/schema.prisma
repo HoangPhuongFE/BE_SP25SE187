@@ -533,6 +533,10 @@ model Notification {
   @@map("notifications")
 }
 
+enum DecisionType {
+  DRAFT
+  FINAL
+}
 
 model Decision {
   id             String   @id @default(uuid())
@@ -547,7 +551,7 @@ model Decision {
 
   proposal       String?  @map("proposal")         // Theo đề nghị của...
   content        String?  @map("content")          // Nội dung phần “QUYẾT ĐỊNH”
-
+  type           DecisionType? @map("type")       // Loại file: "DRAFT" hoặc "FINAL"
   draftFile      String?  @map("draft_file")       // File nháp (nếu có)
   finalFile      String?  @map("final_file")       // File chính thức (nếu có)
   decisionURL    String?  @map("decisionURL")      // URL file công khai (nếu có)

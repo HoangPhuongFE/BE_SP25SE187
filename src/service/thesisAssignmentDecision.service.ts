@@ -1,5 +1,3 @@
-// 📁 src/services/thesisAssignment.service.ts
-
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
@@ -10,9 +8,8 @@ export class ThesisAssignmentService {
         decisionName: data.decisionName,
         decisionTitle: data.decisionTitle,
         decisionDate: data.decisionDate ? new Date(data.decisionDate) : undefined,
-        semesterId: data.semesterId,
+        type: data.type, // Thêm trường type
         createdBy,
-        // Các trường khác của Decision sẽ có giá trị mặc định (null)
       },
     });
 
@@ -21,16 +18,17 @@ export class ThesisAssignmentService {
       decisionName: newAssignment.decisionName,
       decisionTitle: newAssignment.decisionTitle,
       decisionDate: newAssignment.decisionDate,
-      semesterId: data.semesterId,
       createdBy: newAssignment.createdBy,
       createdAt: newAssignment.createdAt,
       isDeleted: newAssignment.isDeleted,
-      
+      type: newAssignment.type, // Thêm vào response
     };
   }
 
   async getThesisAssignmentById(id: string) {
-    const assignment = await prisma.decision.findUnique({ where: { id } });
+    const assignment = await prisma.decision.findUnique({
+      where: { id, isDeleted: false },
+    });
     if (!assignment) throw new Error("Không tìm thấy quyết định giao/hướng dẫn khóa luận");
 
     return {
@@ -38,10 +36,10 @@ export class ThesisAssignmentService {
       decisionName: assignment.decisionName,
       decisionTitle: assignment.decisionTitle,
       decisionDate: assignment.decisionDate,
-      semesterId: assignment.semesterId,
       createdBy: assignment.createdBy,
       createdAt: assignment.createdAt,
       isDeleted: assignment.isDeleted,
+      type: assignment.type, // Thêm vào response
     };
   }
 
@@ -56,15 +54,17 @@ export class ThesisAssignmentService {
       decisionName: a.decisionName,
       decisionTitle: a.decisionTitle,
       decisionDate: a.decisionDate,
-      semesterId: a.semesterId,
       createdBy: a.createdBy,
       createdAt: a.createdAt,
       isDeleted: a.isDeleted,
+      type: a.type, // Thêm vào response
     }));
   }
 
   async updateThesisAssignment(id: string, data: any) {
-    const existing = await prisma.decision.findUnique({ where: { id } });
+    const existing = await prisma.decision.findUnique({
+      where: { id, isDeleted: false },
+    });
     if (!existing) throw new Error("Không tìm thấy quyết định giao/hướng dẫn khóa luận");
 
     const updated = await prisma.decision.update({
@@ -73,7 +73,7 @@ export class ThesisAssignmentService {
         decisionName: data.decisionName,
         decisionTitle: data.decisionTitle,
         decisionDate: data.decisionDate ? new Date(data.decisionDate) : undefined,
-        semesterId: data.semesterId,
+        type: data.type, // Thêm trường type
       },
     });
 
@@ -82,15 +82,17 @@ export class ThesisAssignmentService {
       decisionName: updated.decisionName,
       decisionTitle: updated.decisionTitle,
       decisionDate: updated.decisionDate,
-      semesterId: updated.semesterId,
       createdBy: updated.createdBy,
       createdAt: updated.createdAt,
       isDeleted: updated.isDeleted,
+      type: updated.type, // Thêm vào response
     };
   }
 
   async deleteThesisAssignment(id: string) {
-    const existing = await prisma.decision.findUnique({ where: { id } });
+    const existing = await prisma.decision.findUnique({
+      where: { id, isDeleted: false },
+    });
     if (!existing) throw new Error("Không tìm thấy quyết định giao/hướng dẫn khóa luận");
 
     const deleted = await prisma.decision.update({
@@ -103,10 +105,34 @@ export class ThesisAssignmentService {
       decisionName: deleted.decisionName,
       decisionTitle: deleted.decisionTitle,
       decisionDate: deleted.decisionDate,
-      semesterId: deleted.semesterId,
       createdBy: deleted.createdBy,
       createdAt: deleted.createdAt,
       isDeleted: deleted.isDeleted,
+      type: deleted.type, // Thêm vào response
+    };
+  }
+
+  async restoreThesisAssignment(id: string) {
+    const existing = await prisma.decision.findUnique({
+      where: { id },
+    });
+    if (!existing) throw new Error("Không tìm thấy quyết định giao/hướng dẫn khóa luận");
+    if (!existing.isDeleted) throw new Error("Quyết định này chưa bị xóa mềm");
+
+    const restored = await prisma.decision.update({
+      where: { id },
+      data: { isDeleted: false },
+    });
+
+    return {
+      id: restored.id,
+      decisionName: restored.decisionName,
+      decisionTitle: restored.decisionTitle,
+      decisionDate: restored.decisionDate,
+      createdBy: restored.createdBy,
+      createdAt: restored.createdAt,
+      isDeleted: restored.isDeleted,
+      type: restored.type, // Thêm vào response
     };
   }
 }

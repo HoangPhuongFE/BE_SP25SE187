@@ -6,6 +6,8 @@ export const createThesisAssignmentSchema = z.object({
   decisionDate: z.string().optional().refine((val) => !val || !isNaN(Date.parse(val)), {
     message: "Ngày ký phải là định dạng ngày hợp lệ",
   }),
+  type: z.enum(["DRAFT", "FINAL"]).optional(), // Nếu dùng Enum
+
 });
 
 export const updateThesisAssignmentSchema = createThesisAssignmentSchema.partial();

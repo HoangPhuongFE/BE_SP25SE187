@@ -1,5 +1,3 @@
-// 📁 src/services/decision.service.ts
-
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
@@ -19,7 +17,8 @@ export class DecisionService {
         finalFile: data.finalFile,
         decisionURL: data.decisionURL,
         semesterId: data.semesterId,
-        signature: data.signature, // Thêm trường signature
+        signature: data.signature,
+        type: data.type, // Thêm trường type
         createdBy,
       },
     });
@@ -38,7 +37,8 @@ export class DecisionService {
       createdBy: newDecision.createdBy,
       createdAt: newDecision.createdAt,
       isDeleted: newDecision.isDeleted,
-      signature: newDecision.signature, // Thêm trường signature vào response
+      signature: newDecision.signature,
+      type: newDecision.type, // Thêm vào response
       basedOn: newDecision.basedOnJson ? JSON.parse(newDecision.basedOnJson) : [],
       participants: newDecision.participantsJson ? JSON.parse(newDecision.participantsJson) : null,
       clauses: newDecision.clausesJson ? JSON.parse(newDecision.clausesJson) : [],
@@ -46,7 +46,9 @@ export class DecisionService {
   }
 
   async getDecisionById(id: string) {
-    const decision = await prisma.decision.findUnique({ where: { id } });
+    const decision = await prisma.decision.findUnique({
+      where: { id, isDeleted: false },
+    });
     if (!decision) throw new Error("Không tìm thấy quyết định");
 
     return {
@@ -63,7 +65,8 @@ export class DecisionService {
       createdBy: decision.createdBy,
       createdAt: decision.createdAt,
       isDeleted: decision.isDeleted,
-      signature: decision.signature, // Thêm trường signature vào response
+      signature: decision.signature,
+      type: decision.type, // Thêm vào response
       basedOn: decision.basedOnJson ? JSON.parse(decision.basedOnJson) : [],
       participants: decision.participantsJson ? JSON.parse(decision.participantsJson) : null,
       clauses: decision.clausesJson ? JSON.parse(decision.clausesJson) : [],
@@ -90,7 +93,8 @@ export class DecisionService {
       createdBy: d.createdBy,
       createdAt: d.createdAt,
       isDeleted: d.isDeleted,
-      signature: d.signature, // Thêm trường signature vào response
+      signature: d.signature,
+      type: d.type, // Thêm vào response
       basedOn: d.basedOnJson ? JSON.parse(d.basedOnJson) : [],
       participants: d.participantsJson ? JSON.parse(d.participantsJson) : null,
       clauses: d.clausesJson ? JSON.parse(d.clausesJson) : [],
@@ -98,7 +102,9 @@ export class DecisionService {
   }
 
   async updateDecision(id: string, data: any) {
-    const existing = await prisma.decision.findUnique({ where: { id } });
+    const existing = await prisma.decision.findUnique({
+      where: { id, isDeleted: false },
+    });
     if (!existing) throw new Error("Không tìm thấy quyết định");
 
     const updated = await prisma.decision.update({
@@ -116,7 +122,8 @@ export class DecisionService {
         finalFile: data.finalFile,
         decisionURL: data.decisionURL,
         semesterId: data.semesterId,
-        signature: data.signature, // Thêm trường signature
+        signature: data.signature,
+        type: data.type, // Thêm trường type
       },
     });
 
@@ -134,7 +141,8 @@ export class DecisionService {
       createdBy: updated.createdBy,
       createdAt: updated.createdAt,
       isDeleted: updated.isDeleted,
-      signature: updated.signature, // Thêm trường signature vào response
+      signature: updated.signature,
+      type: updated.type, // Thêm vào response
       basedOn: updated.basedOnJson ? JSON.parse(updated.basedOnJson) : [],
       participants: updated.participantsJson ? JSON.parse(updated.participantsJson) : null,
       clauses: updated.clausesJson ? JSON.parse(updated.clausesJson) : [],
@@ -142,6 +150,11 @@ export class DecisionService {
   }
 
   async deleteDecision(id: string) {
+    const existing = await prisma.decision.findUnique({
+      where: { id, isDeleted: false },
+    });
+    if (!existing) throw new Error("Không tìm thấy quyết định");
+
     const deleted = await prisma.decision.update({
       where: { id },
       data: { isDeleted: true },
@@ -161,7 +174,8 @@ export class DecisionService {
       createdBy: deleted.createdBy,
       createdAt: deleted.createdAt,
       isDeleted: deleted.isDeleted,
-      signature: deleted.signature, // Thêm trường signature vào response
+      signature: deleted.signature,
+      type: deleted.type, // Thêm vào response
       basedOn: deleted.basedOnJson ? JSON.parse(deleted.basedOnJson) : [],
       participants: deleted.participantsJson ? JSON.parse(deleted.participantsJson) : null,
       clauses: deleted.clausesJson ? JSON.parse(deleted.clausesJson) : [],
