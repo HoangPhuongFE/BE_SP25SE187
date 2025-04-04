@@ -33,9 +33,8 @@ import councilDenfeseRotuer from './routers/council.defense.routes';
 import decisionRoutes from './routers/decision.routes';
 import thesisAssignmentDecisionRouter from './routers/thesisAssignmentDecision.router';
 import businessTopicRoutes from './routers/businessTopicRoutes';
-// Tải biến môi trường từ file .env
+import importBlock3Routes from './routers/importBlock3.routes';
 config();
-//console.log('GOOGLE_GEMINI_API_KEY:', process.env.GOOGLE_GEMINI_API_KEY ? 'Đã tìm thấy API Key' : 'Không tìm thấy API Key');
 
 const app = express();
 
@@ -89,6 +88,7 @@ app.use('/api/council-defense', councilDenfeseRotuer);
 app.use('/api', decisionRoutes);
 app.use('/api', thesisAssignmentDecisionRouter);
 app.use('/api/business/topics', businessTopicRoutes);
+app.use('/api', importBlock3Routes);
 // Khởi động server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

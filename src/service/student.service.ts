@@ -250,7 +250,7 @@ export class StudentService {
       isEligible: entry.isEligible,
       semester: entry.semester?.year.year + " - " + entry.semester?.code,
       semesterId: entry.semesterId,
-      
+      block3 : entry.block3,
 
     }));
   }
