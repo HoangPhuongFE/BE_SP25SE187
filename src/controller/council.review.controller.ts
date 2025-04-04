@@ -288,23 +288,70 @@ export class CouncilReviewController {
   }
 
   // Trong CouncilReviewController
+  // async confirmDefenseRound(req: Request, res: Response) {
+  //   try {
+  //     const { groupCode, defenseRound } = req.body;
+
+  //     // Kiểm tra dữ liệu đầu vào
+  //     if (!groupCode || !defenseRound) {
+  //       return res.status(400).json({
+  //         success: false,
+  //         message: "Thiếu groupCode hoặc defenseRound!",
+  //       });
+  //     }
+
+  //     // Gọi service để xử lý
+  //     const userId = req.user!.userId;
+  //     const result = await councilReviewService.confirmDefenseRound(groupCode, defenseRound, userId);
+  //     return res.status(result.status).json(result);
+  //   } catch (error) {
+  //     return res.status(500).json({
+  //       success: false,
+  //       message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
+  //     });
+  //   }
+  // }
   async confirmDefenseRound(req: Request, res: Response) {
     try {
-      const { groupCode, defenseRound } = req.body;
-
-      // Kiểm tra dữ liệu đầu vào
-      if (!groupCode || !defenseRound) {
+      const { groupCode, defenseRound, mentorDecision } = req.body;
+  
+      // Kiểm tra dữ liệu đầu vào bắt buộc
+      if (!groupCode || !mentorDecision) {
         return res.status(400).json({
           success: false,
-          message: "Thiếu groupCode hoặc defenseRound!",
+          message: "Thiếu groupCode hoặc mentorDecision!",
         });
       }
-
+  
+      // Nếu mentorDecision là "PASS", kiểm tra defenseRound
+      if (mentorDecision === "PASS") {
+        if (defenseRound !== 1 && defenseRound !== 2) {
+          return res.status(400).json({
+            success: false,
+            message: "defenseRound phải là 1 hoặc 2 khi mentorDecision là PASS!",
+          });
+        }
+      }
+  
+      // Nếu mentorDecision là "NOT_PASS", defenseRound phải là null hoặc undefined (không gửi)
+      if (mentorDecision === "NOT_PASS" && defenseRound !== null && defenseRound !== undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "Khi mentorDecision là NOT_PASS, defenseRound phải là null hoặc không được gửi!",
+        });
+      }
+  
       // Gọi service để xử lý
       const userId = req.user!.userId;
-      const result = await councilReviewService.confirmDefenseRound(groupCode, defenseRound, userId);
+      const result = await councilReviewService.confirmDefenseRound(
+        groupCode,
+        defenseRound, // Có thể là undefined khi NOT_PASS
+        userId,
+        mentorDecision
+      );
       return res.status(result.status).json(result);
     } catch (error) {
+      console.error("Lỗi trong controller confirmDefenseRound:", error);
       return res.status(500).json({
         success: false,
         message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
