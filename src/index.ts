@@ -32,7 +32,7 @@ import statisticsRouter from './routers/statistics.router';
 import councilDenfeseRotuer from './routers/council.defense.routes';
 import decisionRoutes from './routers/decision.routes';
 import thesisAssignmentDecisionRouter from './routers/thesisAssignmentDecision.router';
-
+import businessTopicRoutes from './routers/businessTopicRoutes';
 // Tải biến môi trường từ file .env
 config();
 //console.log('GOOGLE_GEMINI_API_KEY:', process.env.GOOGLE_GEMINI_API_KEY ? 'Đã tìm thấy API Key' : 'Không tìm thấy API Key');
@@ -88,6 +88,7 @@ app.use('/api/statistics', statisticsRouter);
 app.use('/api/council-defense', councilDenfeseRotuer);
 app.use('/api', decisionRoutes);
 app.use('/api', thesisAssignmentDecisionRouter);
+app.use('/api/business/topics', businessTopicRoutes);
 // Khởi động server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

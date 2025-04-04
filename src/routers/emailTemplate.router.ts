@@ -30,7 +30,7 @@ router.put("/templates/:id",
     checkRole([ "graduation_thesis_manager", "examination_officer", "academic_officer",]),
     emailTemplateController.updateTemplate);
 
-router.delete("/templates/:id",
+router.delete("/templates/:id/delete",
     authenticateToken,
     checkRole([ "graduation_thesis_manager", "examination_officer", "academic_officer",]),
     emailTemplateController.deleteTemplate);

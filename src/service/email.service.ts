@@ -4,176 +4,128 @@ import { sendEmail } from "../utils/email";
 const prisma = new PrismaClient();
 
 export class EmailService {
-  /**
-   * Gửi email dựa trên tên template (trong DB) + danh sách người nhận (có params).
-   * @param emailType  Tên template (trùng với cột name bên bảng emailTemplate)
-   * @param recipients Mảng email + params
-   * @param userId     ID người gửi (nếu cần ghi log)
-   */
-  async sendEmails(
-    emailType: string,
-    recipients: { email: string; params: Record<string, string> }[],
-    userId: string
+  // Hàm gửi email với template (tái sử dụng trong các phương thức khác)
+  private async sendEmailWithTemplate(
+    templateId: string,
+    recipients: string[],
+    data: Record<string, string>,
+    userId?: string
   ) {
-    const template = await prisma.emailTemplate.findUnique({
-      where: { name: emailType },
-    });
-    if (!template) throw new Error(`Không tìm thấy template: ${emailType}`);
+    const template = await prisma.emailTemplate.findUnique({ where: { id: templateId } });
+    if (!template) throw new Error("Không tìm thấy template");
 
-    let successCount = 0;
-    let failedCount = 0;
-    const errors: string[] = [];
+    let emailBody = template.body;
+    for (const [key, value] of Object.entries(data)) {
+      emailBody = emailBody.replace(`{{${key}}}`, value);
+    }
 
-    for (const recipient of recipients) {
-      let emailBody = template.body;
-
-      // Thay thế tất cả {{key}} bằng giá trị trong recipient.params
-      Object.keys(recipient.params).forEach((key) => {
-        const regex = new RegExp(`{{${key}}}`, "g");
-        emailBody = emailBody.replace(regex, recipient.params[key] || "N/A");
-      });
-
+    const emailPromises = recipients.map(async (to) => {
       try {
         await sendEmail({
-          to: recipient.email,
+          to,
           subject: template.subject,
           html: emailBody,
         });
-        successCount++;
 
-        // Lưu log
-        await prisma.emailLog.create({
-          data: {
-            userId,
-            recipientEmail: recipient.email,
-            subject: template.subject,
-            content: emailBody,
-            status: "SENT",
-            errorAt: new Date(),
-          },
-        });
+        // Ghi log email
+        if (userId) {
+          await prisma.emailLog.create({
+            data: {
+              userId,
+              recipientEmail: to,
+              subject: template.subject,
+              content: emailBody,
+              status: "SENT",
+              errorAt: new Date(),
+            },
+          });
+        }
       } catch (error) {
-        failedCount++;
-        errors.push(`Gửi email thất bại đến ${recipient.email}: ${(error as Error).message}`);
-        console.error(`Lỗi gửi email:`, error);
-
-        await prisma.emailLog.create({
-          data: {
-            userId,
-            recipientEmail: recipient.email,
-            subject: template.subject,
-            content: emailBody,
-            status: "FAILED",
-            errorMessage: (error as Error).message,
-            errorAt: new Date(),
-          },
-        });
+        // Ghi log lỗi nếu gửi email thất bại
+        if (userId) {
+          await prisma.emailLog.create({
+            data: {
+              userId,
+              recipientEmail: to,
+              subject: template.subject,
+              content: emailBody,
+              status: "FAILED",
+              errorMessage: String(error),
+              errorAt: new Date(),
+            },
+          });
+        }
+        throw error;
       }
-    }
-
-    return { successCount, failedCount, errors };
-  }
-
-  /**
-   * Gửi email hàng loạt (không tham số động).
-   * Sẽ tìm template theo tên, dùng body + subject cố định.
-   */
-  async sendBulkEmails(emailType: string, emails: string[], userId: string) {
-    if (emails.length === 0) {
-      throw new Error("Danh sách email không được để trống.");
-    }
-
-    const template = await prisma.emailTemplate.findUnique({
-      where: { name: emailType },
     });
-    if (!template) throw new Error(`Không tìm thấy template: ${emailType}`);
 
-    let successCount = 0;
-    const errors: string[] = [];
-
-    for (const email of emails) {
-      try {
-        await sendEmail({
-          to: email,
-          subject: template.subject,
-          html: template.body,
-        });
-        successCount++;
-
-        await prisma.emailLog.create({
-          data: {
-            userId,
-            recipientEmail: email,
-            subject: template.subject,
-            content: template.body,
-            status: "SENT",
-            errorAt: new Date(),
-          },
-        });
-      } catch (error) {
-        errors.push(`Gửi email thất bại cho: ${email}, lỗi: ${(error as Error).message}`);
-      }
-    }
-
-    return {
-      totalEmails: emails.length,
-      successCount,
-      failedCount: errors.length,
-      errors,
-    };
+    await Promise.all(emailPromises);
   }
 
-  /**
-   * Gửi email linh hoạt (không cần dùng template DB).
-   * FE truyền thẳng subject, body, danh sách recipients.
-   */
-  async sendCustomEmail(subject: string, body: string, recipients: string[], userId: string) {
-    if (!recipients || recipients.length === 0) {
-      throw new Error("Danh sách recipients không được để trống.");
+  // Phương thức gửi email kết quả học kỳ
+  async sendSemesterResults(
+    semesterId: string,
+    passTemplateId: string,
+    failTemplateId: string,
+    userId?: string
+  ) {
+    // Kiểm tra input
+    if (!semesterId || !passTemplateId || !failTemplateId) {
+      throw new Error("Thiếu thông tin: semesterId, passTemplateId hoặc failTemplateId.");
     }
 
-    let successCount = 0;
-    let failedCount = 0;
-    const errors: string[] = [];
+    // Lấy danh sách sinh viên trong học kỳ
+    const semesterStudents = await prisma.semesterStudent.findMany({
+      where: { semesterId },
+      include: {
+        student: {
+          include: { user: true }, // Lấy email từ User
+        },
+      },
+    });
 
-    for (const email of recipients) {
-      try {
-        await sendEmail({
-          to: email,
-          subject,
-          html: body,
-        });
-        successCount++;
-
-        await prisma.emailLog.create({
-          data: {
-            userId,
-            recipientEmail: email,
-            subject,
-            content: body,
-            status: "SENT",
-            errorAt: new Date(),
-          },
-        });
-      } catch (error) {
-        failedCount++;
-        errors.push(`Gửi email tới ${email} thất bại: ${(error as Error).message}`);
-        console.error(`Lỗi gửi email tới ${email}:`, error);
-
-        await prisma.emailLog.create({
-          data: {
-            userId,
-            recipientEmail: email,
-            subject,
-            content: body,
-            status: "FAILED",
-            errorMessage: (error as Error).message,
-            errorAt: new Date(),
-          },
-        });
-      }
+    if (!semesterStudents.length) {
+      throw new Error("Không tìm thấy sinh viên trong học kỳ này.");
     }
 
-    return { totalEmails: recipients.length, successCount, failedCount, errors };
+    // Phân loại sinh viên
+    const passedStudents = semesterStudents.filter(
+      (ss) => ss.qualificationStatus === "qualified"
+    );
+    const failedStudents = semesterStudents.filter(
+      (ss) => ss.qualificationStatus === "not qualified"
+    );
+
+    // Gửi email cho sinh viên "pass"
+    if (passedStudents.length > 0) {
+      const passRecipients = passedStudents
+        .map((ss) => ss.student?.user?.email)
+        .filter(Boolean) as string[];
+
+      await this.sendEmailWithTemplate(
+        passTemplateId,
+        passRecipients,
+        {
+          semesterCode: semesterId,
+        },
+        userId
+      );
+    }
+
+    // Gửi email cho sinh viên "không pass"
+    if (failedStudents.length > 0) {
+      const failRecipients = failedStudents
+        .map((ss) => ss.student?.user?.email)
+        .filter(Boolean) as string[];
+
+      await this.sendEmailWithTemplate(
+        failTemplateId,
+        failRecipients,
+        {
+          semesterCode: semesterId,
+        },
+        userId
+      );
+    }
   }
 }
