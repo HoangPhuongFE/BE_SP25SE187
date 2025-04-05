@@ -924,7 +924,7 @@ export class CouncilReviewService {
         where: { status: "active", isDeleted: false },
         orderBy: { startDate: "desc" },
       });
-
+  
       if (!activeSemester) {
         return {
           success: false,
@@ -932,12 +932,12 @@ export class CouncilReviewService {
           message: "Hiện tại không có học kỳ nào đang hoạt động!",
         };
       }
-
+  
       const student = await prisma.student.findFirst({
         where: { userId, isDeleted: false },
         select: { id: true },
       });
-
+  
       if (!student) {
         return {
           success: false,
@@ -945,7 +945,7 @@ export class CouncilReviewService {
           message: "Không tìm thấy thông tin sinh viên!",
         };
       }
-
+  
       const groupMember = await prisma.groupMember.findFirst({
         where: {
           studentId: student.id,
@@ -954,7 +954,7 @@ export class CouncilReviewService {
         },
         include: { group: true },
       });
-
+  
       if (!groupMember) {
         return {
           success: false,
@@ -962,7 +962,7 @@ export class CouncilReviewService {
           message: "Bạn hiện không thuộc nhóm nào trong kỳ hiện tại!",
         };
       }
-
+  
       if (!groupMember.isActive) {
         return {
           success: false,
@@ -970,23 +970,43 @@ export class CouncilReviewService {
           message: "Tài khoản của bạn hiện không hoạt động, vui lòng liên hệ quản lý để được hỗ trợ!",
         };
       }
-
+  
       const schedules = await prisma.reviewSchedule.findMany({
         where: { groupId: groupMember.groupId, isDeleted: false },
         include: {
-          topic: { select: { topicCode: true, name: true } },
-          group: { select: { groupCode: true } },
-          council: { select: { name: true } },
+          topic: {
+            select: { id: true, topicCode: true, name: true, status: true },
+          },
+          group: {
+            select: { id: true, groupCode: true, semesterId: true, status: true },
+          },
+          council: {
+            select: { id: true, code: true, name: true, status: true, type: true, round: true },
+          },
           assignments: {
-            select: { id: true, score: true, status: true, feedback: true, reviewerId: true, assignedAt: true, reviewedAt: true },
+            include: {
+              council: { select: { id: true, name: true } },
+              topic: { select: { id: true, topicCode: true, name: true } },
+              reviewer: { select: { id: true, fullName: true, email: true } },
+              reviewSchedule: {
+                select: { id: true, reviewTime: true, room: true, reviewRound: true, status: true, note: true },
+              },
+            },
           },
           documents: {
             where: { documentType: "REVIEW_REPORT", isDeleted: false },
-            select: { fileUrl: true },
+            select: {
+              id: true,
+              fileName: true,
+              fileUrl: true,
+              documentType: true,
+              uploadedAt: true,
+              uploadedBy: true,
+            },
           },
         },
       });
-
+  
       if (schedules.length === 0) {
         return {
           success: false,
@@ -994,7 +1014,7 @@ export class CouncilReviewService {
           message: "Nhóm của bạn hiện chưa có lịch chấm điểm nào!",
         };
       }
-
+  
       const result = schedules.map(schedule => ({
         schedule: {
           id: schedule.id,
@@ -1004,15 +1024,34 @@ export class CouncilReviewService {
           reviewTime: schedule.reviewTime,
           room: schedule.room,
           reviewRound: schedule.reviewRound,
+          note: schedule.note,
           status: schedule.status,
-          council: schedule.council.name,
-          group: schedule.group.groupCode,
-          topic: schedule.topic.name,
+          isDeleted: schedule.isDeleted,
+          council: schedule.council,
+          group: schedule.group,
+          topic: schedule.topic,
         },
-        assignment: schedule.assignments[0] || null,
-        url: schedule.documents[0]?.fileUrl || null,
+        assignments: schedule.assignments.map(assignment => ({
+          id: assignment.id,
+          councilId: assignment.councilId,
+          topicId: assignment.topicId,
+          reviewerId: assignment.reviewerId,
+          score: assignment.score,
+          feedback: assignment.feedback,
+          status: assignment.status,
+          reviewRound: assignment.reviewRound,
+          assignedAt: assignment.assignedAt,
+          reviewedAt: assignment.reviewedAt,
+          reviewScheduleId: assignment.reviewScheduleId,
+          isDeleted: assignment.isDeleted,
+          council: assignment.council,
+          topic: assignment.topic,
+          reviewer: assignment.reviewer,
+          reviewSchedule: assignment.reviewSchedule,
+        })),
+        documents: schedule.documents,
       }));
-
+  
       return {
         success: true,
         status: HTTP_STATUS.OK,
@@ -1028,6 +1067,7 @@ export class CouncilReviewService {
       };
     }
   }
+  
 
   // API 5: Mentor xem lịch nhóm
   async getReviewScheduleForMentor(userId: string) {
@@ -1052,7 +1092,23 @@ export class CouncilReviewService {
         where: { groupId: { in: groupIds }, isDeleted: false },
         include: {
           council: { select: { id: true, code: true, name: true, status: true, type: true, round: true } },
-          group: { select: { id: true, groupCode: true, semesterId: true, status: true } },
+          group: {
+            select: {
+              id: true,
+              groupCode: true,
+              semesterId: true,
+              status: true,
+              topicAssignments: {
+                where: { isDeleted: false },
+                select: {
+                  defenseRound: true,
+                  defendStatus: true,
+                },
+                take: 1,
+              },
+            },
+          },
+          
           topic: { select: { id: true, topicCode: true, name: true, status: true } },
           assignments: {
             include: {
@@ -1093,7 +1149,15 @@ export class CouncilReviewService {
           status: schedule.status,
           isDeleted: schedule.isDeleted,
           council: schedule.council,
-          group: schedule.group,
+          group: {
+            id: schedule.group.id,
+            groupCode: schedule.group.groupCode,
+            semesterId: schedule.group.semesterId,
+            status: schedule.group.status,
+            defenseRound: schedule.group.topicAssignments[0]?.defenseRound ?? null,
+            defendStatus: schedule.group.topicAssignments[0]?.defendStatus ?? null,
+          },
+          
           topic: schedule.topic,
         },
         assignments: schedule.assignments.map(assignment => ({
