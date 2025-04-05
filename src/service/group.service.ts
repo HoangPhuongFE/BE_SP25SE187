@@ -2305,6 +2305,8 @@ export class GroupService {
                         select: {
                             topicId: true,
                             status: true,
+                            defenseRound:true,
+                            defendStatus:true,
                             topic: {
                                 select: {
                                     name: true,
@@ -2357,6 +2359,9 @@ export class GroupService {
                     topicId: assignment.topicId,
                     topicName: assignment.topic.name,
                     status: assignment.status,
+                    defenseRound: assignment.defenseRound,
+                    defendStatus: assignment.defendStatus,
+                    // Chỉ lấy các trường cần thiết từ topicAssignments
                 })),
             }));
 

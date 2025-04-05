@@ -978,11 +978,25 @@ export class CouncilReviewService {
           group: { select: { groupCode: true } },
           council: { select: { name: true } },
           assignments: {
-            select: { id: true, score: true, status: true, feedback: true, reviewerId: true, assignedAt: true, reviewedAt: true },
+            include: {
+              council: { select: { id: true, name: true } },
+              topic: { select: { id: true, topicCode: true, name: true } },
+              reviewer: { select: { id: true, fullName: true, email: true } },
+              reviewSchedule: {
+                select: { id: true, reviewTime: true, room: true, reviewRound: true, status: true, note: true },
+              },
+            },
           },
           documents: {
             where: { documentType: "REVIEW_REPORT", isDeleted: false },
-            select: { fileUrl: true },
+            select: {
+              id: true,
+              fileName: true,
+              fileUrl: true,
+              documentType: true,
+              uploadedAt: true,
+              uploadedBy: true,
+            },
           },
         },
       });
@@ -998,20 +1012,35 @@ export class CouncilReviewService {
       const result = schedules.map(schedule => ({
         schedule: {
           id: schedule.id,
-          councilId: schedule.councilId,
-          groupId: schedule.groupId,
-          topicId: schedule.topicId,
           reviewTime: schedule.reviewTime,
           room: schedule.room,
           reviewRound: schedule.reviewRound,
+          note: schedule.note,
           status: schedule.status,
-          council: schedule.council.name,
-          group: schedule.group.groupCode,
-          topic: schedule.topic.name,
-          mentorDecision: schedule.assignments[0]?.score || null,
+          isDeleted: schedule.isDeleted,
+          council: schedule.council,
+          group: schedule.group,
+          topic: schedule.topic,
         },
-        assignment: schedule.assignments[0] || null,
-        url: schedule.documents[0]?.fileUrl || null,
+        assignments: schedule.assignments.map(assignment => ({
+          id: assignment.id,
+          councilId: assignment.councilId,
+          topicId: assignment.topicId,
+          reviewerId: assignment.reviewerId,
+          score: assignment.score,
+          feedback: assignment.feedback,
+          status: assignment.status,
+          reviewRound: assignment.reviewRound,
+          assignedAt: assignment.assignedAt,
+          reviewedAt: assignment.reviewedAt,
+          reviewScheduleId: assignment.reviewScheduleId,
+          isDeleted: assignment.isDeleted,
+          council: assignment.council,
+          topic: assignment.topic,
+          reviewer: assignment.reviewer,
+          reviewSchedule: assignment.reviewSchedule,
+        })),
+        documents: schedule.documents,
       }));
 
       return {
@@ -1053,7 +1082,22 @@ export class CouncilReviewService {
         where: { groupId: { in: groupIds }, isDeleted: false },
         include: {
           council: { select: { id: true, code: true, name: true, status: true, type: true, round: true } },
-          group: { select: { id: true, groupCode: true, semesterId: true, status: true } },
+          group: {
+            select: {
+              id: true,
+              groupCode: true,
+              semesterId: true,
+              status: true,
+              topicAssignments: {
+                where: { isDeleted: false },
+                select: {
+                  defenseRound: true,
+                  defendStatus: true,
+                },
+                take: 1,
+              },
+            },
+          },
           topic: { select: { id: true, topicCode: true, name: true, status: true } },
           assignments: {
             include: {
@@ -1094,7 +1138,14 @@ export class CouncilReviewService {
           status: schedule.status,
           isDeleted: schedule.isDeleted,
           council: schedule.council,
-          group: schedule.group,
+          group: {
+            id: schedule.group.id,
+            groupCode: schedule.group.groupCode,
+            semesterId: schedule.group.semesterId,
+            status: schedule.group.status,
+            defenseRound: schedule.group.topicAssignments[0]?.defenseRound ?? null,
+            defendStatus: schedule.group.topicAssignments[0]?.defendStatus ?? null,
+          },
           topic: schedule.topic,
           mentorDecision: schedule.assignments[0]?.score || null,
         },
@@ -1534,7 +1585,7 @@ export class CouncilReviewService {
           message: "Vòng bảo vệ chỉ có thể là 1 hoặc 2 khi xác nhận PASS!",
         };
       }
-  
+
       // Nếu mentorDecision là "NOT_PASS", defenseRound phải là null
       if (mentorDecision === "NOT_PASS" && defenseRound !== null) {
         return {
@@ -1543,7 +1594,7 @@ export class CouncilReviewService {
           message: "Khi chọn NOT_PASS, defenseRound phải để trống!",
         };
       }
-  
+
       // Tìm nhóm bằng groupCode
       const group = await prisma.group.findFirst({
         where: { groupCode, isDeleted: false },
@@ -1555,7 +1606,7 @@ export class CouncilReviewService {
           message: "Không tìm thấy nhóm với mã groupCode này!",
         };
       }
-  
+
       // Kiểm tra quyền mentor
       const mentorGroup = await prisma.groupMentor.findFirst({
         where: { mentorId: userId, groupId: group.id, isDeleted: false },
@@ -1567,7 +1618,7 @@ export class CouncilReviewService {
           message: "Bạn không phải mentor của nhóm này!",
         };
       }
-  
+
       // Tìm phân công đề tài
       const topicAssignment = await prisma.topicAssignment.findFirst({
         where: { groupId: group.id, isDeleted: false },
@@ -1579,12 +1630,12 @@ export class CouncilReviewService {
           message: "Nhóm chưa được phân công đề tài!",
         };
       }
-  
+
       // Xử lý quyết định của mentor
       let defendStatus: string;
       let message: string;
       let updateData: any = {};
-  
+
       if (mentorDecision === "PASS") {
         defendStatus = "CONFIRMED";
         message = `Xác nhận nhóm đi bảo vệ vòng ${defenseRound} thành công!`;
@@ -1600,13 +1651,13 @@ export class CouncilReviewService {
           defenseRound: null, // Đặt defenseRound thành null khi NOT_PASSED
         };
       }
-  
+
       // Cập nhật dữ liệu
       const updatedAssignment = await prisma.topicAssignment.update({
         where: { id: topicAssignment.id },
         data: updateData,
       });
-  
+
       return {
         success: true,
         status: HTTP_STATUS.OK,
