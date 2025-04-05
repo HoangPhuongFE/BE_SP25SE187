@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { ImportLecturerController } from '../controller/importLecturer.controller';
+import { ImportLecturerController } from '../controllers/importLecturer.controller';
 import { authenticateToken, checkRole } from '../middleware/user.middleware'; 
 import multer from 'multer'; 
 

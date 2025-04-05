@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { authenticateToken, checkRole } from "../middleware/user.middleware";
-import { ImportConditionController } from "../controller/importCondition.controller";
+import { ImportConditionController } from "../controllers/importCondition.controller";
 
 const upload = multer({ dest: "uploads/" });
 const router = express.Router();

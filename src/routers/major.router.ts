@@ -1,5 +1,5 @@
 import express from 'express';
-import { MajorController } from '../controller/major.controller';
+import { MajorController } from '../controllers/major.controller';
 import { authenticateToken } from '../middleware/user.middleware';
 
 const router = express.Router();

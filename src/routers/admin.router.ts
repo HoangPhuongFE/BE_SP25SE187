@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { AdminController } from '../controller/admin.controller';
+import { AdminController } from '../controllers/admin.controller';
 import { authenticateToken, checkRole } from '../middleware/user.middleware';
 import { validateCreateUser } from '../middleware/admin.middleware';
 

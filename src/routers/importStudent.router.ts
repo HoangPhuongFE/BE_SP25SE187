@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { ImportStudentController } from '../controller/importStudent.controller';
+import { ImportStudentController } from '../controllers/importStudent.controller';
 import { authenticateToken, checkRole } from '../middleware/user.middleware';
 
 const upload = multer({ dest: 'uploads/' });

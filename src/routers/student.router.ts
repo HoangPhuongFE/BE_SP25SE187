@@ -1,5 +1,5 @@
 import express from "express";
-import { StudentController } from "../controller/student.controller";
+import { StudentController } from "../controllers/student.controller";
 import { checkRole, authenticateToken } from "../middleware/user.middleware";
 
 

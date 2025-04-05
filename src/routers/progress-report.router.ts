@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { ProgressReportController } from "../controller/progress-report.controller";
+import { ProgressReportController } from "../controllers/progress-report.controller";
 import { authenticateToken, checkRole } from "../middleware/user.middleware";
 import { 
   validateCreateProgressReport, 

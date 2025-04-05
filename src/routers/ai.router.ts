@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { AIController } from '../controller/ai.controller';
+import { AIController } from '../controllers/ai.controller';
 import { AIMiddleware } from '../middleware/ai.middleware';
 
 const router = Router();

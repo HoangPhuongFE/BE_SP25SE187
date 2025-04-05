@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { MeetingController } from "../controller/meeting.controller";
+import { MeetingController } from "../controllers/meeting.controller";
 import { authenticateToken, checkRole } from "../middleware/user.middleware";
 import { validateCreateMeeting, validateUpdateMeeting } from "../middleware/meeting.middleware";
 

@@ -1,16 +1,16 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import { AIService } from '../services/ai.service';
 import { MESSAGES } from '../constants/message';
 
-export class AIMiddleware {
+export class AIController {
   private aiService: AIService;
 
   constructor() {
     this.aiService = new AIService();
   }
 
-  /** Middleware kiểm tra tên đề tài */
-  public async validateTopicName(req: Request, res: Response, next: NextFunction) {
+  /** API kiểm tra tên đề tài */
+  public async validateTopicName(req: Request, res: Response) {
     try {
       const { nameVi, nameEn } = req.body;
 
@@ -23,14 +23,10 @@ export class AIMiddleware {
 
       const result = await this.aiService.validateTopicName(nameVi, nameEn);
 
-      if (!result.isValid) {
-        return res.status(400).json({
-          success: false,
-          message: result.message,
-        });
-      }
-
-      next();
+      return res.status(result.isValid ? 200 : 400).json({
+        success: result.isValid,
+        message: result.message,
+      });
     } catch (error) {
       console.error('Lỗi khi kiểm tra tên đề tài:', error);
       return res.status(500).json({

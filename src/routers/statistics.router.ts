@@ -16,7 +16,7 @@ import {
   getCouncilDefenseStatistics,
   getCouncilDefenseByRoundStatistics,
   getCouncilDefenseMemberStatistics
-} from '../controller/statistics.controller';
+} from '../controllers/statistics.controller';
 import { authenticateToken } from '../middleware/user.middleware';
 
 const router = express.Router();

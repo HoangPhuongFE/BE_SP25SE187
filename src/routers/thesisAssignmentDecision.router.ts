@@ -7,7 +7,7 @@ import {
   getThesisAssignmentByIdController,
   updateThesisAssignmentController,
   deleteThesisAssignmentController,
-} from "../controller/thesisAssignmentDecision.controller";
+} from "../controllers/thesisAssignmentDecision.controller";
 import { authenticateToken, checkRole } from '../middleware/user.middleware';
 
 const router = Router();
