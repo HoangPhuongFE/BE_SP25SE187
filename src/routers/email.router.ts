@@ -44,4 +44,11 @@ router.post(
   wrapAsync(controller.sendDefenseScheduleNotification)
 );
 
+router.post(
+  "/thesis-eligibility-notifications",
+  authenticateToken,
+  checkRole(roles),
+  wrapAsync(controller.sendThesisEligibilityNotifications.bind(controller))
+);
+
 export default router;

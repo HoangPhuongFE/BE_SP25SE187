@@ -56,15 +56,92 @@ export class EmailController {
   
 
   async sendApprovedTopicsNotification(req: Request, res: Response) {
-    await service.sendApprovedTopicsNotification(req.user?.userId);
-    return res.status(200).json({ message: "Emails sent successfully" });
+    try {
+      const { templateId, semesterId } = req.body as {
+        templateId?: string;
+        semesterId?: string;
+      };
+
+      if (!templateId) {
+        return res.status(400).json({ message: "Template ID is required" });
+      }
+      if (!semesterId) {
+        return res.status(400).json({ message: "Semester ID is required" });
+      }
+
+      await service.sendApprovedTopicsNotification(
+        req.user?.userId ?? "",
+        templateId,
+        semesterId
+      );
+
+      return res.status(200).json({ message: "Emails sent successfully" });
+    } catch (error: any) {
+      console.error(error);
+      return res.status(500).json({
+        message: "An error occurred while sending approved topics notifications.",
+        error: error.message || String(error),
+      });
+    }
   }
 
   async sendDefenseScheduleNotification(req: Request, res: Response) {
-    const { defenseScheduleId } = req.body as { defenseScheduleId?: string };
-    if (!defenseScheduleId) return res.status(400).json({ message: "Defense Schedule ID is required" });
+    try {
+      const { defenseScheduleId, templateId } = req.body as {
+        defenseScheduleId?: string;
+        templateId?: string;
+      };
+  
+      if (!defenseScheduleId) {
+        return res.status(400).json({ message: "Defense Schedule ID is required" });
+      }
+      if (!templateId) {
+        return res.status(400).json({ message: "Template ID is required" });
+      }
+  
+      await service.sendDefenseScheduleNotification(
+        req.user?.userId ?? "",
+        defenseScheduleId,
+        templateId
+      );
+  
+      return res.status(200).json({ message: "Emails sent successfully" });
+    } catch (error: any) {
+      console.error(error);
+      return res.status(500).json({
+        message: "An error occurred while sending defense schedule notification.",
+        error: error.message || String(error),
+      });
+    }
+  }
+  
+  async sendThesisEligibilityNotifications(req: Request, res: Response) {
+    try {
+      const { semesterId, templateId } = req.body as {
+        semesterId?: string;
+        templateId?: string;
+      };
 
-    await service.sendDefenseScheduleNotification(req.user?.userId, defenseScheduleId);
-    return res.status(200).json({ message: "Emails sent successfully" });
+      if (!semesterId) {
+        return res.status(400).json({ message: "Semester ID is required" });
+      }
+      if (!templateId) {
+        return res.status(400).json({ message: "Template ID is required" });
+      }
+
+      await service.sendThesisEligibilityNotifications(
+        req.user?.userId ?? "",
+        semesterId,
+        templateId
+      );
+
+      return res.status(200).json({ message: "Emails sent successfully" });
+    } catch (error: any) {
+      console.error(error);
+      return res.status(500).json({
+        message: "An error occurred while sending thesis eligibility notifications.",
+        error: error.message || String(error)
+      });
+    }
   }
 }
