@@ -183,4 +183,99 @@ export class AIService {
       similarTopics: aiResult.similarTopics,
     };
   }
+  //  Hàm kiểm tra integrity dữ liệu topic với AI + rule
+
+  public async batchVerifyDecision(
+    items: Array<{
+      topicCode: string;
+      groupCode: string;
+      nameVi: string;
+      nameEn: string;
+    }>,
+    verifiedBy: string
+  ) {
+    const results: any[] = [];
+
+    for (const item of items) {
+      try {
+        const topic = await prisma.topic.findFirst({
+          where: { topicCode: item.topicCode, isDeleted: false },
+          include: {
+            group: { select: { groupCode: true } },
+          },
+        });
+
+        if (!topic) {
+          results.push({
+            topicCode: item.topicCode,
+            isConsistent: false,
+            issues: ['Không tìm thấy đề tài trong hệ thống'],
+          });
+          continue;
+        }
+
+        const issues: string[] = [];
+
+        if (topic.nameVi !== item.nameVi) issues.push('Tên tiếng Việt không khớp');
+        if (topic.nameEn !== item.nameEn) issues.push('Tên tiếng Anh không khớp');
+        if (topic.group?.groupCode !== item.groupCode) {
+          issues.push(`Mã nhóm không khớp (FE: ${item.groupCode}, hệ thống: ${topic.group?.groupCode})`);
+        }
+
+        const aiResult = await this.aiService.validateTopicName(item.nameVi, item.nameEn, topic.name);
+        const confidence = aiResult.confidence ?? 0.9;
+
+        if (!aiResult.isValid) {
+          issues.push(`AI đánh giá không hợp lệ: ${aiResult.message}`);
+        }
+
+        const isConsistent = issues.length === 0;
+
+        if (!isConsistent) {
+          await prisma.aIVerificationLog.create({
+            data: {
+              topicId: topic.id,
+              verification: 'Failed',
+              originalText: `${topic.nameVi} | ${topic.nameEn}`,
+              verifiedText: `${item.nameVi} | ${item.nameEn}`,
+              similarityScore: confidence,
+              suggestions: aiResult.message,
+              verifiedBy,
+              verifiedAt: new Date(),
+            },
+          });
+
+          await prisma.systemLog.create({
+            data: {
+              userId: verifiedBy,
+              action: 'BATCH_VERIFY_TOPIC',
+              entityType: 'topic',
+              entityId: topic.id,
+              description: 'Phát hiện sai lệch khi duyệt hàng loạt quyết định',
+              severity: 'WARNING',
+              metadata: { issues },
+              ipAddress: '::1',
+            },
+          });
+        }
+
+        results.push({
+          topicCode: item.topicCode,
+          isConsistent,
+          confidence,
+          issues,
+        });
+      } catch (error) {
+        results.push({
+          topicCode: item.topicCode,
+          isConsistent: false,
+          issues: [`Lỗi xử lý: ${(error as Error).message}`],
+        });
+      }
+    }
+
+    return results;
+  }
+
+
 }

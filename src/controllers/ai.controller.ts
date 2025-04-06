@@ -35,4 +35,32 @@ export class AIController {
       });
     }
   }
+
+
+
+public async batchVerifyDecision(req: Request, res: Response) {
+  try {
+    const { items } = req.body;
+    const verifiedBy = req.user?.id;
+
+    if (!Array.isArray(items) || items.length === 0 || !verifiedBy) {
+      return res.status(400).json({
+        success: false,
+        message: 'Dữ liệu đầu vào không hợp lệ hoặc thiếu người xác thực',
+      });
+    }
+
+    const result = await this.aiService.batchVerifyDecision(items, verifiedBy);
+    return res.status(200).json({ success: true, results: result });
+  } catch (error) {
+    console.error('Lỗi batchVerifyDecision:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Lỗi hệ thống khi xác minh hàng loạt',
+      error: (error as Error).message,
+    });
+  }
+}
+
+
 }
