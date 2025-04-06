@@ -3,6 +3,8 @@ import { startCronJobs } from './utils/cron-job';
 import morgan from 'morgan';
 import cors from 'cors';
 import { config } from 'dotenv';
+import { emailQueue } from './queue/emailQueue';
+import { verifyEmailConnection } from './utils/email'; // Kiểm tra SMTP
 import userRouter from './routers/user.router';
 import adminRouter from './routers/admin.router';
 import importStudentRouter from './routers/importStudent.router';
@@ -35,11 +37,28 @@ import thesisAssignmentDecisionRouter from './routers/thesisAssignmentDecision.r
 import businessTopicRouter from './routers/business.topic.router';
 import importBlock3Router from './routers/importBlock3.router';
 import { errorHandler } from './middleware/errorHandler';
-config();
+
+config(); // Tải .env
 
 const app = express();
 
-// Middleware
+// Kiểm tra kết nối Redis
+async function checkRedisConnection() {
+  try {
+    const client = (emailQueue as any).client;
+    await client.ping();
+    console.log("Kết nối Redis thành công");
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error("Lỗi kết nối Redis:", error.message);
+    } else {
+      console.error("Lỗi kết nối Redis:", error);
+    }
+    process.exit(1);
+  }
+}
+
+// Middleware cơ bản
 app.use(
   cors({
     origin: [
@@ -53,12 +72,11 @@ app.use(
   })
 );
 app.options('*', cors());
-
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
+// Đăng ký các route
 app.use('/api/users', userRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/import', importStudentRouter);
@@ -90,13 +108,22 @@ app.use('/api', decisionRouter);
 app.use('/api', thesisAssignmentDecisionRouter);
 app.use('/api/business/topics', businessTopicRouter);
 app.use('/api', importBlock3Router);
-  
+
+// Middleware xử lý lỗi
+app.use(errorHandler);
+
 // Khởi động server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  startCronJobs();
+async function startServer() {
+  await checkRedisConnection(); // Kiểm tra Redis
+  await verifyEmailConnection(); // Kiểm tra SMTP
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Server đang chạy trên port ${PORT}`);
+    startCronJobs();
+  });
+}
+
+startServer().catch((error) => {
+  console.error("Lỗi khởi động server:", error.message);
+  process.exit(1);
 });
-
-
-app.use(errorHandler); 

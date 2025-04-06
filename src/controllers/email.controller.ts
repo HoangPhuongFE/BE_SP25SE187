@@ -129,18 +129,26 @@ export class EmailController {
         return res.status(400).json({ message: "Template ID is required" });
       }
 
-      await service.sendThesisEligibilityNotifications(
-        req.user?.userId ?? "",
+      const userId = req.user?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const queuedCount = await service.sendThesisEligibilityNotifications(
+        userId,
         semesterId,
         templateId
       );
 
-      return res.status(200).json({ message: "Emails sent successfully" });
+      return res.status(200).json({
+        message: `Đã xếp hàng đợi gửi thông báo cho ${queuedCount} sinh viên`,
+        queuedCount,
+      });
     } catch (error: any) {
-      console.error(error);
+      console.error("Lỗi trong sendThesisEligibilityNotifications:", error);
       return res.status(500).json({
-        message: "An error occurred while sending thesis eligibility notifications.",
-        error: error.message || String(error)
+        message: "Đã xảy ra lỗi khi gửi thông báo đủ điều kiện luận văn",
+        error: error.message || String(error),
       });
     }
   }

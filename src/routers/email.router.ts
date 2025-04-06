@@ -45,7 +45,7 @@ router.post(
 );
 
 router.post(
-  "/thesis-eligibility-notifications",
+  "/  ",
   authenticateToken,
   checkRole(roles),
   wrapAsync(controller.sendThesisEligibilityNotifications.bind(controller))
