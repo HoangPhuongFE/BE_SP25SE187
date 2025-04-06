@@ -193,6 +193,7 @@ export class CouncilDefenseService {
     }
 
     // Thêm nhóm vào hội đồng bảo vệ (Tạo lịch bảo vệ)
+
     // async createDefenseSchedule(data: {
     //     councilId: string;
     //     groups: { groupId: string; defenseTime: Date }[];
@@ -321,151 +322,318 @@ export class CouncilDefenseService {
     //         return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
     //     }
     // }
-    async createDefenseSchedule(data: {
-        councilId: string;
-        groups: { groupId: string; defenseTime: Date }[];
-        room: string;
-        createdBy: string;
-        defenseRound: number;
-    }) {
-        try {
-            // Kiểm tra hội đồng tồn tại
-            const council = await prisma.council.findUnique({
-                where: { id: data.councilId, type: "DEFENSE" },
-            });
-            if (!council) {
-                return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Hội đồng bảo vệ không tồn tại!" };
-            }
-    
-            // Kiểm tra số lượng nhóm tối đa
-            const maxTopicsPerSchedule = await systemConfigService.getMaxTopicsPerCouncilSchedule(); // Mặc định 4
-            if (data.groups.length > maxTopicsPerSchedule) {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.BAD_REQUEST,
-                    message: `Số lượng nhóm vượt quá giới hạn (${maxTopicsPerSchedule}) trong một lịch bảo vệ!`,
-                };
-            }
-    
-            // Kiểm tra trùng thời gian
-            const existingSchedules = await prisma.defenseSchedule.findMany({
-                where: { councilId: data.councilId, isDeleted: false },
-            });
-            for (const group of data.groups) {
-                const overlappingSchedule = existingSchedules.find(
-                    s => Math.abs(s.defenseTime.getTime() - group.defenseTime.getTime()) < 1000 // 1 giây
-                );
-                if (overlappingSchedule) {
-                    return {
-                        success: false,
-                        status: HTTP_STATUS.CONFLICT,
-                        message: `Thời gian bảo vệ ${group.defenseTime.toISOString()} trùng với lịch hiện có!`,
-                    };
-                }
-            }
-    
-            // Lấy danh sách nhóm và kiểm tra phân công đề tài
-            const groupIds = data.groups.map(g => g.groupId);
-            const topicAssignments = await prisma.topicAssignment.findMany({
-                where: { groupId: { in: groupIds }, isDeleted: false }, // Lấy tất cả trước
-                include: {
-                    group: { include: { members: true, mentors: { include: { mentor: true } } } },
-                },
-            });
-    
-            // Kiểm tra từng nhóm và trả thông báo chi tiết
-            const invalidGroups: string[] = [];
-            for (const groupId of groupIds) {
-                const assignment = topicAssignments.find(ta => ta.groupId === groupId);
-                if (!assignment) {
-                    invalidGroups.push(`${groupId} (Chưa được phân công đề tài)`);
-                } else if (assignment.defendStatus === "NOT_PASSED") {
-                    invalidGroups.push(`${groupId} (Đã bị đánh giá không đạt)`);
-                } else if (assignment.defendStatus !== "CONFIRMED") {
-                    invalidGroups.push(`${groupId} (Chưa được xác nhận để tham gia bảo vệ)`);
-                } else if (assignment.defenseRound !== data.defenseRound.toString()) {
-                    invalidGroups.push(`${groupId} (Vòng bảo vệ không khớp: ${assignment.defenseRound} ≠ ${data.defenseRound})`);
-                }
-            }
+    // async createDefenseSchedule(data: {
+    //     councilId: string;
+    //     groups: { groupId: string; defenseTime: Date }[];
+    //     room: string;
+    //     createdBy: string;
+    //     defenseRound: number;
+    // }) {
+    //     try {
+    //         // Kiểm tra hội đồng tồn tại
+    //         const council = await prisma.council.findUnique({
+    //             where: { id: data.councilId, type: "DEFENSE" },
+    //         });
+    //         if (!council) {
+    //             return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Hội đồng bảo vệ không tồn tại!" };
+    //         }
 
-            if (invalidGroups.length > 0) {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.BAD_REQUEST,
-                    message: `Không thể thêm các nhóm sau vào lịch bảo vệ: ${invalidGroups.join(", ")}!`,
-                };
-            }
-    
-            // Kiểm tra xung đột mentor và thành viên hội đồng
-            const councilMembers = await prisma.councilMember.findMany({
-                where: { councilId: data.councilId, isDeleted: false },
-            });
-            const councilMemberIds = councilMembers.map(m => m.userId);
-            for (const assignment of topicAssignments) {
-                const groupMentors = assignment.group.mentors.filter(m => !m.isDeleted);
-                const conflictingMentor = groupMentors.find(m => councilMemberIds.includes(m.mentorId));
-                if (conflictingMentor) {
-                    return {
-                        success: false,
-                        status: HTTP_STATUS.BAD_REQUEST,
-                        message: `Mentor ${conflictingMentor.mentor.fullName} (ID: ${conflictingMentor.mentorId}) không được là thành viên hội đồng của nhóm ${assignment.groupId}!`,
-                    };
-                }
-            }
-    
-            // Tạo lịch bảo vệ và kết quả thành viên trong transaction
-            const newSchedules = await prisma.$transaction(async (tx) => {
-                const schedules = [];
-                for (const group of data.groups) {
-                    const assignment = topicAssignments.find(ta => ta.groupId === group.groupId);
-                    if (!assignment) continue; // Đã kiểm tra trước, nhưng giữ để an toàn
-    
-                    const schedule = await tx.defenseSchedule.create({
-                        data: {
-                            councilId: data.councilId,
-                            groupId: group.groupId,
-                            defenseTime: group.defenseTime,
-                            room: data.room,
-                            defenseRound: data.defenseRound,
-                            status: "PENDING",
-                        },
-                    });
-    
-                    const memberResults = [];
-                    for (const member of assignment.group.members) {
-                        if (!member.studentId) continue;
-                        const result = await tx.defenseMemberResult.create({
-                            data: {
-                                defenseScheduleId: schedule.id,
-                                studentId: member.studentId,
-                                result: "PENDING",
-                            },
-                        });
-                        memberResults.push(result);
-                    }
-    
-                    schedules.push({ schedule, memberResults });
-                }
-                return schedules;
-            });
-    
-            return {
-                success: true,
-                status: HTTP_STATUS.CREATED,
-                message: "Tạo lịch bảo vệ thành công!",
-                data: newSchedules.map(s => ({
-                    schedule: s.schedule,
-                    memberResults: s.memberResults,
-                })),
-            };
-        } catch (error) {
-            console.error("Lỗi khi tạo lịch bảo vệ:", error);
-            return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
-        }
-    }
+    //         // Kiểm tra số lượng nhóm tối đa
+    //         const maxTopicsPerSchedule = await systemConfigService.getMaxTopicsPerCouncilSchedule(); // Mặc định 4
+    //         if (data.groups.length > maxTopicsPerSchedule) {
+    //             return {
+    //                 success: false,
+    //                 status: HTTP_STATUS.BAD_REQUEST,
+    //                 message: `Số lượng nhóm vượt quá giới hạn (${maxTopicsPerSchedule}) trong một lịch bảo vệ!`,
+    //             };
+    //         }
+
+    //         // Kiểm tra trùng thời gian
+    //         const existingSchedules = await prisma.defenseSchedule.findMany({
+    //             where: { councilId: data.councilId, isDeleted: false },
+    //         });
+    //         for (const group of data.groups) {
+    //             const overlappingSchedule = existingSchedules.find(
+    //                 s => Math.abs(s.defenseTime.getTime() - group.defenseTime.getTime()) < 1000 // 1 giây
+    //             );
+    //             if (overlappingSchedule) {
+    //                 return {
+    //                     success: false,
+    //                     status: HTTP_STATUS.CONFLICT,
+    //                     message: `Thời gian bảo vệ ${group.defenseTime.toISOString()} trùng với lịch hiện có!`,
+    //                 };
+    //             }
+    //         }
+
+    //         // Lấy danh sách nhóm và kiểm tra phân công đề tài
+    //         const groupIds = data.groups.map(g => g.groupId);
+    //         const topicAssignments = await prisma.topicAssignment.findMany({
+    //             where: { groupId: { in: groupIds }, isDeleted: false }, // Lấy tất cả trước
+    //             include: {
+    //                 group: { include: { members: true, mentors: { include: { mentor: true } } } },
+    //             },
+    //         });
+
+    //         // Kiểm tra từng nhóm và trả thông báo chi tiết
+    //         const invalidGroups: string[] = [];
+    //         for (const groupId of groupIds) {
+    //             const assignment = topicAssignments.find(ta => ta.groupId === groupId);
+    //             if (!assignment) {
+    //                 invalidGroups.push(`${groupId} (Chưa được phân công đề tài)`);
+    //             } else if (assignment.defendStatus === "NOT_PASSED") {
+    //                 invalidGroups.push(`${groupId} (Đã bị đánh giá không đạt)`);
+    //             } else if (assignment.defendStatus !== "CONFIRMED") {
+    //                 invalidGroups.push(`${groupId} (Chưa được xác nhận để tham gia bảo vệ)`);
+    //             } else if (assignment.defenseRound !== data.defenseRound.toString()) {
+    //                 invalidGroups.push(`${groupId} (Vòng bảo vệ không khớp: ${assignment.defenseRound} ≠ ${data.defenseRound})`);
+    //             }
+    //         }
+
+    //         if (invalidGroups.length > 0) {
+    //             return {
+    //                 success: false,
+    //                 status: HTTP_STATUS.BAD_REQUEST,
+    //                 message: `Không thể thêm các nhóm sau vào lịch bảo vệ: ${invalidGroups.join(", ")}!`,
+    //             };
+    //         }
+
+    //         // Kiểm tra xung đột mentor và thành viên hội đồng
+    //         const councilMembers = await prisma.councilMember.findMany({
+    //             where: { councilId: data.councilId, isDeleted: false },
+    //         });
+    //         const councilMemberIds = councilMembers.map(m => m.userId);
+    //         for (const assignment of topicAssignments) {
+    //             const groupMentors = assignment.group.mentors.filter(m => !m.isDeleted);
+    //             const conflictingMentor = groupMentors.find(m => councilMemberIds.includes(m.mentorId));
+    //             if (conflictingMentor) {
+    //                 return {
+    //                     success: false,
+    //                     status: HTTP_STATUS.BAD_REQUEST,
+    //                     message: `Mentor ${conflictingMentor.mentor.fullName} (ID: ${conflictingMentor.mentorId}) không được là thành viên hội đồng của nhóm ${assignment.groupId}!`,
+    //                 };
+    //             }
+    //         }
+
+    //         // Tạo lịch bảo vệ và kết quả thành viên trong transaction
+    //         const newSchedules = await prisma.$transaction(async (tx) => {
+    //             const schedules = [];
+    //             for (const group of data.groups) {
+    //                 const assignment = topicAssignments.find(ta => ta.groupId === group.groupId);
+    //                 if (!assignment) continue; // Đã kiểm tra trước, nhưng giữ để an toàn
+
+    //                 const schedule = await tx.defenseSchedule.create({
+    //                     data: {
+    //                         councilId: data.councilId,
+    //                         groupId: group.groupId,
+    //                         defenseTime: group.defenseTime,
+    //                         room: data.room,
+    //                         defenseRound: data.defenseRound,
+    //                         status: "PENDING",
+    //                     },
+    //                 });
+
+    //                 const memberResults = [];
+    //                 for (const member of assignment.group.members) {
+    //                     if (!member.studentId) continue;
+    //                     const result = await tx.defenseMemberResult.create({
+    //                         data: {
+    //                             defenseScheduleId: schedule.id,
+    //                             studentId: member.studentId,
+    //                             result: "PENDING",
+    //                         },
+    //                     });
+    //                     memberResults.push(result);
+    //                 }
+
+    //                 schedules.push({ schedule, memberResults });
+    //             }
+    //             return schedules;
+    //         });
+
+    //         return {
+    //             success: true,
+    //             status: HTTP_STATUS.CREATED,
+    //             message: "Tạo lịch bảo vệ thành công!",
+    //             data: newSchedules.map(s => ({
+    //                 schedule: s.schedule,
+    //                 memberResults: s.memberResults,
+    //             })),
+    //         };
+    //     } catch (error) {
+    //         console.error("Lỗi khi tạo lịch bảo vệ:", error);
+    //         return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
+    //     }
+    // }
 
 
     // Xóa hội đồng bảo vệ
+    async createDefenseSchedule(data: {
+        councilId: string;
+        groups: { groupId: string; defenseTime: Date | string }[];
+        room: string;
+        createdBy: string;
+        defenseRound: number;
+      }) {
+        try {
+          // 1. Convert defenseTime sang Date object
+          const normalizedGroups = data.groups.map(g => ({
+            ...g,
+            defenseTime: new Date(g.defenseTime),
+          }));
+      
+          // 2. Kiểm tra hội đồng
+          const council = await prisma.council.findUnique({
+            where: { id: data.councilId, type: "DEFENSE", isDeleted: false },
+          });
+      
+          if (!council) {
+            return {
+              success: false,
+              status: HTTP_STATUS.NOT_FOUND,
+              message: "Hội đồng bảo vệ không tồn tại!",
+            };
+          }
+      
+          // 3. Kiểm tra số lượng nhóm
+          const maxTopicsPerSchedule = await systemConfigService.getMaxTopicsPerCouncilSchedule();
+          if (normalizedGroups.length > maxTopicsPerSchedule) {
+            return {
+              success: false,
+              status: HTTP_STATUS.BAD_REQUEST,
+              message: `Số lượng nhóm vượt quá giới hạn (${maxTopicsPerSchedule}) trong một lịch bảo vệ!`,
+            };
+          }
+      
+          // 4. Kiểm tra trùng thời gian
+          const existingSchedules = await prisma.defenseSchedule.findMany({
+            where: { councilId: data.councilId, isDeleted: false },
+          });
+      
+          for (const group of normalizedGroups) {
+            const conflict = existingSchedules.find(
+              s => Math.abs(s.defenseTime.getTime() - group.defenseTime.getTime()) < 1000
+            );
+            if (conflict) {
+              return {
+                success: false,
+                status: HTTP_STATUS.CONFLICT,
+                message: `Thời gian bảo vệ ${group.defenseTime.toISOString()} trùng với lịch hiện có!`,
+              };
+            }
+          }
+      
+          // 5. Lấy topicAssignments và validate trạng thái
+          const groupIds = normalizedGroups.map(g => g.groupId);
+          const topicAssignments = await prisma.topicAssignment.findMany({
+            where: { groupId: { in: groupIds }, isDeleted: false },
+            include: {
+              group: { include: { members: true, mentors: { include: { mentor: true } } } },
+            },
+          });
+      
+          const invalidGroups: string[] = [];
+      
+          for (const groupId of groupIds) {
+            const assignment = topicAssignments.find(ta => ta.groupId === groupId);
+            const groupCode = assignment?.group?.groupCode || groupId;
+      
+            if (!assignment) {
+              invalidGroups.push(`${groupCode} (Chưa được phân công đề tài)`);
+            } else if (assignment.defendStatus === "NOT_PASSED") {
+              invalidGroups.push(`${groupCode} (Đã bị đánh giá không đạt)`);
+            } else if (assignment.defendStatus !== "CONFIRMED") {
+              invalidGroups.push(`${groupCode} (Chưa được xác nhận để bảo vệ)`);
+            } else if (Number(assignment.defenseRound) !== data.defenseRound) {
+              invalidGroups.push(`${groupCode} (Vòng bảo vệ không khớp: ${assignment.defenseRound} ≠ ${data.defenseRound})`);
+            }
+          }
+      
+          if (invalidGroups.length > 0) {
+            return {
+              success: false,
+              status: HTTP_STATUS.BAD_REQUEST,
+              message: `Không thể thêm các nhóm sau vào lịch bảo vệ:\n${invalidGroups.join("\n")}`,
+            };
+          }
+      
+          // 6. Kiểm tra mentor trùng với thành viên hội đồng
+          const councilMembers = await prisma.councilMember.findMany({
+            where: { councilId: data.councilId, isDeleted: false },
+          });
+      
+          const councilMemberIds = councilMembers.map(m => m.userId);
+      
+          for (const assignment of topicAssignments) {
+            const groupMentors = assignment.group.mentors.filter(m => !m.isDeleted);
+            const conflict = groupMentors.find(m => councilMemberIds.includes(m.mentorId));
+            if (conflict) {
+              return {
+                success: false,
+                status: HTTP_STATUS.BAD_REQUEST,
+                message: `Mentor ${conflict.mentor.fullName} (ID: ${conflict.mentorId}) không được là thành viên hội đồng của nhóm ${assignment.group.groupCode}!`,
+              };
+            }
+          }
+      
+          // 7. Tạo lịch và kết quả
+          const newSchedules = await prisma.$transaction(async (tx) => {
+            const created = [];
+      
+            for (const group of normalizedGroups) {
+              const assignment = topicAssignments.find(ta => ta.groupId === group.groupId);
+              if (!assignment) continue;
+      
+              const schedule = await tx.defenseSchedule.create({
+                data: {
+                  councilId: data.councilId,
+                  groupId: group.groupId,
+                  defenseTime: group.defenseTime,
+                  room: data.room,
+                  defenseRound: data.defenseRound,
+                  status: "PENDING",
+                },
+              });
+      
+              const results = [];
+      
+              for (const member of assignment.group.members) {
+                if (!member.studentId) continue;
+                const result = await tx.defenseMemberResult.create({
+                  data: {
+                    defenseScheduleId: schedule.id,
+                    studentId: member.studentId,
+                    result: "PENDING",
+                  },
+                });
+                results.push(result);
+              }
+      
+              created.push({ schedule, memberResults: results });
+            }
+      
+            return created;
+          });
+      
+          return {
+            success: true,
+            status: HTTP_STATUS.CREATED,
+            message: "Tạo lịch bảo vệ thành công!",
+            data: newSchedules,
+          };
+        } catch (error) {
+          console.error("Lỗi khi tạo lịch bảo vệ:", error);
+          return {
+            success: false,
+            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            message: "Lỗi hệ thống!",
+          };
+        }
+      }
+      
+
+
+
+
     async deleteDefenseCouncil(councilId: string, userId: string, ipAddress?: string) {
         try {
             const council = await prisma.council.findUnique({ where: { id: councilId, type: "DEFENSE", isDeleted: false } });
@@ -491,139 +659,139 @@ export class CouncilDefenseService {
     async updateDefenseCouncil(
         councilId: string,
         data: {
-          name?: string;
-          code?: string;
-          round?: number;
-          status?: string;
-          councilStartDate?: Date;
-          councilEndDate?: Date;
-          topicAssId?: string;
-          semesterId?: string;
-          isActive?: boolean;
-          submissionPeriodId?: string;
+            name?: string;
+            code?: string;
+            round?: number;
+            status?: string;
+            councilStartDate?: Date;
+            councilEndDate?: Date;
+            topicAssId?: string;
+            semesterId?: string;
+            isActive?: boolean;
+            submissionPeriodId?: string;
         }
-      ) {
+    ) {
         try {
-          // **Bước 1: Kiểm tra hội đồng có tồn tại không**
-          const existingCouncil = await prisma.council.findUnique({
-            where: {
-              id: councilId,
-              type: "DEFENSE", // Phân biệt hội đồng bảo vệ
-              isDeleted: false,
-            },
-          });
-      
-          if (!existingCouncil) {
-            return {
-              success: false,
-              status: HTTP_STATUS.NOT_FOUND,
-              message: "Hội đồng bảo vệ không tồn tại!",
-            };
-          }
-      
-          // **Bước 2: Sao chép dữ liệu để xử lý**
-          let updateData: any = { ...data };
-      
-          // **Bước 3: Validation**
-          if (data.code && data.code !== existingCouncil.code) {
-            const codeExists = await prisma.council.findUnique({
-              where: { code: data.code },
+            // **Bước 1: Kiểm tra hội đồng có tồn tại không**
+            const existingCouncil = await prisma.council.findUnique({
+                where: {
+                    id: councilId,
+                    type: "DEFENSE", // Phân biệt hội đồng bảo vệ
+                    isDeleted: false,
+                },
             });
-            if (codeExists) {
-              return {
-                success: false,
-                status: HTTP_STATUS.CONFLICT,
-                message: "Mã hội đồng đã tồn tại!",
-              };
+
+            if (!existingCouncil) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.NOT_FOUND,
+                    message: "Hội đồng bảo vệ không tồn tại!",
+                };
             }
-          }
-      
-          if (data.councilStartDate && data.councilEndDate) {
-            if (data.councilStartDate >= data.councilEndDate) {
-              return {
-                success: false,
-                status: HTTP_STATUS.BAD_REQUEST,
-                message: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc!",
-              };
+
+            // **Bước 2: Sao chép dữ liệu để xử lý**
+            let updateData: any = { ...data };
+
+            // **Bước 3: Validation**
+            if (data.code && data.code !== existingCouncil.code) {
+                const codeExists = await prisma.council.findUnique({
+                    where: { code: data.code },
+                });
+                if (codeExists) {
+                    return {
+                        success: false,
+                        status: HTTP_STATUS.CONFLICT,
+                        message: "Mã hội đồng đã tồn tại!",
+                    };
+                }
             }
-          }
-      
-          if (data.round !== undefined && (!Number.isInteger(data.round) || data.round <= 0)) {
+
+            if (data.councilStartDate && data.councilEndDate) {
+                if (data.councilStartDate >= data.councilEndDate) {
+                    return {
+                        success: false,
+                        status: HTTP_STATUS.BAD_REQUEST,
+                        message: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc!",
+                    };
+                }
+            }
+
+            if (data.round !== undefined && (!Number.isInteger(data.round) || data.round <= 0)) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.BAD_REQUEST,
+                    message: "Vòng bảo vệ phải là số nguyên dương!",
+                };
+            }
+
+            const validStatuses = ["UPCOMING", "ACTIVE", "COMPLETE"];
+            if (data.status && !validStatuses.includes(data.status)) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.BAD_REQUEST,
+                    message: "Trạng thái không hợp lệ! Chỉ chấp nhận: UPCOMING, ACTIVE, COMPLETE.",
+                };
+            }
+
+            // **Bước 4: Xử lý logic cho status**
+            if (data.councilStartDate && data.councilEndDate) {
+                const now = new Date();
+                let computedStatus = data.status || "ACTIVE";
+
+                if (now < data.councilStartDate) {
+                    computedStatus = "UPCOMING";
+                } else if (now >= data.councilStartDate && now <= data.councilEndDate) {
+                    computedStatus = "ACTIVE";
+                } else if (now > data.councilEndDate) {
+                    computedStatus = "COMPLETE";
+                }
+
+                updateData.status = computedStatus;
+            } else if (data.status) {
+                updateData.status = data.status;
+            }
+
+            // **Bước 5: Thực hiện cập nhật**
+            const updatedCouncil = await prisma.council.update({
+                where: { id: councilId },
+                data: {
+                    code: updateData.code,
+                    name: updateData.name,
+                    round: updateData.round,
+                    status: updateData.status,
+                    councilStartDate: updateData.councilStartDate,
+                    councilEndDate: updateData.councilEndDate,
+                    topicAssId: updateData.topicAssId,
+                    semesterId: updateData.semesterId,
+                    isActive: updateData.isActive,
+                    submissionPeriodId: updateData.submissionPeriodId,
+                },
+            });
+
             return {
-              success: false,
-              status: HTTP_STATUS.BAD_REQUEST,
-              message: "Vòng bảo vệ phải là số nguyên dương!",
+                success: true,
+                status: HTTP_STATUS.OK,
+                message: "Cập nhật hội đồng bảo vệ thành công!",
+                data: updatedCouncil,
             };
-          }
-      
-          const validStatuses = ["UPCOMING", "ACTIVE", "COMPLETE"];
-          if (data.status && !validStatuses.includes(data.status)) {
-            return {
-              success: false,
-              status: HTTP_STATUS.BAD_REQUEST,
-              message: "Trạng thái không hợp lệ! Chỉ chấp nhận: UPCOMING, ACTIVE, COMPLETE.",
-            };
-          }
-      
-          // **Bước 4: Xử lý logic cho status**
-          if (data.councilStartDate && data.councilEndDate) {
-            const now = new Date();
-            let computedStatus = data.status || "ACTIVE";
-      
-            if (now < data.councilStartDate) {
-              computedStatus = "UPCOMING";
-            } else if (now >= data.councilStartDate && now <= data.councilEndDate) {
-              computedStatus = "ACTIVE";
-            } else if (now > data.councilEndDate) {
-              computedStatus = "COMPLETE";
-            }
-      
-            updateData.status = computedStatus;
-          } else if (data.status) {
-            updateData.status = data.status;
-          }
-      
-          // **Bước 5: Thực hiện cập nhật**
-          const updatedCouncil = await prisma.council.update({
-            where: { id: councilId },
-            data: {
-              code: updateData.code,
-              name: updateData.name,
-              round: updateData.round,
-              status: updateData.status,
-              councilStartDate: updateData.councilStartDate,
-              councilEndDate: updateData.councilEndDate,
-              topicAssId: updateData.topicAssId,
-              semesterId: updateData.semesterId,
-              isActive: updateData.isActive,
-              submissionPeriodId: updateData.submissionPeriodId,
-            },
-          });
-      
-          return {
-            success: true,
-            status: HTTP_STATUS.OK,
-            message: "Cập nhật hội đồng bảo vệ thành công!",
-            data: updatedCouncil,
-          };
         } catch (error) {
-          console.error("Lỗi khi cập nhật hội đồng bảo vệ:", error);
-      
-          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+            console.error("Lỗi khi cập nhật hội đồng bảo vệ:", error);
+
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.CONFLICT,
+                    message: "Mã hội đồng đã tồn tại!",
+                };
+            }
+
             return {
-              success: false,
-              status: HTTP_STATUS.CONFLICT,
-              message: "Mã hội đồng đã tồn tại!",
+                success: false,
+                status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+                message: "Lỗi hệ thống khi cập nhật hội đồng bảo vệ!",
             };
-          }
-      
-          return {
-            success: false,
-            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-            message: "Lỗi hệ thống khi cập nhật hội đồng bảo vệ!",
-          };
         }
-      }
+    }
     // Lấy chi tiết hội đồng bảo vệ
     async getDefenseCouncilById(councilId: string) {
         try {
@@ -953,7 +1121,7 @@ export class CouncilDefenseService {
                     message: "URL phải bắt đầu bằng http:// hoặc https://"
                 };
             }
-    
+
             // 2. Lấy thông tin defense schedule
             const defenseSchedule = await prisma.defenseSchedule.findUnique({
                 where: { id: scheduleId, isDeleted: false },
@@ -976,7 +1144,7 @@ export class CouncilDefenseService {
                     }
                 }
             });
-    
+
             if (!defenseSchedule) {
                 return {
                     success: false,
@@ -984,12 +1152,12 @@ export class CouncilDefenseService {
                     message: "Lịch bảo vệ không tồn tại!"
                 };
             }
-    
+
             // 3. Kiểm tra user có trong nhóm không
             const userInGroup = defenseSchedule.group.members.find(
                 member => member.student && member.student.userId === userId
             );
-    
+
             if (!userInGroup) {
                 return {
                     success: false,
@@ -997,12 +1165,12 @@ export class CouncilDefenseService {
                     message: "Bạn không thuộc nhóm có lịch bảo vệ này!"
                 };
             }
-    
+
             // 4. Kiểm tra role leader
             const leaderRole = await prisma.role.findUnique({
                 where: { name: "leader" }
             });
-    
+
             if (userInGroup.roleId !== leaderRole?.id) {
                 return {
                     success: false,
@@ -1010,7 +1178,7 @@ export class CouncilDefenseService {
                     message: "Chỉ leader của nhóm mới được thêm URL!"
                 };
             }
-    
+
             // 5. Kiểm tra trùng URL
             const existingDoc = await prisma.document.findFirst({
                 where: {
@@ -1019,7 +1187,7 @@ export class CouncilDefenseService {
                     isDeleted: false
                 }
             });
-    
+
             if (existingDoc) {
                 return {
                     success: false,
@@ -1028,7 +1196,7 @@ export class CouncilDefenseService {
                     data: existingDoc
                 };
             }
-    
+
             // 6. Tạo document mới
             const newDocument = await prisma.document.create({
                 data: {
@@ -1040,14 +1208,14 @@ export class CouncilDefenseService {
                     uploadedBy: userId
                 }
             });
-    
+
             return {
                 success: true,
                 status: HTTP_STATUS.OK,
                 message: "Thêm URL báo cáo thành công!",
                 data: newDocument
             };
-    
+
         } catch (error) {
             console.error("Lỗi khi thêm URL:", error);
             return {
@@ -1231,35 +1399,35 @@ export class CouncilDefenseService {
     }
     // Thay đổi thành viên hội đồng bảo vệ
     async updateDefenseCouncilMembers(
-        councilId: string, 
-        members: { email: string; role: string }[], 
+        councilId: string,
+        members: { email: string; role: string }[],
     ) {
         try {
             // Kiểm tra hội đồng
-            const council = await prisma.council.findUnique({ 
-                where: { 
-                    id: councilId, 
-                    type: "DEFENSE", 
-                    isDeleted: false 
-                } 
+            const council = await prisma.council.findUnique({
+                where: {
+                    id: councilId,
+                    type: "DEFENSE",
+                    isDeleted: false
+                }
             });
             if (!council) {
-                return { 
-                    success: false, 
+                return {
+                    success: false,
                     status: 404,
-                    message: "Hội đồng bảo vệ không tồn tại!" 
+                    message: "Hội đồng bảo vệ không tồn tại!"
                 };
             }
-    
+
             // Lấy cấu hình
             const systemConfigService = new SystemConfigService();
             const [
-                minChairman, 
-                maxChairman, 
-                minSecretary, 
-                maxSecretary, 
-                minReviewers, 
-                maxReviewers, 
+                minChairman,
+                maxChairman,
+                minSecretary,
+                maxSecretary,
+                minReviewers,
+                maxReviewers,
                 maxDefenseMembers
             ] = await Promise.all([
                 systemConfigService.getMinDefenseChairman(),
@@ -1270,28 +1438,28 @@ export class CouncilDefenseService {
                 systemConfigService.getMaxDefenseReviewers(),
                 systemConfigService.getMaxDefenseMembers()
             ]);
-    
+
             // Transaction
             const result = await prisma.$transaction(async (tx) => {
                 // Soft delete thành viên hiện tại
                 await tx.councilMember.updateMany({
                     where: { councilId, isDeleted: false },
-                    data: { 
+                    data: {
                         isDeleted: true
                     }
                 });
-    
+
                 // Lấy roles
                 const [chairmanRole, secretaryRole, memberRole] = await Promise.all([
                     tx.role.findUnique({ where: { name: "council_chairman" } }),
                     tx.role.findUnique({ where: { name: "council_secretary" } }),
                     tx.role.findUnique({ where: { name: "council_member" } })
                 ]);
-    
+
                 if (!chairmanRole || !secretaryRole || !memberRole) {
                     throw new Error("Không tìm thấy thông tin vai trò cần thiết!");
                 }
-    
+
                 // Kiểm tra số lượng
                 const roleCounts = { chairman: 0, secretary: 0, reviewer: 0 };
                 members.forEach(member => {
@@ -1300,7 +1468,7 @@ export class CouncilDefenseService {
                     else if (member.role === "council_member") roleCounts.reviewer++;
                     else throw new Error(`Vai trò ${member.role} không hợp lệ!`);
                 });
-    
+
                 if (roleCounts.chairman < minChairman || roleCounts.chairman > maxChairman) {
                     throw new Error(`Số lượng chủ tịch phải từ ${minChairman} đến ${maxChairman}!`);
                 }
@@ -1313,22 +1481,22 @@ export class CouncilDefenseService {
                 if (members.length > maxDefenseMembers) {
                     throw new Error(`Tổng số thành viên không được vượt quá ${maxDefenseMembers}!`);
                 }
-    
+
                 // Thêm thành viên mới
                 const newMembers = await Promise.all(
                     members.map(async (member) => {
-                        const user = await tx.user.findUnique({ 
-                            where: { email: member.email }, 
-                            select: { id: true } 
+                        const user = await tx.user.findUnique({
+                            where: { email: member.email },
+                            select: { id: true }
                         });
                         if (!user) {
                             throw new Error(`Không tìm thấy người dùng với email: ${member.email}`);
                         }
-    
+
                         const roleId = member.role === "council_chairman" ? chairmanRole.id :
-                                    member.role === "council_secretary" ? secretaryRole.id :
-                                    memberRole.id;
-    
+                            member.role === "council_secretary" ? secretaryRole.id :
+                                memberRole.id;
+
                         return tx.councilMember.create({
                             data: {
                                 councilId,
@@ -1341,10 +1509,10 @@ export class CouncilDefenseService {
                         });
                     })
                 );
-    
+
                 return newMembers;
             });
-    
+
             return {
                 success: true,
                 status: 200,

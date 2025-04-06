@@ -112,18 +112,23 @@ export class SubmissionPeriodService {
   async createSubmissionPeriod(data: {
     semesterId: string;
     roundNumber: number;
-    startDate: Date;
-    endDate: Date;
+    startDate: Date | string;
+    endDate: Date | string;
     type: "TOPIC" | "CHECK-TOPIC" | "REVIEW" | "DEFENSE";
     description?: string;
     createdBy: string;
   }) {
     try {
-      // Kiểm tra quyền của người tạo
+      // Ép kiểu lại ngày nếu từ client truyền lên là string
+      const startDate = new Date(data.startDate);
+      const endDate = new Date(data.endDate);
+  
+      // Kiểm tra người tạo
       const creator = await prisma.user.findUnique({
         where: { id: data.createdBy },
         include: { roles: { include: { role: true } } },
       });
+  
       if (!creator) {
         return {
           success: false,
@@ -131,6 +136,7 @@ export class SubmissionPeriodService {
           message: "Người tạo không tồn tại!",
         };
       }
+  
       const creatorRoles = creator.roles.map((r) => r.role.name.toLowerCase());
       if (creatorRoles.includes("academic_officer") || creatorRoles.includes("admin")) {
         return {
@@ -139,11 +145,12 @@ export class SubmissionPeriodService {
           message: "Academic officer không được phép tạo đợt đề xuất.",
         };
       }
-
+  
       // Kiểm tra học kỳ
       const semester = await prisma.semester.findUnique({
         where: { id: data.semesterId, isDeleted: false },
       });
+  
       if (!semester) {
         return {
           success: false,
@@ -151,39 +158,20 @@ export class SubmissionPeriodService {
           message: "Học kỳ không tồn tại hoặc đã bị xóa!",
         };
       }
-
-      // Kiểm tra trùng lặp dựa trên semesterId, roundNumber và type
-      const existingPeriod = await prisma.submissionPeriod.findFirst({
-        where: {
-          semesterId: data.semesterId,
-          roundNumber: data.roundNumber,
-          type: data.type,
-          isDeleted: false,
-          semester: { isDeleted: false },
-        },
-      });
-      if (existingPeriod) {
-        return {
-          success: false,
-          status: HTTP_STATUS.CONFLICT,
-          message: TOPIC_SUBMISSION_PERIOD_MESSAGE.OVERLAPPED_PERIOD,
-        };
-      }
-
-      // Kiểm tra thời gian
-      if (data.startDate >= data.endDate) {
+  
+      // Kiểm tra thời gian bắt đầu < kết thúc
+      if (startDate >= endDate) {
         return {
           success: false,
           status: HTTP_STATUS.BAD_REQUEST,
           message: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc.",
         };
       }
-
+  
       // Lấy trạng thái học kỳ
-      const currentDate = new Date();
       const semesterStatus = this.determineStatus(semester.startDate, semester.endDate);
-
-      // Logic xử lý thời gian theo loại đợt
+  
+      // Logic kiểm tra theo loại đợt
       if (data.type === "TOPIC" || data.type === "CHECK-TOPIC") {
         if (semesterStatus === "COMPLETE") {
           return {
@@ -192,17 +180,17 @@ export class SubmissionPeriodService {
             message: "Không thể tạo TOPIC hoặc CHECK-TOPIC khi học kỳ đã hoàn thành!",
           };
         }
-        if (semesterStatus === "ACTIVE") {
-          const daysIntoSemester = Math.floor(
-            (currentDate.getTime() - semester.startDate.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          if (daysIntoSemester > 14) { // 2 tuần = 14 ngày
-            return {
-              success: false,
-              status: HTTP_STATUS.FORBIDDEN,
-              message: "Đã quá thời gian cho phép tạo TOPIC hoặc CHECK-TOPIC (2 tuần đầu học kỳ)!",
-            };
-          }
+  
+        const daysFromSemesterStart = Math.floor(
+          (startDate.getTime() - semester.startDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
+  
+        if (daysFromSemesterStart > 14) {
+          return {
+            success: false,
+            status: HTTP_STATUS.FORBIDDEN,
+            message: "Thời gian bắt đầu đợt TOPIC hoặc CHECK-TOPIC phải nằm trong 2 tuần đầu của học kỳ!",
+          };
         }
       } else if (data.type === "REVIEW") {
         if (semesterStatus !== "ACTIVE") {
@@ -221,24 +209,24 @@ export class SubmissionPeriodService {
           };
         }
       }
-
+  
       // Tính trạng thái của đợt đề xuất
-      const status = this.determineStatus(data.startDate, data.endDate);
-
-      // Tạo đợt đề xuất mới
+      const status = this.determineStatus(startDate, endDate);
+  
+      // Tạo submission period
       const newPeriod = await prisma.submissionPeriod.create({
         data: {
           semesterId: data.semesterId,
           roundNumber: data.roundNumber,
-          startDate: data.startDate,
-          endDate: data.endDate,
+          startDate,
+          endDate,
           type: data.type,
           description: data.description || "",
           createdBy: data.createdBy,
           status,
         },
       });
-
+  
       return {
         success: true,
         status: HTTP_STATUS.CREATED,
@@ -254,6 +242,8 @@ export class SubmissionPeriodService {
       };
     }
   }
+  
+  
   
 
   // Cập nhật đợt đề xuất

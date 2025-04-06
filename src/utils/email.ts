@@ -1,4 +1,10 @@
 import nodemailer from "nodemailer";
+import dotenv from "dotenv";
+
+// Load .env ngay đầu file
+dotenv.config();
+
+
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -8,11 +14,27 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-export async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
-  return transporter.sendMail({
+export const sendEmail = async (
+  recipientEmail: string,
+  subject: string,
+  content: string,
+  attachment?: string
+) => {
+  const mailOptions: nodemailer.SendMailOptions = {
     from: process.env.EMAIL_USER,
-    to,
+    to: recipientEmail,
     subject,
-    html,
-  });
-}
+    text: content,
+  };
+  if (attachment) {
+    mailOptions.attachments = [{ path: attachment }];
+  }
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Email sent to ${recipientEmail}`);
+    return true;
+  } catch (error) {
+    console.error(`Error sending email to ${recipientEmail}:`, error);
+    throw error;
+  }
+};

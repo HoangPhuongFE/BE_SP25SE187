@@ -358,7 +358,7 @@ export class GroupService {
             `;
 
                 try {
-                    await sendEmail({ to: invitedStudent.user.email, subject: "Lời mời tham gia nhóm", html: emailContent });
+                    await sendEmail(invitedStudent.user.email, "Lời mời tham gia nhóm", emailContent);
                     return {
                         success: true,
                         status: HTTP_STATUS.OK,
