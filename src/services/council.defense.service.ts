@@ -1528,4 +1528,71 @@ export class CouncilDefenseService {
             };
         }
     }
+
+    async removeCouncilMember(councilId: string, memberId: string, userId: string) {
+        try {
+            // Kiểm tra hội đồng tồn tại
+            const council = await prisma.council.findUnique({
+                where: { id: councilId, type: "DEFENSE", isDeleted: false },
+            });
+    
+            if (!council) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.NOT_FOUND,
+                    message: "Hội đồng bảo vệ không tồn tại!",
+                };
+            }
+    
+            // Kiểm tra và lấy thông tin thành viên hội đồng (bao gồm fullName)
+            const member = await prisma.councilMember.findUnique({
+                where: { id: memberId, councilId, isDeleted: false },
+                include: { user: { select: { fullName: true } }, role: { select: { name: true } } },
+            });
+    
+            if (!member) {
+                return {
+                    success: false,
+                    status: HTTP_STATUS.NOT_FOUND,
+                    message: "Thành viên hội đồng không tồn tại hoặc đã bị xóa!",
+                };
+            }
+    
+            // Thực hiện soft delete thành viên hội đồng
+            await prisma.councilMember.update({
+                where: { id: memberId },
+                data: {
+                    isDeleted: true,
+                    status: "REMOVED",
+                },
+            });
+    
+            // Lưu log với fullName rõ ràng
+            await prisma.systemLog.create({
+                data: {
+                    userId,
+                    action: "DELETE",
+                    entityType: "CouncilMember",
+                    entityId: memberId,
+                    description: `Xóa thành viên "${member.user.fullName}" (${member.role.name}) khỏi hội đồng "${council.name}"`,
+                    severity: "INFO",
+                    ipAddress: "", // bổ sung nếu có từ request
+                },
+            });
+    
+            return {
+                success: true,
+                status: HTTP_STATUS.OK,
+                message: "Xóa thành viên hội đồng bảo vệ thành công!",
+            };
+        } catch (error) {
+            console.error("Lỗi khi xóa thành viên hội đồng:", error);
+            return {
+                success: false,
+                status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+                message: "Lỗi hệ thống khi xóa thành viên hội đồng!",
+            };
+        }
+    }
+    
 }

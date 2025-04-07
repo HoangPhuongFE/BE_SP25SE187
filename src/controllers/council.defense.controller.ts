@@ -230,4 +230,30 @@ export class CouncilDefenseController {
       });
     }
   }
+
+
+async removeCouncilMember(req: Request, res: Response) {
+  try {
+      const { councilId, memberId } = req.params;
+      const userId = req.user?.userId;
+
+      if (!userId) {
+          return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+              success: false,
+              status: HTTP_STATUS.UNAUTHORIZED,
+              message: "Không tìm thấy thông tin người dùng từ token!",
+          });
+      }
+
+      const result = await councilDefenseService.removeCouncilMember(councilId, memberId, userId);
+      res.status(result.status).json(result);
+  } catch (error) {
+      console.error("Lỗi trong controller removeCouncilMember:", error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+          success: false,
+          status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+          message: "Lỗi hệ thống trong controller!",
+      });
+  }
+}
 }

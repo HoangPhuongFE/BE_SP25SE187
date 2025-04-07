@@ -95,14 +95,23 @@ router.get(
 router.put(
     '/schedules/:defenseScheduleId/students/:studentId/evaluate',
     authenticateToken,
-    checkRole(["lecturer", "council_member","council_secretary","council_chairman"
+    checkRole(["lecturer", "council_member", "council_secretary", "council_chairman"
     ]),
     councilDefenseController.evaluateDefenseMember.bind(councilDefenseController)
 );
 // Route mới: Thay đổi thành viên hội đồng
 router.put(
     '/council/:councilId/members',
+    authenticateToken,
     checkRole(["examination_officer", "graduation_thesis_manager"]),
     councilDefenseController.updateDefenseCouncilMembers.bind(councilDefenseController)
 );
+
+router.delete(
+    'council/:councilId/user/:memberId',
+    authenticateToken,
+    checkRole(["examination_officer", "graduation_thesis_manager"]),
+    councilDefenseController.removeCouncilMember.bind(councilDefenseController)
+);
+
 export default router;
