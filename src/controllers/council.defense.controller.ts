@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { CouncilDefenseService } from '../services/council.defense.service';
 import HTTP_STATUS from '../constants/httpStatus';
+import { AuthenticatedRequest } from '~/middleware/user.middleware';
 
 const councilDefenseService = new CouncilDefenseService();
 
@@ -179,25 +180,27 @@ export class CouncilDefenseController {
     }
   }
 
-  async getDefenseCouncils(req: Request, res: Response) {
-    try {
-      const filter = {
-        semesterId: req.query.semesterId as string,
-        submissionPeriodId: req.query.submissionPeriodId as string,
-        round: req.query.round ? parseInt(req.query.round as string) : undefined,
-        user: req.user ? { userId: req.user.id, roles: req.user.roles || [] } : undefined,
-      };
-      const result = await councilDefenseService.getDefenseCouncils(filter);
-      res.status(result.status).json(result);
-    } catch (error) {
-      console.error('Lỗi trong controller getDefenseCouncils:', error);
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        message: 'Lỗi hệ thống trong controller!',
-      });
-    }
+// Controller: Chuẩn hóa giống getCouncils
+async getDefenseCouncils(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { semesterId, submissionPeriodId, round } = req.query;
+    const user = req.user;
+    const result = await councilDefenseService.getDefenseCouncils({
+      semesterId: semesterId as string,
+      submissionPeriodId: submissionPeriodId as string,
+      round: round ? Number(round) : undefined,
+      user,
+    });
+    return res.status(result.status).json(result);
+  } catch (error) {
+    console.error("Lỗi trong getDefenseCouncils:", error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Lỗi hệ thống!",
+    });
   }
+}
+
 
   async getDefenseCouncilById(req: Request, res: Response) {
     try {

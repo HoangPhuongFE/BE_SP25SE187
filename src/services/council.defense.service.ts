@@ -858,61 +858,90 @@ export class CouncilDefenseService {
         }
     }
 
-    // Lấy danh sách hội đồng bảo vệ
     async getDefenseCouncils(filter: {
         semesterId?: string;
         submissionPeriodId?: string;
         round?: number;
         user?: { userId: string; roles: { name: string; semesterId?: string | null }[] };
-    }) {
+      }) {
         try {
-            const { semesterId, submissionPeriodId, round, user } = filter;
-            let whereClause: any = {
-                type: "DEFENSE",
-                isDeleted: false,
-                ...(semesterId && { semesterId }),
-                ...(submissionPeriodId && { submissionPeriodId }),
-                ...(round !== undefined && { round }),
-            };
-
-            // Nếu user là lecturer và không có vai trò đặc biệt, chỉ lấy hội đồng mà user là thành viên
-            if (user && user.roles.some(role => role.name === "lecturer") && !user.roles.some(role => ["examination_officer", "graduation_thesis_manager"].includes(role.name))) {
-                whereClause = {
-                    ...whereClause,
-                    members: {
-                        some: {
-                            userId: user.userId,
-                            isDeleted: false,
-                        },
-                    },
-                };
-            }
-
-            const councils = await prisma.council.findMany({
-                where: whereClause,
-                include: {
-                    members: {
-                        include: {
-                            user: { select: { id: true, fullName: true, email: true } },
-                            role: { select: { id: true, name: true } },
-                        },
-                    },
-                    semester: { select: { id: true, code: true, startDate: true, endDate: true } },
-                    submissionPeriod: { select: { id: true, roundNumber: true, startDate: true, endDate: true } },
+          const { semesterId, submissionPeriodId, round, user } = filter;
+      
+          let whereClause: any = {
+            type: "DEFENSE",
+            isDeleted: false,
+            ...(semesterId && { semesterId }),
+            ...(submissionPeriodId && { submissionPeriodId }),
+            ...(round !== undefined && { round }),
+          };
+      
+          if (
+            user &&
+            user.roles.some(role => role.name === "lecturer") &&
+            !user.roles.some(role =>
+              ["examination_officer", "graduation_thesis_manager"].includes(role.name)
+            )
+          ) {
+            whereClause = {
+              ...whereClause,
+              members: {
+                some: {
+                  userId: user.userId,
+                  isDeleted: false,
                 },
-            });
-
-            return {
-                success: true,
-                status: HTTP_STATUS.OK,
-                message: "Lấy danh sách hội đồng bảo vệ thành công!",
-                data: councils,
+              },
             };
+          }
+      
+          const councils = await prisma.council.findMany({
+            where: whereClause,
+            include: {
+              members: {
+                include: {
+                  user: { select: { id: true, username: true, email: true } },
+                },
+              },
+              semester: { select: { id: true, code: true, startDate: true, endDate: true } },
+              submissionPeriod: {
+                select: { id: true, roundNumber: true, startDate: true, endDate: true },
+              },
+            },
+          });
+      
+          const roleIds = councils
+            .flatMap(c => c.members.map(m => m.roleId))
+            .filter((id, i, self) => self.indexOf(id) === i);
+      
+          const roles = await prisma.role.findMany({
+            where: { id: { in: roleIds } },
+            select: { id: true, name: true },
+          });
+          const roleMap = new Map(roles.map(r => [r.id, r.name]));
+      
+          const councilsWithRoleNames = councils.map(council => ({
+            ...council,
+            members: council.members.map(member => ({
+              ...member,
+              roleName: roleMap.get(member.roleId) || "Không xác định",
+            })),
+          }));
+      
+          return {
+            success: true,
+            status: HTTP_STATUS.OK,
+            message: "Lấy danh sách hội đồng bảo vệ thành công!",
+            data: councilsWithRoleNames,
+          };
         } catch (error) {
-            console.error("Lỗi khi lấy danh sách hội đồng bảo vệ:", error);
-            return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
+          console.error("Lỗi khi lấy danh sách hội đồng bảo vệ:", error);
+          return {
+            success: false,
+            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            message: "Lỗi hệ thống!",
+          };
         }
-    }
+      }
+      
 
     // Mentor xem danh sách hội đồng bảo vệ
     async getDefenseScheduleForMentor(userId: string) {
