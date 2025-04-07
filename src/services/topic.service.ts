@@ -3560,36 +3560,54 @@ export class TopicService {
           },
           include: { majors: true },
         });
-
+      
         let assignment = null;
-        if (groupIdToUse && groupIdToUse !== existingTopic.proposedGroupId) {
-          // Xóa dữ liệu cũ của nhóm trước đó (nếu có)
-          if (existingTopic.proposedGroupId) {
-            await tx.groupMentor.deleteMany({
-              where: { groupId: existingTopic.proposedGroupId },
-            });
-            await tx.topicAssignment.deleteMany({
-              where: { groupId: existingTopic.proposedGroupId, topicId },
-            });
-            console.log(`Deleted old GroupMentor and TopicAssignment for group ${existingTopic.proposedGroupId}`);
-          }
-
-          // Thêm dữ liệu mới cho nhóm mới
+      
+        // Nếu có groupId thì xử lý groupMentor
+        if (groupIdToUse) {
+          // 👉 Xóa các mentor cũ khỏi groupMentor
+          await tx.groupMentor.deleteMany({
+            where: {
+              groupId: groupIdToUse,
+              OR: [
+                { mentorId: existingTopic.mainSupervisor ?? undefined },
+                { mentorId: existingTopic.subSupervisor ?? undefined },
+              ],
+            },
+          });
+      
+          // 👉 Thêm mentor mới nếu có
           if (mainMentorId) {
             await tx.groupMentor.upsert({
               where: { groupId_mentorId: { groupId: groupIdToUse, mentorId: mainMentorId } },
               update: {},
-              create: { groupId: groupIdToUse, mentorId: mainMentorId, roleId: mentorMainRole.id, addedBy: updatedBy },
+              create: {
+                groupId: groupIdToUse,
+                mentorId: mainMentorId,
+                roleId: mentorMainRole.id,
+                addedBy: updatedBy,
+              },
             });
           }
+      
           if (subMentorId) {
             await tx.groupMentor.upsert({
               where: { groupId_mentorId: { groupId: groupIdToUse, mentorId: subMentorId } },
               update: {},
-              create: { groupId: groupIdToUse, mentorId: subMentorId, roleId: mentorSubRole.id, addedBy: updatedBy },
+              create: {
+                groupId: groupIdToUse,
+                mentorId: subMentorId,
+                roleId: mentorSubRole.id,
+                addedBy: updatedBy,
+              },
             });
           }
-          const existingAssignment = await tx.topicAssignment.findFirst({ where: { topicId, groupId: groupIdToUse } });
+      
+          // 👉 Thêm topicAssignment nếu chưa có
+          const existingAssignment = await tx.topicAssignment.findFirst({
+            where: { topicId, groupId: groupIdToUse },
+          });
+      
           if (!existingAssignment) {
             assignment = await tx.topicAssignment.create({
               data: {
@@ -3603,9 +3621,10 @@ export class TopicService {
             });
           }
         }
-
+      
         return { topic: updatedTopic, assignment };
       });
+      
 
       return {
         success: true,
