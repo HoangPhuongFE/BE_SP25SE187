@@ -95,7 +95,7 @@ router.get(
 router.put(
     '/schedules/:defenseScheduleId/students/:studentId/evaluate',
     authenticateToken,
-    checkRole(["lecturer", "council_member", "council_secretary", "council_chairman"
+    checkRole(["lecturer", "council_secretary", "council_chairman"
     ]),
     councilDefenseController.evaluateDefenseMember.bind(councilDefenseController)
 );

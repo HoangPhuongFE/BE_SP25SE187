@@ -54,7 +54,7 @@ export class CouncilTopicController {
   async getCouncils(req: Request, res: Response) {
     try {
       const { semesterId, submissionPeriodId, round } = req.query;
-      const user = req.user!.userId; // Lấy userId từ thông tin đăng nhập
+      const user = req.user;
       const result = await councilTopicService.getTopicCouncils({
         semesterId: semesterId as string,
         submissionPeriodId: submissionPeriodId as string,

@@ -558,6 +558,13 @@ export class GroupService {
                     role: true,
                 },
             },
+            topicAssignments: {
+                where: { isDeleted: false },
+                select: {
+                  defenseRound: true,
+                  defendStatus: true,
+                },
+              },   
         };
 
         // Vai trò quản lý: trả về tất cả nhóm trong kỳ
