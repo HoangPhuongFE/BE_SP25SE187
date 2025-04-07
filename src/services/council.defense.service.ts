@@ -1588,5 +1588,58 @@ export class CouncilDefenseService {
         }
     }
     
-    
+    // Cập nhật trạng thái và ghi chú cho lịch bảo vệ
+async updateDefenseScheduleStatus(
+    scheduleId: string,
+    data: { status: string; notes?: string },
+    updatedBy: string
+  ) {
+    try {
+      // Kiểm tra tồn tại
+      const schedule = await prisma.defenseSchedule.findUnique({
+        where: { id: scheduleId, isDeleted: false },
+      });
+  
+      if (!schedule) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: "Lịch bảo vệ không tồn tại!",
+        };
+      }
+  
+      // Validate status nếu muốn (ví dụ: chỉ chấp nhận 1 số trạng thái nhất định)
+      const validStatuses = ["PENDING", "ACTIVE", "COMPLETE", "CANCELED"];
+      if (!validStatuses.includes(data.status)) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: `Trạng thái không hợp lệ! (${data.status})`,
+        };
+      }
+  
+      const updated = await prisma.defenseSchedule.update({
+        where: { id: scheduleId },
+        data: {
+          status: data.status,
+          notes: data.notes || null,
+        },
+      });
+  
+      return {
+        success: true,
+        status: HTTP_STATUS.OK,
+        message: "Cập nhật trạng thái lịch bảo vệ thành công!",
+        data: updated,
+      };
+    } catch (error) {
+      console.error("Lỗi khi cập nhật trạng thái lịch bảo vệ:", error);
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: "Lỗi hệ thống khi cập nhật lịch bảo vệ!",
+      };
+    }
+  }
+  
 }

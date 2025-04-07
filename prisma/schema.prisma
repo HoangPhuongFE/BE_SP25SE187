@@ -680,8 +680,6 @@ model DefenseSchedule {
   defenseRound  Int                   @map("defense_round")
   status        String
   notes         String?               @db.Text
-  result        String?
-  feedback      String?
   createdAt     DateTime              @default(now()) @map("created_at")
   council       Council               @relation(fields: [councilId], references: [id])
   group         Group                 @relation(fields: [groupId], references: [id])

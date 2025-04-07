@@ -113,5 +113,12 @@ router.delete(
     checkRole(["examination_officer", "graduation_thesis_manager"]),
     councilDefenseController.removeCouncilMember.bind(councilDefenseController)
 );
-
+// Cập nhật trạng thái và ghi chú của lịch bảo vệ
+router.put(
+    '/schedules/:scheduleId/update',
+    authenticateToken,
+    checkRole(["examination_officer", "graduation_thesis_manager", "lecturer", "council_member"]),
+    councilDefenseController.updateDefenseScheduleStatus.bind(councilDefenseController)
+  );
+  
 export default router;

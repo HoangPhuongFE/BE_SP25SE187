@@ -255,4 +255,27 @@ export class CouncilDefenseController {
     }
   }
   
+  async updateDefenseScheduleStatus(req: Request, res: Response) {
+    try {
+      const { scheduleId } = req.params;
+      const { status, notes } = req.body;
+      const userId = req.user?.userId;
+  
+      const result = await councilDefenseService.updateDefenseScheduleStatus(
+        scheduleId,
+        { status, notes },
+        userId!
+      );
+  
+      res.status(result.status).json(result);
+    } catch (error) {
+      console.error("Lỗi trong controller updateDefenseScheduleStatus:", error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: "Lỗi hệ thống trong controller!",
+      });
+    }
+  }
+  
 }

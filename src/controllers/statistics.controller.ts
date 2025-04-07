@@ -456,104 +456,104 @@ const getOverallCouncilDefenseStats = async () => {
   };
 };
 
-// Hàm helper để lấy thống kê hội đồng theo đợt bảo vệ
-const getCouncilDefenseStatsByRound = async () => {
-  const councils = await prisma.council.findMany({
-    where: {
-      isDeleted: false,
-      type: "defense"
-    },
-    include: {
-      members: {
-        where: {
-          isDeleted: false
-        }
-      },
-      defenseSchedules: {
-        where: {
-          isDeleted: false
-        },
-        include: {
-          group: {
-            include: {
-              topicAssignments: {
-                where: {
-                  isDeleted: false
-                },
-                include: {
-                  topic: true
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  });
+// // Hàm helper để lấy thống kê hội đồng theo đợt bảo vệ
+// const getCouncilDefenseStatsByRound = async () => {
+//   const councils = await prisma.council.findMany({
+//     where: {
+//       isDeleted: false,
+//       type: "defense"
+//     },
+//     include: {
+//       members: {
+//         where: {
+//           isDeleted: false
+//         }
+//       },
+//       defenseSchedules: {
+//         where: {
+//           isDeleted: false
+//         },
+//         include: {
+//           group: {
+//             include: {
+//               topicAssignments: {
+//                 where: {
+//                   isDeleted: false
+//                 },
+//                 include: {
+//                   topic: true
+//                 }
+//               }
+//             }
+//           }
+//         }
+//       }
+//     }
+//   });
 
-  // Nhóm theo round
-  const statsByRound = councils.reduce((acc, council) => {
-    const round = council.round || 0;
-    if (!acc[round]) {
-      acc[round] = {
-        round,
-        totalCouncils: 0,
-        totalMembers: 0,
-        totalGroups: 0,
-        averageMembersPerCouncil: 0,
-        statusBreakdown: {} as Record<string, number>,
-        resultBreakdown: {
-          passed: 0,
-          failed: 0,
-          pending: 0
-        },
-        councils: [] // Thêm danh sách hội đồng cho mỗi round
-      };
-    }
+//   // Nhóm theo round
+//   const statsByRound = councils.reduce((acc, council) => {
+//     const round = council.round || 0;
+//     if (!acc[round]) {
+//       acc[round] = {
+//         round,
+//         totalCouncils: 0,
+//         totalMembers: 0,
+//         totalGroups: 0,
+//         averageMembersPerCouncil: 0,
+//         statusBreakdown: {} as Record<string, number>,
+//         resultBreakdown: {
+//           passed: 0,
+//           failed: 0,
+//           pending: 0
+//         },
+//         councils: [] // Thêm danh sách hội đồng cho mỗi round
+//       };
+//     }
 
-    // Thêm thông tin hội đồng vào round tương ứng
-    acc[round].councils.push({
-      councilId: council.id,
-      councilName: council.name,
-      councilCode: council.code,
-      totalMembers: council.members.length,
-      members: council.members.map(member => ({
-        id: member.userId,
-        role: member.roleId
-      })),
-      totalGroups: council.defenseSchedules.length,
-      status: council.status
-    });
+//     // Thêm thông tin hội đồng vào round tương ứng
+//     acc[round].councils.push({
+//       councilId: council.id,
+//       councilName: council.name,
+//       councilCode: council.code,
+//       totalMembers: council.members.length,
+//       members: council.members.map(member => ({
+//         id: member.userId,
+//         role: member.roleId
+//       })),
+//       totalGroups: council.defenseSchedules.length,
+//       status: council.status
+//     });
 
-    acc[round].totalCouncils++;
-    acc[round].totalMembers += council.members.length;
-    acc[round].totalGroups += council.defenseSchedules.length;
+//     acc[round].totalCouncils++;
+//     acc[round].totalMembers += council.members.length;
+//     acc[round].totalGroups += council.defenseSchedules.length;
 
-    if (council.status) {
-      acc[round].statusBreakdown[council.status] = (acc[round].statusBreakdown[council.status] || 0) + 1;
-    }
+//     if (council.status) {
+//       acc[round].statusBreakdown[council.status] = (acc[round].statusBreakdown[council.status] || 0) + 1;
+//     }
 
-    // Thống kê kết quả bảo vệ
-    council.defenseSchedules.forEach(schedule => {
-      if (schedule.result === "PASSED") {
-        acc[round].resultBreakdown.passed++;
-      } else if (schedule.result === "FAILED") {
-        acc[round].resultBreakdown.failed++;
-      } else {
-        acc[round].resultBreakdown.pending++;
-      }
-    });
+//     // Thống kê kết quả bảo vệ
+//     council.defenseSchedules.forEach(schedule => {
+//       if (schedule.result === "PASSED") {
+//         acc[round].resultBreakdown.passed++;
+//       } else if (schedule.result === "FAILED") {
+//         acc[round].resultBreakdown.failed++;
+//       } else {
+//         acc[round].resultBreakdown.pending++;
+//       }
+//     });
 
-    return acc;
-  }, {} as Record<number, any>);
+//     return acc;
+//   }, {} as Record<number, any>);
 
-  // Tính trung bình số thành viên cho mỗi round
-  Object.values(statsByRound).forEach(round => {
-    round.averageMembersPerCouncil = round.totalCouncils > 0 ? round.totalMembers / round.totalCouncils : 0;
-  });
+//   // Tính trung bình số thành viên cho mỗi round
+//   Object.values(statsByRound).forEach(round => {
+//     round.averageMembersPerCouncil = round.totalCouncils > 0 ? round.totalMembers / round.totalCouncils : 0;
+//   });
 
-  return Object.values(statsByRound);
-};
+//   return Object.values(statsByRound);
+// };
 
 // Hàm helper để lấy thống kê thành viên hội đồng bảo vệ
 const getCouncilDefenseMemberStats = async () => {
@@ -956,23 +956,23 @@ export const getCouncilDefenseStatistics = async (req: Request, res: Response) =
   }
 };
 
-export const getCouncilDefenseByRoundStatistics = async (req: Request, res: Response) => {
-  try {
-    const statistics = await getCouncilDefenseStatsByRound();
+// export const getCouncilDefenseByRoundStatistics = async (req: Request, res: Response) => {
+//   try {
+//     const statistics = await getCouncilDefenseStatsByRound();
 
-    return res.status(200).json({
-      message: MESSAGES.GENERAL.ACTION_SUCCESS,
-      data: statistics
-    });
+//     return res.status(200).json({
+//       message: MESSAGES.GENERAL.ACTION_SUCCESS,
+//       data: statistics
+//     });
 
-  } catch (error) {
-    console.error('Error getting council defense by round statistics:', error);
-    return res.status(500).json({
-      message: MESSAGES.GENERAL.SERVER_ERROR,
-      error: error instanceof Error ? error.message : 'Unknown error occurred'
-    });
-  }
-};
+//   } catch (error) {
+//     console.error('Error getting council defense by round statistics:', error);
+//     return res.status(500).json({
+//       message: MESSAGES.GENERAL.SERVER_ERROR,
+//       error: error instanceof Error ? error.message : 'Unknown error occurred'
+//     });
+//   }
+// };
 
 export const getCouncilDefenseMemberStatistics = async (req: Request, res: Response) => {
   try {

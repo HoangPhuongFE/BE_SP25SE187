@@ -14,7 +14,7 @@ import {
   getCouncilTopicBySubmissionPeriodStatistics,
   getCouncilTopicMemberStatistics,
   getCouncilDefenseStatistics,
-  getCouncilDefenseByRoundStatistics,
+  //getCouncilDefenseByRoundStatistics,
   getCouncilDefenseMemberStatistics
 } from '../controllers/statistics.controller';
 import { authenticateToken } from '../middleware/user.middleware';
@@ -44,7 +44,7 @@ router.get('/council-topics/members', authenticateToken, getCouncilTopicMemberSt
 
 // Council Defense statistics routes
 router.get('/council-defense', authenticateToken, getCouncilDefenseStatistics);
-router.get('/council-defense/round', authenticateToken, getCouncilDefenseByRoundStatistics);
+//router.get('/council-defense/round', authenticateToken, getCouncilDefenseByRoundStatistics);
 router.get('/council-defense/members', authenticateToken, getCouncilDefenseMemberStatistics);
 
 export default router; 
