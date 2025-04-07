@@ -108,7 +108,7 @@ router.put(
 );
 
 router.delete(
-    'council/:councilId/user/:memberId',
+    '/council/:councilId/user/:userId',
     authenticateToken,
     checkRole(["examination_officer", "graduation_thesis_manager"]),
     councilDefenseController.removeCouncilMember.bind(councilDefenseController)

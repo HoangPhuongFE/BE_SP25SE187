@@ -1529,9 +1529,8 @@ export class CouncilDefenseService {
         }
     }
 
-    async removeCouncilMember(councilId: string, memberId: string, userId: string) {
+    async removeCouncilMember(councilId: string, userId: string, actionByUserId: string) {
         try {
-            // Kiểm tra hội đồng tồn tại
             const council = await prisma.council.findUnique({
                 where: { id: councilId, type: "DEFENSE", isDeleted: false },
             });
@@ -1544,9 +1543,8 @@ export class CouncilDefenseService {
                 };
             }
     
-            // Kiểm tra và lấy thông tin thành viên hội đồng (bao gồm fullName)
-            const member = await prisma.councilMember.findUnique({
-                where: { id: memberId, councilId, isDeleted: false },
+            const member = await prisma.councilMember.findFirst({
+                where: { councilId, userId, isDeleted: false },
                 include: { user: { select: { fullName: true } }, role: { select: { name: true } } },
             });
     
@@ -1554,29 +1552,24 @@ export class CouncilDefenseService {
                 return {
                     success: false,
                     status: HTTP_STATUS.NOT_FOUND,
-                    message: "Thành viên hội đồng không tồn tại hoặc đã bị xóa!",
+                    message: "Thành viên không thuộc hội đồng này!",
                 };
             }
     
-            // Thực hiện soft delete thành viên hội đồng
             await prisma.councilMember.update({
-                where: { id: memberId },
-                data: {
-                    isDeleted: true,
-                    status: "REMOVED",
-                },
+                where: { id: member.id },
+                data: { isDeleted: true, status: "REMOVED" },
             });
     
-            // Lưu log với fullName rõ ràng
             await prisma.systemLog.create({
                 data: {
-                    userId,
+                    userId: actionByUserId,
                     action: "DELETE",
                     entityType: "CouncilMember",
-                    entityId: memberId,
+                    entityId: member.id,
                     description: `Xóa thành viên "${member.user.fullName}" (${member.role.name}) khỏi hội đồng "${council.name}"`,
                     severity: "INFO",
-                    ipAddress: "", // bổ sung nếu có từ request
+                    ipAddress: "",
                 },
             });
     
@@ -1594,5 +1587,6 @@ export class CouncilDefenseService {
             };
         }
     }
+    
     
 }
