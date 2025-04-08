@@ -104,7 +104,6 @@ export class UserController {
         programming_language: req.body.programming_language,
         lecturerCode: req.body.lecturerCode,
         student_code: req.body.student_code,
-        semester_user: req.body.semester_user,
         isActive: req.body.isActive,
       });
   

@@ -263,7 +263,6 @@ export class UserService {
     programming_language: string;
     lecturerCode: string;
     student_code: string;
-    semester_user: string;
     isActive: boolean;
   }>): Promise<any> {
     try {
