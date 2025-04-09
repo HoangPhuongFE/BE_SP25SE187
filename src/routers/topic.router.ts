@@ -25,7 +25,7 @@ router.put(
 router.get(
   '/approval',
   authenticateToken,
-  checkRole(['lecturer', 'academic_officer', 'graduation_thesis_manager']),
+  checkRole(['lecturer', 'academic_officer', 'graduation_thesis_manager',"examination_officer"]),
   topicController.getTopicsForApprovalBySubmission.bind(topicController)
 );
 
