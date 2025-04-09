@@ -102,7 +102,7 @@ router.get(
 router.put(
   '/:topicId/status',
   authenticateToken,
-  checkRole(['academic_officer', 'admin', 'graduation_thesis_manager']),
+  checkRole(['academic_officer', 'admin', 'graduation_thesis_manager', 'lecturer']),
   topicController.approveTopicByAcademic.bind(topicController)
 );
 
