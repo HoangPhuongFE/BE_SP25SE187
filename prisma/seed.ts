@@ -92,7 +92,7 @@ async function createYearsAndSemesters() {
   await prisma.semester.deleteMany();
   await prisma.year.deleteMany();
 
-  const years = [{ year: 2024 }, { year: 2025 }, { year: 2026 }];
+  const years = [{ year: 2025 }];
   const createdYears: { [key: number]: string } = {};
 
   for (const year of years) {
