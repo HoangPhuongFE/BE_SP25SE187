@@ -12,7 +12,7 @@ router.post('/logout', authenticateToken, userController.logout);
 
 router.put('/profile', 
   authenticateToken, 
-  checkRole(['student', 'examination_officer','lecturer', 'academic_officer', 'graduation_thesis_manager','', 'reviewer', 'mentor', 'chairman', 'secretary','lecturer']), 
+  checkRole(['student', 'examination_officer','lecturer', 'academic_officer', 'graduation_thesis_manager','', 'reviewer', 'mentor', 'chairman', 'secretary','lecturer'], false), 
   userController.updateProfile
 );
 

@@ -267,8 +267,28 @@ export class CouncilReviewService {
               user: { select: { id: true, fullName: true, email: true } },
             },
           },
+          sessions: { // 👈 dùng đúng tên quan hệ trong model Council
+            where: { isDeleted: false },
+            include: {
+              topic: { select: { id: true, name: true, topicCode: true } },
+              group: {
+                select: {
+                  id: true,
+                  groupCode: true,
+                  members: {
+                    where: { isDeleted: false },
+                    include: {
+                      user: { select: { fullName: true } },
+                      student: { select: { studentCode: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       });
+      
 
       if (!council) {
         return {
