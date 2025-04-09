@@ -25,7 +25,7 @@ router.put(
 router.get(
   '/approval',
   authenticateToken,
-  checkRole(['admin', 'review', 'lecturer', 'academic_officer', 'graduation_thesis_manager']),
+  checkRole(['lecturer', 'academic_officer', 'graduation_thesis_manager']),
   topicController.getTopicsForApprovalBySubmission.bind(topicController)
 );
 
@@ -102,7 +102,7 @@ router.get(
 router.put(
   '/:topicId/status',
   authenticateToken,
-  checkRole(['academic_officer', 'admin', 'graduation_thesis_manager', 'lecturer']),
+  checkRole(['academic_officer', 'admin', 'graduation_thesis_manager']),
   topicController.approveTopicByAcademic.bind(topicController)
 );
 

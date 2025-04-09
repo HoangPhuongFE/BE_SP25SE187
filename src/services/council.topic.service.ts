@@ -124,7 +124,7 @@ export class CouncilTopicService {
           councilStartDate: data.startDate,
           councilEndDate: data.endDate,
           status: computedStatus,
-          type: data.type || "topic",
+          type: data.type || "check-topic",
           round: data.round || 1,
           createdDate: new Date(),
           code: councilCode,
@@ -861,7 +861,7 @@ async reviewTopicByCouncilMember(
     const councilMember = await prisma.councilMember.findFirst({
       where: {
         userId,
-        council: { type: 'topic', status: 'ACTIVE', isDeleted: false },
+        council: { type: 'topic', isDeleted: false },
         isDeleted: false,
       },
     });

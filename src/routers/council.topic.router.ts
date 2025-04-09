@@ -70,9 +70,9 @@ router.get(
 
 // Duyệt đề tài bởi thành viên hội đồng
 router.put(
-  'topics/:topicId/review',
+  '/topics/:topicId/review',
   authenticateToken,
-  checkRole(['council_member',"lecturer", "graduation_thesis_manager"]),
+  checkRole(['council_member',"lecturer", "graduation_thesis_manager"],false),
   councilTopicController.reviewTopicByCouncilMember.bind(councilTopicController)
 
 );
