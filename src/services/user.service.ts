@@ -98,6 +98,7 @@ export class UserService {
         username: user.username,
         fullName: user.fullName,
         avatar: user.avatar,
+        semesterId: user.roles[0]?.semesterId,
         roles: user.roles.map(userRole => ({
           id: userRole.role.id,
           name: userRole.role.name,

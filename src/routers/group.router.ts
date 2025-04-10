@@ -9,11 +9,9 @@ const groupController = new GroupController();
 router.post(
   "/create",
   authenticateToken,
-  checkRole([ "student", "graduation_thesis_manager", "academic_officer"]),
-   
+  checkRole(["student", "graduation_thesis_manager", "academic_officer"], false),
   groupController.createGroup.bind(groupController)
 );
-
 // 2️ Mời thành viên
 router.post(
   "/invite",

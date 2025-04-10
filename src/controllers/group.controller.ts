@@ -7,21 +7,20 @@ import { GROUP_MESSAGE } from "../constants/message";
 const groupService = new GroupService();
 
 export class GroupController {
-  async createGroup(req: AuthenticatedRequest, res: Response) {
-    try {
-      const { semesterId } = req.body;
-      const result = await groupService.createGroup(req.user!.userId, semesterId);
+async createGroup(req: AuthenticatedRequest, res: Response) {
+  try {
+      // Không cần lấy semesterId từ body nữa
+      const result = await groupService.createGroup(req.user!.userId);
 
       return res.status(result.status).json(result);
-    } catch (error) {
+  } catch (error) {
       console.error(error);
       return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: GROUP_MESSAGE.GROUP_CREATION_FAILED
+          success: false,
+          message: GROUP_MESSAGE.GROUP_CREATION_FAILED
       });
-    }
   }
-
+}
 
 
 

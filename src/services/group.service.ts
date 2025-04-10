@@ -9,38 +9,34 @@ const systemConfigService = new SystemConfigService();
 
 export class GroupService {
     // 1) Tạo nhóm
-    async createGroup(leaderId: string, semesterId: string) {
+    async createGroup(leaderId: string) {  // Bỏ parameter semesterId
         try {
-            // 1. Kiểm tra học kỳ (bao gồm startDate để tạo mã nhóm)
-            const semester = await prisma.semester.findUnique({
+            // 1. Tìm học kỳ UPCOMING gần nhất
+            const upcomingSemester = await prisma.semester.findFirst({
                 where: {
-                    id: semesterId,
-                    isDeleted: false
+                    status: "UPCOMING",
+                    isDeleted: false,
+                    startDate: {
+                        gte: new Date()  // Lấy học kỳ chưa bắt đầu
+                    }
+                },
+                orderBy: {
+                    startDate: 'asc'  // Sắp xếp để lấy học kỳ gần nhất
                 },
                 select: { id: true, status: true, startDate: true },
             });
-            if (!semester) {
+    
+            if (!upcomingSemester) {
                 return {
                     success: false,
                     status: HTTP_STATUS.NOT_FOUND,
-                    message: "Học kỳ không tồn tại.",
+                    message: "Không tìm thấy học kỳ sắp tới nào để tạo nhóm.",
                 };
             }
-            if (semester.status === "ACTIVE" || semester.status === "COMPLETE") {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.BAD_REQUEST,
-                    message: "Không thể tạo nhóm trong học kỳ đang hoạt động.",
-                };
-            }
-            if (semester.status !== "UPCOMING") {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.BAD_REQUEST,
-                    message: "Chỉ có thể tạo nhóm trước khi học kỳ bắt đầu.",
-                };
-            }
-
+    
+            // Không cần kiểm tra status ACTIVE hay COMPLETE nữa vì đã filter chỉ lấy UPCOMING
+            const semesterId = upcomingSemester.id;
+    
             // 2. Kiểm tra sinh viên (trưởng nhóm)
             const leader = await prisma.student.findUnique({
                 where: { userId: leaderId },
@@ -60,10 +56,11 @@ export class GroupService {
                     message: "Sinh viên không có chuyên ngành được gán.",
                 };
             }
-
+    
+            // Tiếp tục các bước còn lại như cũ, chỉ thay semesterId bằng upcomingSemester.id
             // 3. Kiểm tra sinh viên có thuộc học kỳ không
             const studentSemester = await prisma.semesterStudent.findFirst({
-                where: { studentId: leader.id, semesterId },
+                where: { studentId: leader.id, semesterId: upcomingSemester.id },
             });
             if (!studentSemester) {
                 return {
@@ -79,10 +76,10 @@ export class GroupService {
                     message: `${GROUP_MESSAGE.STUDENT_NOT_QUALIFIED} Trạng thái hiện tại: ${studentSemester.qualificationStatus}`,
                 };
             }
-
+    
             // 4. Kiểm tra sinh viên đã tham gia nhóm nào trong học kỳ chưa
             const existingMembership = await prisma.groupMember.findFirst({
-                where: { studentId: leader.id, group: { semesterId } },
+                where: { studentId: leader.id, group: { semesterId: upcomingSemester.id } },
             });
             if (existingMembership) {
                 return {
@@ -91,14 +88,12 @@ export class GroupService {
                     message: "Sinh viên đã là thành viên của một nhóm trong học kỳ này.",
                 };
             }
-
-            // 5. Tạo mã nhóm dựa trên thông tin học kỳ: sử dụng startDate của học kỳ để lấy năm
-            // Lấy tên chuyên ngành từ leader.major.name (đã được trim)
+    
+            // 5. Tạo mã nhóm
             const majorName = (leader.major.name || "").trim();
-            // Gọi hàm generateUniqueGroupCode: truyền tên chuyên ngành, semesterId và startDate của học kỳ
-            const groupCode = await this.generateUniqueGroupCode(majorName, semesterId, new Date(semester.startDate));
-
-            // 6. Lấy số lượng thành viên tối đa và thông tin role "leader"
+            const groupCode = await this.generateUniqueGroupCode(majorName, upcomingSemester.id, new Date(upcomingSemester.startDate));
+    
+            // 6. Lấy số lượng thành viên tối đa và role leader
             const maxMembers = await systemConfigService.getMaxGroupMembers();
             if (maxMembers <= 0) {
                 throw new Error("Số lượng thành viên tối đa không hợp lệ.");
@@ -111,12 +106,12 @@ export class GroupService {
                     message: "Vai trò 'leader' không tồn tại trong hệ thống.",
                 };
             }
-
+    
             // 7. Tạo nhóm và thêm trưởng nhóm
             const newGroup = await prisma.group.create({
                 data: {
                     groupCode,
-                    semesterId,
+                    semesterId: upcomingSemester.id,
                     status: "ACTIVE",
                     createdBy: leaderId,
                     maxMembers,
@@ -138,7 +133,7 @@ export class GroupService {
                     },
                 },
             });
-
+    
             // 8. Format và trả về kết quả
             const formattedGroup = {
                 ...newGroup,
@@ -148,7 +143,7 @@ export class GroupService {
                     status: member.status,
                 })),
             };
-
+    
             return {
                 success: true,
                 status: HTTP_STATUS.CREATED,
