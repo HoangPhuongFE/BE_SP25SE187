@@ -42,7 +42,8 @@ export class UserService {
     });
 
     return user;
-  }
+  } 
+  //
   async login({ email, password }: { email: string; password: string }) {
     const user = await prisma.user.findUnique({
       where: { email },
