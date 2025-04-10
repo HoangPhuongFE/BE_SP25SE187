@@ -17,7 +17,7 @@ router.post("/decisions",
 
 router.get("/decisions",
   authenticateToken,
-  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager","lecturer"]),
+  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager","lecturer"],false),
   getAllDecisionsController);
 
 
