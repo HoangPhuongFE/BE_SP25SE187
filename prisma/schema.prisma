@@ -286,6 +286,8 @@ model Council {
   councilEndDate     DateTime?          @map("council_end_date")
   submissionPeriodId String?            @map("submission_period_id")
   submissionPeriod   SubmissionPeriod?  @relation(name: "SubmissionPeriodCouncils", fields: [submissionPeriodId], references: [id])
+  relatedSubmissionPeriodId String?        @map("related_submission_period_id") // Thêm trường mới
+  relatedSubmissionPeriod SubmissionPeriod? @relation(name: "RelatedSubmissionPeriodCouncils", fields: [relatedSubmissionPeriodId], references: [id]) // Quan hệ mới
   sessions           ReviewSchedule[]
   isDeleted          Boolean            @default(false)
 
@@ -750,6 +752,7 @@ model SubmissionPeriod {
   creator            User              @relation(fields: [createdBy], references: [id])
   topics             Topic[]
   councils           Council[]         @relation("SubmissionPeriodCouncils")
+  relatedCouncils    Council[]         @relation("RelatedSubmissionPeriodCouncils") // Thêm quan hệ ngược
   topicRegistrations TopicRegistration[]
   isDeleted          Boolean           @default(false)
 
