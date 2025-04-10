@@ -2350,7 +2350,7 @@ export class TopicService {
         return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: 'Vui lòng cung cấp đủ thông tin (submissionPeriodId hoặc round và semesterId)!' };
       }
 
-      const isLecturer = roleNames.includes('LECTURER');
+      const isLecturer = roleNames.includes('lecturer');
       let hasAccess = hasPrivilegedRole;
 
       if (!hasAccess && isLecturer) {
