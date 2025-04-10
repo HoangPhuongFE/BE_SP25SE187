@@ -34,7 +34,10 @@ import decisionRouter from './routers/decision.router';
 import thesisAssignmentDecisionRouter from './routers/thesisAssignmentDecision.router';
 import businessTopicRouter from './routers/business.topic.router';
 import importBlock3Router from './routers/importBlock3.router';
+import thesisAssignmentRouter from './routers/thesisAssignment.router'; // Add the new router
+
 import { errorHandler } from './middleware/errorHandler';
+
 config();
 
 const app = express();
@@ -90,13 +93,13 @@ app.use('/api', decisionRouter);
 app.use('/api', thesisAssignmentDecisionRouter);
 app.use('/api/business/topics', businessTopicRouter);
 app.use('/api', importBlock3Router);
-  
-// Khởi động server
+app.use('/api', thesisAssignmentRouter); 
+
+// Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   startCronJobs();
 });
 
-
-app.use(errorHandler); 
+app.use(errorHandler);
