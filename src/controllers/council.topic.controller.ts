@@ -9,13 +9,14 @@ export class CouncilTopicController {
   [x: string]: any;
 
   async createCouncil(req: Request, res: Response) {
-    const { name, semesterId, submissionPeriodId, startDate, endDate, status, type, round } = req.body;
+    const { name, semesterId, submissionPeriodId, startDate, endDate, status, type, round, relatedSubmissionPeriodId } = req.body;
     const createdBy = req.user!.userId;
-
+  
     const result = await councilTopicService.createCouncil({
       name,
       semesterId,
       submissionPeriodId,
+      relatedSubmissionPeriodId, // Thêm vào đây
       createdBy,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
@@ -23,14 +24,14 @@ export class CouncilTopicController {
       type,
       round,
     });
-
+  
     return res.status(result.status).json(result);
   }
 
   async updateCouncil(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { name, code, round, status, councilStartDate, councilEndDate } = req.body;
+      const { name, code, round, status, councilStartDate, councilEndDate, relatedSubmissionPeriodId } = req.body;
       const result = await councilTopicService.updateTopicCouncil(id, {
         name,
         code,
@@ -38,6 +39,7 @@ export class CouncilTopicController {
         status,
         councilStartDate: councilStartDate ? new Date(councilStartDate) : undefined,
         councilEndDate: councilEndDate ? new Date(councilEndDate) : undefined,
+        relatedSubmissionPeriodId, // Thêm vào đây
       });
       return res.status(result.status).json(result);
     } catch (error) {
