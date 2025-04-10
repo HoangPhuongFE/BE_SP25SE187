@@ -21,13 +21,7 @@ router.put(
   topicController.updateTopic.bind(topicController)
 );
 
-// 3. Lấy danh sách đề tài cần duyệt của hội đồng
-router.get(
-  '/approval',
-  authenticateToken,
-  checkRole(['lecturer', 'academic_officer', 'graduation_thesis_manager',"examination_officer"]),
-  topicController.getTopicsForApprovalBySubmission.bind(topicController)
-);
+
 
 // 4. Lấy danh sách đề tài theo học kỳ
 router.get(

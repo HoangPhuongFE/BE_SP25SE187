@@ -323,41 +323,7 @@ export class TopicController {
     }
   }
 
-  async getTopicsForApprovalBySubmission(req: Request, res: Response) {
-    try {
-        const { submissionPeriodId, round, semesterId } = req.query;
-        const userId = req.user?.userId; // Giả định userId lấy từ middleware authentication
 
-        if (!userId) {
-            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
-                success: false,
-                message: 'Bạn cần đăng nhập để thực hiện hành động này!',
-            });
-        }
-
-        const query = {
-            submissionPeriodId: submissionPeriodId as string | undefined,
-            round: round ? Number(round) : undefined,
-            semesterId: semesterId as string | undefined,
-        };
-
-        if (!query.submissionPeriodId && (query.round === undefined || !query.semesterId)) {
-            return res.status(HTTP_STATUS.BAD_REQUEST).json({
-                success: false,
-                message: 'Thiếu submissionPeriodId hoặc round và semesterId!',
-            });
-        }
-
-        const result = await topicService.getTopicsForApprovalBySubmission(query, userId);
-        return res.status(result.status).json(result);
-    } catch (error) {
-        console.error('Lỗi khi lấy danh sách đề tài cần duyệt:', error);
-        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-            success: false,
-            message: 'Lỗi hệ thống khi lấy danh sách đề tài cần duyệt!',
-        });
-    }
-}
 
 
 
