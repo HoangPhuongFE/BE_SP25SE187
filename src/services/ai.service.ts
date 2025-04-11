@@ -191,46 +191,70 @@ export class AIService {
       groupCode: string;
       nameVi: string;
       nameEn: string;
+      mentorUsername?: string;
     }>,
     verifiedBy: string
   ) {
     const results: any[] = [];
-
+  
     for (const item of items) {
       try {
         const topic = await prisma.topic.findFirst({
           where: { topicCode: item.topicCode, isDeleted: false },
-          include: {
-            group: { select: { groupCode: true } },
-          },
         });
-
+  
         if (!topic) {
           results.push({
             topicCode: item.topicCode,
             isConsistent: false,
+            confidence: 0,
             issues: ['Không tìm thấy đề tài trong hệ thống'],
           });
           continue;
         }
-
+  
         const issues: string[] = [];
-
+  
         if (topic.nameVi !== item.nameVi) issues.push('Tên tiếng Việt không khớp');
         if (topic.nameEn !== item.nameEn) issues.push('Tên tiếng Anh không khớp');
-        if (topic.group?.groupCode !== item.groupCode) {
-          issues.push(`Mã nhóm không khớp (FE: ${item.groupCode}, hệ thống: ${topic.group?.groupCode})`);
+  
+        // Fetch groupCode từ proposedGroupId
+        let groupCodeFromDb: string | null = null;
+        if (topic.proposedGroupId) {
+          const group = await prisma.group.findUnique({
+            where: { id: topic.proposedGroupId },
+            select: { groupCode: true },
+          });
+          groupCodeFromDb = group?.groupCode ?? null;
         }
-
-        const aiResult = await this.aiService.validateTopicName(item.nameVi, item.nameEn, topic.name);
-        const confidence = aiResult.confidence ?? 0.9;
-
+  
+        if (groupCodeFromDb !== item.groupCode) {
+          issues.push(`Mã nhóm không khớp (FE: ${item.groupCode}, hệ thống: ${groupCodeFromDb || 'Không có'})`);
+        }
+  
+        // Fetch mentor username từ mainSupervisor
+        let mentorUsernameFromDb: string | null = null;
+        if (topic.mainSupervisor) {
+          const mentor = await prisma.user.findUnique({
+            where: { id: topic.mainSupervisor },
+            select: { username: true },
+          });
+          mentorUsernameFromDb = mentor?.username ?? null;
+        }
+  
+        if (item.mentorUsername && mentorUsernameFromDb !== item.mentorUsername) {
+          issues.push(`Mentor không khớp (FE: ${item.mentorUsername}, hệ thống: ${mentorUsernameFromDb || 'Không có'})`);
+        }
+  
+        const aiResult = await this.aiService.validateTopicName(item.nameVi, item.nameEn, topic.id);
+        const confidence = aiResult.confidence  ?? 0.9;
+  
         if (!aiResult.isValid) {
           issues.push(`AI đánh giá không hợp lệ: ${aiResult.message}`);
         }
-
+  
         const isConsistent = issues.length === 0;
-
+  
         if (!isConsistent) {
           await prisma.aIVerificationLog.create({
             data: {
@@ -244,21 +268,21 @@ export class AIService {
               verifiedAt: new Date(),
             },
           });
-
+  
           await prisma.systemLog.create({
             data: {
               userId: verifiedBy,
               action: 'BATCH_VERIFY_TOPIC',
               entityType: 'topic',
               entityId: topic.id,
-              description: 'Phát hiện sai lệch khi duyệt hàng loạt quyết định',
+              description: 'Phát hiện sai lệch khi duyệt hàng loạt đề tài',
               severity: 'WARNING',
               metadata: { issues },
               ipAddress: '::1',
             },
           });
         }
-
+  
         results.push({
           topicCode: item.topicCode,
           isConsistent,
@@ -269,13 +293,17 @@ export class AIService {
         results.push({
           topicCode: item.topicCode,
           isConsistent: false,
+          confidence: 0,
           issues: [`Lỗi xử lý: ${(error as Error).message}`],
         });
       }
     }
-
+  
     return results;
   }
+  
+  
+  
 
 
 }

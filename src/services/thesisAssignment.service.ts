@@ -1,11 +1,13 @@
 import { PrismaClient, User } from '@prisma/client';
 import HTTP_STATUS from '../constants/httpStatus';
+import { AIService } from './ai.service';
 
 const prisma = new PrismaClient();
 
 interface ThesisGuidanceQuery {
   semesterId?: string;
   submissionPeriodId?: string;
+  includeAI?: boolean;
 }
 
 interface FormattedThesis {
@@ -18,6 +20,9 @@ interface FormattedThesis {
   topicNameVietnamese: string;
   mentor: string;
   major: string;
+  aiStatus?: string;
+  confidence?: number;
+  aiMessage?: string;
 }
 
 interface ThesisGuidanceResponse {
@@ -28,9 +33,15 @@ interface ThesisGuidanceResponse {
 }
 
 export class ThesisAssignmentService {
+  private aiService: AIService;
+
+  constructor() {
+    this.aiService = new AIService();
+  }
+
   async getThesisGuidanceList(query: ThesisGuidanceQuery): Promise<ThesisGuidanceResponse> {
     try {
-      const { semesterId, submissionPeriodId } = query;
+      const { semesterId, submissionPeriodId, includeAI } = query;
 
       const thesisAssignments = await prisma.topicAssignment.findMany({
         where: {
@@ -42,7 +53,7 @@ export class ThesisAssignmentService {
           },
         },
         include: {
-          topic: true, // Lấy đủ để có topic.mainSupervisor (kiểu string)
+          topic: true,
           group: {
             include: {
               members: {
@@ -63,14 +74,12 @@ export class ThesisAssignmentService {
         },
       });
 
-      // Tập hợp danh sách ID giảng viên hướng dẫn
       const supervisorIds = Array.from(
         new Set(
-          thesisAssignments.map(a => a.topic?.mainSupervisor).filter((id): id is string => id !== null && id !== undefined)
+          thesisAssignments.map(a => a.topic?.mainSupervisor).filter((id): id is string => !!id)
         )
       );
 
-      // Truy vấn thông tin giảng viên hướng dẫn
       const supervisors = await prisma.user.findMany({
         where: { id: { in: supervisorIds } },
       });
@@ -80,17 +89,15 @@ export class ThesisAssignmentService {
         supervisorMap[user.id] = user;
       });
 
-      // Xử lý dữ liệu đầu ra
-      const formattedTheses: FormattedThesis[] = thesisAssignments
+      const formattedTheses = thesisAssignments
         .flatMap((assignment) => {
           const topic = assignment.topic;
           const group = assignment.group;
-
-          if (!group || !group.members || group.members.length === 0) return [];
+          if (!group?.members?.length) return [];
 
           return group.members.map((member) => {
             const student = member.student;
-            if (!student || !student.user) return null;
+            if (!student?.user) return null;
 
             const mentor = topic.mainSupervisor ? supervisorMap[topic.mainSupervisor] : null;
 
@@ -108,16 +115,48 @@ export class ThesisAssignmentService {
         })
         .map((item, idx) => ({ ...item, stt: idx + 1 }));
 
+      // Gọi AI kiểm tra nếu có yêu cầu
+      let enhancedTheses = formattedTheses;
+
+      if (includeAI) {
+        const items = formattedTheses.map((item) => ({
+          topicCode: item.topicCode,
+          groupCode: item.groupCode,
+          nameVi: item.topicNameVietnamese,
+          nameEn: item.topicNameEnglish,
+          mentorUsername: item.mentor,
+        }));
+
+        const verifyResults = await this.aiService.batchVerifyDecision(items, 'AI_System');
+
+        const resultMap = new Map<string, any>();
+        verifyResults.forEach(r => resultMap.set(r.topicCode, r));
+
+        enhancedTheses = formattedTheses.map(item => {
+          const ai = resultMap.get(item.topicCode);
+          return {
+            ...item,
+            aiStatus: ai?.isConsistent ? 'Passed' : 'Failed',
+            confidence: ai?.confidence ?? 0,
+            aiMessage: ai?.issues?.join(', ') ?? '',
+          };
+        });
+      }
+
       return {
         success: true,
         status: HTTP_STATUS.OK,
-        data: formattedTheses,
-        message: formattedTheses.length === 0 ? 'No approved thesis assignments found.' : undefined,
+        data: enhancedTheses,
+        message: enhancedTheses.length === 0 ? 'Không có đề tài nào được duyệt.' : undefined,
       };
-
     } catch (error) {
       console.error('Error retrieving thesis guidance list:', error);
-      return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, data: [], message: 'System error!' };
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        data: [],
+        message: 'System error!',
+      };
     }
   }
 }
