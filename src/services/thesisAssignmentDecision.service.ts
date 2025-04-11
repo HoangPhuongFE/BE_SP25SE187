@@ -25,13 +25,22 @@ export class ThesisAssignmentService {
     };
   }
 
-  async getThesisAssignmentById(id: string) {
-    const assignment = await prisma.decision.findUnique({
-      where: { id, isDeleted: false },
-    });
-    if (!assignment) throw new Error("Không tìm thấy quyết định giao/hướng dẫn khóa luận");
+ async getThesisAssignmentById(id: string) {
+  const assignment = await prisma.decision.findUnique({
+    where: { id, isDeleted: false },
+  });
 
+  if (!assignment) {
     return {
+      success: true,
+      message: "Không tìm thấy quyết định giao/hướng dẫn khóa luận",
+      data: null,
+    };
+  }
+
+  return {
+    success: true,
+    data: {
       id: assignment.id,
       decisionName: assignment.decisionName,
       decisionTitle: assignment.decisionTitle,
@@ -39,9 +48,10 @@ export class ThesisAssignmentService {
       createdBy: assignment.createdBy,
       createdAt: assignment.createdAt,
       isDeleted: assignment.isDeleted,
-      type: assignment.type, // Thêm vào response
-    };
-  }
+      type: assignment.type,
+    },
+  };
+}
 
   async getAllThesisAssignments() {
     const assignments = await prisma.decision.findMany({
