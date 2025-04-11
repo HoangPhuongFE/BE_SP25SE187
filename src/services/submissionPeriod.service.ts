@@ -468,14 +468,7 @@ export class SubmissionPeriodService {
           })
           .then((res) => res.count);
 
-        // updatedCounts.semesterTopicMajors = await tx.semesterTopicMajor
-        //   .updateMany({ where: { topicId: { in: topicIds }, isDeleted: false }, data: { isDeleted: true } })
-        //   .then((res) => res.count);
-
-        // updatedCounts.detailMajorTopics = await tx.detailMajorTopic
-        //   .updateMany({ where: { topicId: { in: topicIds }, isDeleted: false }, data: { isDeleted: true } })
-        //   .then((res) => res.count);
-
+   
         updatedCounts.topicAssignments = await tx.topicAssignment
           .updateMany({ where: { topicId: { in: topicIds }, isDeleted: false }, data: { isDeleted: true } })
           .then((res) => res.count);

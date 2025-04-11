@@ -8,7 +8,7 @@ export class ThesisAssignmentController {
   // Get the list of approved thesis assignments for guidance
   async getThesisGuidanceList(req: Request, res: Response) {
     try {
-      const { semesterId, submissionPeriodId } = req.query;
+      const { semesterId, submissionPeriodId } = req.body;
       const result = await thesisAssignmentService.getThesisGuidanceList({
         semesterId: semesterId as string,
         submissionPeriodId: submissionPeriodId as string,
