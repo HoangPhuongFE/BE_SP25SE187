@@ -46,12 +46,9 @@ export const getAllThesisAssignmentsController = async (_: Request, res: Respons
 };
 
 export const getThesisAssignmentByIdController = async (req: Request, res: Response) => {
-  try {
-    const assignment = await thesisAssignmentService.getThesisAssignmentById(req.params.id);
-    return res.json({ data: assignment });
-  } catch (error: any) {
-    return res.status(404).json({ message: error.message });
-  }
+  const result = await thesisAssignmentService.getThesisAssignmentById(req.params.id);
+
+  return res.status(200).json(result);
 };
 
 export const updateThesisAssignmentController = async (req: Request, res: Response) => {
