@@ -34,7 +34,7 @@ export class ThesisAssignmentService {
     return {
       success: true,
       message: "Không tìm thấy quyết định giao/hướng dẫn khóa luận",
-      data: null,
+      data: [],
     };
   }
 
@@ -65,7 +65,7 @@ async getAllThesisAssignments() {
       return {
         success: true,
         message: "Không tìm thấy quyết định giao/hướng dẫn khóa luận",
-        data: null,
+        data: [],
       };
     }
 
