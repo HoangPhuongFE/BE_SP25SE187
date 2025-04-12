@@ -1,0 +1,26 @@
+@startuml
+title 01 - Student Import and Random Group Assignment Flow
+
+start
+
+:AcademicOfficer uploads student list;
+:StudentImportService parses and validates file;
+if (Validation successful?) then (Yes)
+  :Store students in Student table;
+else (No)
+  :Log errors and notify AcademicOfficer;
+  stop
+endif
+
+:AcademicOfficer views students without groups;
+if (There are ungrouped students?) then (Yes)
+  :Initiate random group assignment;
+  :System distributes students into random groups;
+else (No)
+  :No action required;
+endif
+
+:AcademicOfficer confirms and saves assigned groups;
+
+stop
+@enduml

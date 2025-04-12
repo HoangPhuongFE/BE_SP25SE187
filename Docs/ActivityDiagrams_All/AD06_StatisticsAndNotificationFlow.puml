@@ -1,0 +1,27 @@
+@startuml
+title 06 - Statistics and Email Notification Flow
+
+start
+
+:AcademicOfficer generates review statistics;
+if (Data exists in ReviewAssignment?) then (Yes)
+  :System generates and displays statistics;
+else (No)
+  :Show empty result and notify AcademicOfficer;
+  stop
+endif
+
+:AcademicOfficer sends email notifications;
+if (Email list valid?) then (Yes)
+  :System sends emails to related users;
+else (No)
+  :Show error and skip email step;
+endif
+
+if (Some students failed defense?) then (Yes)
+  :Generate new defense schedule;
+  :Notify remaining students;
+endif
+
+stop
+@enduml

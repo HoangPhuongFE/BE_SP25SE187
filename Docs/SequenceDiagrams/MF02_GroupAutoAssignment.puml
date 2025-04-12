@@ -1,0 +1,18 @@
+@startuml
+title 02 - Create random groups assign students to groups
+
+actor AcademicOfficer
+participant GroupController
+participant GroupService
+database Student
+database Group
+
+AcademicOfficer -> GroupController : autoAssignUngroupedStudents()
+GroupController -> GroupService : assignToGroups()
+GroupService -> Student : findMany(where: groupMembers NONE)
+Student --> GroupService : ungroupedStudents[]
+GroupService -> Group : createMany(groupsFrom(unGroupedStudents))
+Group --> GroupService : groupsCreated[]
+GroupService -> GroupController : assignmentResult
+GroupController -> AcademicOfficer : displayAssignmentResult()
+@enduml
