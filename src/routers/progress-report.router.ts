@@ -16,7 +16,7 @@ const progressReportController = new ProgressReportController();
 router.post(
   "/create",
   authenticateToken,
-  checkRole(["student", "leader"]),
+  checkRole(["student", "leader"], false),
   validateCreateProgressReport,
   progressReportController.createProgressReport.bind(progressReportController)
 );
@@ -68,7 +68,7 @@ router.post(
 router.put(
   "/:id",
   authenticateToken,
-  checkRole(["student", "leader"]),
+  checkRole(["student", "leader"], false),
   validateUpdateProgressReport,
   progressReportController.updateProgressReport.bind(progressReportController)
 );
@@ -85,7 +85,7 @@ router.put(
 router.get(
   "/my-reports",
   authenticateToken,
-  checkRole(["student", "leader"]),
+  checkRole(["student", "leader"], false),
   progressReportController.getMyProgressReports.bind(progressReportController)
 );
 
@@ -117,7 +117,7 @@ router.get(
 router.get(
   "/:id",
   authenticateToken,
-  checkRole(["student", "leader", "lecturer"]),
+  checkRole(["student", "leader", "lecturer"], false),
   progressReportController.getProgressReportById.bind(progressReportController)
 );
 

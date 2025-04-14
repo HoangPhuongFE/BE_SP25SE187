@@ -7,6 +7,7 @@ export const createThesisAssignmentSchema = z.object({
     message: "Ngày ký phải là định dạng ngày hợp lệ",
   }),
   type: z.enum(["DRAFT", "FINAL"]).optional(), // Nếu dùng Enum
+  decisionURL: z.string().optional(),
 
 });
 
