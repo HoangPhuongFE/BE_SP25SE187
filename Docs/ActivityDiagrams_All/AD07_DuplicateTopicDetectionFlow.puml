@@ -1,0 +1,17 @@
+@startuml
+title 07 - Duplicate Topic Detection via AI
+
+start
+
+:GraduationThesisManager initiates duplicate check;
+:System fetches all topics;
+
+:System calls AIService to analyze topic names;
+if (Duplicates found?) then (Yes)
+  :System displays duplicate topic list;
+else (No)
+  :System confirms no duplicates;
+endif
+
+stop
+@enduml

@@ -1,0 +1,35 @@
+@startuml
+title 03 - Topic Status Lifecycle
+
+left to right direction
+
+skinparam state {
+  BackgroundColor<<initial>> #E6F2FF
+  BackgroundColor<<processing>> #FFF2CC
+  BackgroundColor<<final>> #E2EFDA
+  BackgroundColor<<error>> #FFD6D6
+  BorderColor Black
+  FontColor Black
+  FontSize 14
+  FontName "Segoe UI"
+  Shadowing false
+  RoundCorner 20
+}
+
+state "Created" as CREATED <<initial>>
+state "Registered" as REGISTERED <<processing>>
+state "Approved" as APPROVED <<processing>>
+state "Rejected" as REJECTED <<error>>
+state "Assigned" as ASSIGNED <<processing>>
+state "Reviewed" as REVIEWED <<processing>>
+state "Defended" as DEFENDED <<final>>
+
+[*] --> CREATED
+CREATED --> REGISTERED : Registered by student
+REGISTERED --> APPROVED : Approved by mentor
+REGISTERED --> REJECTED : Rejected by mentor
+APPROVED --> ASSIGNED : Assigned to group
+ASSIGNED --> REVIEWED : Review process
+REVIEWED --> DEFENDED : Defense complete
+DEFENDED --> [*]
+@enduml

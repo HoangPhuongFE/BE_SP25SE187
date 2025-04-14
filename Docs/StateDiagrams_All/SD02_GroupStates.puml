@@ -1,0 +1,32 @@
+@startuml
+title 02 - Group Status Lifecycle
+
+left to right direction
+
+skinparam state {
+  BackgroundColor<<initial>> #E6F2FF
+  BackgroundColor<<processing>> #DFFFD6
+  BackgroundColor<<final>> #F2F2F2
+  BorderColor Black
+  FontColor Black
+  FontSize 14
+  FontName "Segoe UI"
+  Shadowing false
+  RoundCorner 20
+}
+
+state "Created" as CREATED <<initial>>
+state "Pending Assignment" as PENDING_ASSIGNMENT <<processing>>
+state "Assigned" as ASSIGNED <<processing>>
+state "Locked" as LOCKED <<processing>>
+state "Defending" as DEFENDING <<processing>>
+state "Completed" as COMPLETED <<final>>
+
+[*] --> CREATED
+CREATED --> PENDING_ASSIGNMENT : Group created
+PENDING_ASSIGNMENT --> ASSIGNED : Topic assigned
+ASSIGNED --> LOCKED : Group locked
+LOCKED --> DEFENDING : Defense scheduled
+DEFENDING --> COMPLETED : Defense completed
+COMPLETED --> [*]
+@enduml

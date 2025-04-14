@@ -1,0 +1,38 @@
+@startuml
+title 01 - SemesterStudent Status Lifecycle (Updated)
+left to right direction
+
+skinparam state {
+  BackgroundColor<<initial>> #E6F2FF
+  BackgroundColor<<processing>> #DFFFD6
+  BackgroundColor<<final>> #F2F2F2
+  BackgroundColor<<error>> #FFD6D6
+  BorderColor Black
+  FontColor Black
+  FontSize 14
+  FontName "Segoe UI"
+  Shadowing false
+  RoundCorner 20
+}
+
+[*] --> IMPORTED : After data import
+
+state "Imported (FAP)" as IMPORTED <<initial>>
+state "Pending" as PENDING <<processing>>
+state "Qualified" as QUALIFIED <<processing>>
+state "Not Qualified" as NOT_QUALIFIED <<error>>
+state "Registered" as REGISTERED <<processing>>
+state "Withdrawn" as WITHDRAWN <<final>>
+
+IMPORTED --> PENDING : Passed eligibility check
+IMPORTED --> NOT_QUALIFIED : After eligibility check
+
+PENDING --> QUALIFIED : After registration
+PENDING --> REGISTERED : Passed eligibility check
+
+QUALIFIED --> WITHDRAWN : Student withdrawal
+REGISTERED --> WITHDRAWN : After registering for round 2
+
+WITHDRAWN --> [*]
+
+@enduml

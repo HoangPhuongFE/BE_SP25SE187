@@ -1,0 +1,21 @@
+@startuml
+title 03 - Decision Draft and Approval 
+
+start
+
+:AcademicOfficer creates draft decision;
+:System validates topic and group consistency;
+
+if (Validation successful?) then (Yes)
+  :Draft decision is stored in Decision table;
+else (No)
+  :System reports validation errors;
+  stop
+endif
+
+:AcademicOfficer uploads final decision file;
+:System updates decision type to FINAL;
+:System notifies stakeholders via email;
+
+stop
+@enduml

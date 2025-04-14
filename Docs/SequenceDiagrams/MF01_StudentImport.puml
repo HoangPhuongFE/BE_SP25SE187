@@ -1,0 +1,18 @@
+@startuml
+title 01 - Student Import
+
+actor AcademicOfficer
+participant StudentImportController
+participant StudentImportService
+participant FAPSystem
+database Student
+
+AcademicOfficer -> StudentImportController : uploadStudentFile(file)
+StudentImportController -> StudentImportService : importFromFAP(file)
+StudentImportService -> FAPSystem : fetchStudentList(file)
+FAPSystem --> StudentImportService : studentList[]
+StudentImportService -> Student : createMany(studentList)
+Student --> StudentImportService : success
+StudentImportService -> StudentImportController : importResult
+StudentImportController -> AcademicOfficer : displayImportResult()
+@enduml

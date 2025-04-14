@@ -1,0 +1,15 @@
+@startuml
+title 11 - Duplicate Topic Name
+
+actor GraduationThesisManager
+participant TopicController
+participant AIService
+database Topic
+
+GraduationThesisManager -> TopicController : checkForDuplicates()
+TopicController -> Topic : findMany()
+Topic --> TopicController : topicList[]
+TopicController -> AIService : detectDuplicates(topicList)
+AIService --> TopicController : duplicateReport
+TopicController -> GraduationThesisManager : showDuplicates()
+@enduml

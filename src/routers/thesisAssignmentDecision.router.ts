@@ -20,12 +20,12 @@ router.post("/thesis-assignments",
 
 router.get("/thesis-assignments",
   authenticateToken,
-  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager","lecturer"]),
+  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager","lecturer"],false),
    getAllThesisAssignmentsController);
 
 router.get("/thesis-assignments/:id",
   authenticateToken,
-  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager","lecturer"]),
+  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager","lecturer"],false),
    getThesisAssignmentByIdController);
 
 router.put("/thesis-assignments/:id",

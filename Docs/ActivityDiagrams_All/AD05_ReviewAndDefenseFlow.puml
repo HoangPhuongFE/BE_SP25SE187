@@ -1,0 +1,35 @@
+@startuml
+title 05 - Review and Defense Assignment 
+
+start
+
+:GraduationThesisManager assigns reviewers for topics;
+if (Reviewer assignment valid?) then (Yes)
+  :System stores ReviewAssignment records;
+else (No)
+  :Display error and require reassignment;
+  stop
+endif
+
+:GraduationThesisManager assigns defense schedules;
+if (Defense time conflict?) then (No)
+  :System stores DefenseSchedule records;
+else (Yes)
+  :Prompt to resolve conflict;
+  stop
+endif
+
+:Council members conduct review sessions;
+if (Any student failed review?) then (Yes)
+  :Mark student as not eligible for Defense Round 1;
+  :Add to reschedule list;
+endif
+
+:Council members evaluate defense presentations;
+if (Some students failed defense?) then (Yes)
+  :Notify failed students;
+  :Reschedule for Defense Round 2;
+endif
+
+stop
+@enduml

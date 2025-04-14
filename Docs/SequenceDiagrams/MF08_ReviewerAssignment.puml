@@ -1,0 +1,15 @@
+@startuml
+title 08 - Assign Reviewers for Topics (Rounds 1, 2, 3) 
+
+actor GraduationThesisManager
+participant ReviewAssignmentController
+participant ReviewAssignmentService
+database ReviewAssignment
+
+GraduationThesisManager -> ReviewAssignmentController : assignReviewers(data)
+ReviewAssignmentController -> ReviewAssignmentService : createAssignments()
+ReviewAssignmentService -> ReviewAssignment : createMany(data)
+ReviewAssignment --> ReviewAssignmentService : success
+ReviewAssignmentService -> ReviewAssignmentController : assignmentResult
+ReviewAssignmentController -> GraduationThesisManager : displayResult()
+@enduml

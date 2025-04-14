@@ -1,0 +1,18 @@
+@startuml
+title 06 - Final Decision Upload and Notification
+
+actor AcademicOfficer
+participant DecisionController
+participant DecisionService
+participant EmailService
+database Decision
+
+AcademicOfficer -> DecisionController : uploadFinalDecision(file)
+DecisionController -> DecisionService : updateFinalFile()
+DecisionService -> Decision : update({ type: FINAL, finalFile: file })
+Decision --> DecisionService : updateSuccess
+DecisionService -> EmailService : notifyUsers(roles, decisionURL)
+EmailService --> DecisionService : notificationSent
+DecisionService -> DecisionController : uploadSuccess
+DecisionController -> AcademicOfficer : confirmationMessage()
+@enduml
