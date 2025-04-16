@@ -120,63 +120,35 @@ export const getStudentQualificationStatisticsService = async (semesterId: strin
   };
   
 
-  export const getStudentTopicStatusStatisticsService = async (semesterId: string) => {
-    const semesterStudents = await prisma.semesterStudent.findMany({
-      where: { semesterId, isDeleted: false },
-      select: { studentId: true }
-    });
-  
-    const studentIds = semesterStudents.map((s) => s.studentId);
-  
-    // B1: Lấy toàn bộ groupMember của các studentId
-    const groupMembers = await prisma.groupMember.findMany({
+  export const getGroupTopicStatusStatisticsService = async (semesterId: string) => {
+    const groups = await prisma.group.findMany({
       where: {
-        studentId: { in: studentIds },
-        isDeleted: false,
-        group: {
-          semesterId: semesterId
-        }
+        semesterId,
+        isDeleted: false
       },
-      select: { studentId: true, groupId: true }
+      select: { id: true }
     });
   
-    const groupMap = new Map<string, string>(); // studentId -> groupId
-    groupMembers.forEach((gm) => {
-      if (gm.studentId && !groupMap.has(gm.studentId)) {
-        groupMap.set(gm.studentId, gm.groupId);
-      }
-    });
+    const groupIds = groups.map((g) => g.id);
   
-    const groupIds = [...new Set(groupMembers.map((gm) => gm.groupId))];
-  
-    // B2: Lấy danh sách group có topic được assign
-    const assignedTopics = await prisma.topicAssignment.findMany({
+    const topicAssignments = await prisma.topicAssignment.findMany({
       where: {
         groupId: { in: groupIds },
-        isDeleted: false,
-        status: "ASSIGNED"
+        status: "ASSIGNED",
+        isDeleted: false
       },
       select: { groupId: true }
     });
   
-    const assignedGroupIds = new Set(assignedTopics.map((ta) => ta.groupId));
+    const assignedGroupSet = new Set(topicAssignments.map((ta) => ta.groupId));
   
-    // B3: Phân loại sinh viên có/không đề tài
-    let hasTopic = 0;
-    let noTopic = 0;
-  
-    semesterStudents.forEach((ss) => {
-      const groupId = groupMap.get(ss.studentId);
-      if (groupId && assignedGroupIds.has(groupId)) {
-        hasTopic++;
-      } else {
-        noTopic++;
-      }
-    });
+    const hasTopic = Array.from(assignedGroupSet).length;
+    const noTopic = groupIds.length - hasTopic;
   
     return [
       { status: "Has Topic", total: hasTopic },
       { status: "No Topic", total: noTopic }
     ];
   };
+  
   

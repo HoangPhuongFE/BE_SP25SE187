@@ -5,8 +5,8 @@ import { getStudentQualificationStatisticsService ,
   getReviewRoundStatisticsService,
   getDefenseRoundStatisticsService,
   getStudentGroupStatusStatisticsService,
-  getStudentTopicStatusStatisticsService,
-  
+  getGroupTopicStatusStatisticsService,
+
  } from "../services/statistics.service";
 
 export const getStudentQualificationStatistics = async (req: Request, res: Response) => {
@@ -94,15 +94,16 @@ export const getStudentGroupStatusStatistics = async (req: Request, res: Respons
 };
 
 
-export const getStudentTopicStatusStatistics = async (req: Request, res: Response) => {
+export const getGroupTopicStatusStatistics = async (req: Request, res: Response) => {
   try {
     const semesterId = req.query.semesterId?.toString();
     if (!semesterId) return res.status(400).json({ message: "semesterId is required" });
 
-    const stats = await getStudentTopicStatusStatisticsService(semesterId);
+    const stats = await getGroupTopicStatusStatisticsService(semesterId);
     return res.json(stats);
   } catch (error) {
-    console.error("Error in getStudentTopicStatusStatistics:", error);
+    console.error("Error in getGroupTopicStatusStatistics:", error);
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
