@@ -34,6 +34,7 @@ import thesisAssignmentDecisionRouter from './routers/thesisAssignmentDecision.r
 import businessTopicRouter from './routers/business.topic.router';
 import importBlock3Router from './routers/importBlock3.router';
 import thesisAssignmentRouter from './routers/thesisAssignment.router'; 
+import staticRoutes from "./routers/statistics.route";
 
 import { errorHandler } from './middleware/errorHandler';
 
@@ -92,6 +93,7 @@ app.use('/api', thesisAssignmentDecisionRouter);
 app.use('/api/business/topics', businessTopicRouter);
 app.use('/api', importBlock3Router);
 app.use('/api', thesisAssignmentRouter); 
+app.use('/api/statistics', staticRoutes); 
 
 // Start the server
 const PORT = process.env.PORT || 3000;

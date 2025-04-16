@@ -193,7 +193,7 @@ export class SubmissionPeriodService {
           };
         }
       } else if (data.type === "REVIEW") {
-        if (semesterStatus !== "ACTIVE") {
+        if (semesterStatus !== "ACTIVE" && semesterStatus !== "UPCOMING") {
           return {
             success: false,
             status: HTTP_STATUS.FORBIDDEN,

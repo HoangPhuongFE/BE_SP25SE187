@@ -939,7 +939,6 @@ export class CouncilReviewService {
 
   async createReviewSchedule(data: {
     councilId: string;
-    reviewRound: number;
     groups: { groupId: string; reviewTime: Date }[];
     room: string;
     createdBy: string;
@@ -969,7 +968,8 @@ export class CouncilReviewService {
         };
       }
   
-      // Kiểm tra trùng thời gian trong cùng request
+      const reviewRound = council.round || 1; // Use 'round' property or default to 1
+  
       const reviewTimes = data.groups.map((g) => g.reviewTime.getTime());
       if (new Set(reviewTimes).size !== reviewTimes.length) {
         return {
@@ -979,7 +979,6 @@ export class CouncilReviewService {
         };
       }
   
-      // Kiểm tra trùng thời gian với lịch đã có
       const allSchedules = await prisma.reviewSchedule.findMany({
         where: { councilId, isDeleted: false },
       });
@@ -1037,11 +1036,10 @@ export class CouncilReviewService {
         groupId: ta.groupId,
       }));
   
-      // 🔍 Lấy lịch chấm hiện có cùng hội đồng + reviewRound
       const existingSchedules = await prisma.reviewSchedule.findMany({
         where: {
           councilId,
-          reviewRound: data.reviewRound,
+          reviewRound,
           isDeleted: false,
         },
         include: { topic: { select: { name: true } } },
@@ -1058,11 +1056,10 @@ export class CouncilReviewService {
         return {
           success: false,
           status: HTTP_STATUS.CONFLICT,
-          message: `Các đề tài đã có lịch ở vòng ${data.reviewRound} của hội đồng này:\n${details.join("\n")}`,
+          message: `Các đề tài đã có lịch ở vòng ${reviewRound} của hội đồng này:\n${details.join("\n")}`,
         };
       }
   
-      // Kiểm tra mentor trùng thành viên hội đồng
       const councilMemberIds = council.members.map((m) => m.userId);
       const groupMentors = await prisma.groupMentor.findMany({
         where: { groupId: { in: groupIds }, isDeleted: false },
@@ -1086,7 +1083,7 @@ export class CouncilReviewService {
         }
       }
   
-      // Tạo lịch
+      // ✅ Tạo lịch và assignment
       const newSchedules = await prisma.$transaction(async (tx) => {
         const created = [];
   
@@ -1101,7 +1098,7 @@ export class CouncilReviewService {
               groupId: group.groupId,
               reviewTime: group.reviewTime,
               room: data.room,
-              reviewRound: data.reviewRound,
+              reviewRound,
               status: "PENDING",
             },
             include: {
@@ -1127,7 +1124,7 @@ export class CouncilReviewService {
               councilId,
               topicId: ta.topic.id,
               reviewerId: null,
-              reviewRound: data.reviewRound,
+              reviewRound,
               status: "PENDING",
               reviewScheduleId: schedule.id,
             },
@@ -1154,6 +1151,7 @@ export class CouncilReviewService {
       };
     }
   }
+  
   
 
 

@@ -180,7 +180,7 @@ export class CouncilReviewController {
         groups: formattedGroups,
         room,
         createdBy,
-        reviewRound: 0
+        // reviewRound: 0
       });
 
       return res.status(result.status).json(result);
