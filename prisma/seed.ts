@@ -88,39 +88,13 @@ async function createDefaultUsers() {
   }
 }
 
-async function createYearsAndSemesters() {
-  await prisma.semester.deleteMany();
-  await prisma.year.deleteMany();
 
-  const years = [{ year: 2025 }];
-  const createdYears: { [key: number]: string } = {};
-
-  for (const year of years) {
-    const createdYear = await prisma.year.create({ data: year });
-    createdYears[year.year] = createdYear.id;
-    console.log(`Created year: ${year.year} with ID: ${createdYear.id}`);
-  }
-
-  const semesters = [
-    { code: 'SPRING2025', startDate: new Date('2025-04-20'), endDate: new Date('2025-04-30'), status: 'UPCOMING', yearId: createdYears[2025] },
-  ];
-
-  for (const semester of semesters) {
-    await prisma.semester.create({ data: semester });
-    console.log(`Created semester: ${semester.code} for year ${semester.yearId}`);
-  }
-
-  const spring2025 = await prisma.semester.findFirst({ where: { code: 'SPRING2025' } });
-  return { spring2025Id: spring2025?.id };
-}
 
 
 
 async function main() {
   console.log('Seeding database...');
   await createRoles();
-  const { spring2025Id } = await createYearsAndSemesters();
-  if (!spring2025Id) throw new Error('Failed to get SPRING2025 semester ID');
   await createDefaultUsers();
   console.log('Seeding completed successfully.');
 }
