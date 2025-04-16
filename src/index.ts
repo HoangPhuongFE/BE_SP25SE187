@@ -28,13 +28,12 @@ import importTopicRouter from './routers/import-topic.router';
 import progressReportRouter from './routers/progress-report.router';
 import councilReivewRotuer from './routers/council.review.router';
 import aiRouter from './routers/ai.router';
-import statisticsRouter from './routers/statistics.router';
 import councilDenfeseRotuer from './routers/council.defense.router';
 import decisionRouter from './routers/decision.router';
 import thesisAssignmentDecisionRouter from './routers/thesisAssignmentDecision.router';
 import businessTopicRouter from './routers/business.topic.router';
 import importBlock3Router from './routers/importBlock3.router';
-import thesisAssignmentRouter from './routers/thesisAssignment.router'; // Add the new router
+import thesisAssignmentRouter from './routers/thesisAssignment.router'; 
 
 import { errorHandler } from './middleware/errorHandler';
 
@@ -87,7 +86,6 @@ app.use('/api', importTopicRouter);
 app.use('/api/progress-report', progressReportRouter);
 app.use('/api/council-review', councilReivewRotuer);
 app.use('/api/ai', aiRouter);
-app.use('/api/statistics', statisticsRouter);
 app.use('/api/council-defense', councilDenfeseRotuer);
 app.use('/api', decisionRouter);
 app.use('/api', thesisAssignmentDecisionRouter);

@@ -5,10 +5,22 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 function extractCellValue(cellValue: any): string {
-  return typeof cellValue === 'object' && cellValue?.text
-    ? cellValue.text
-    : String(cellValue || '').trim();
+  if (!cellValue) return '';
+
+  if (typeof cellValue === 'object') {
+    if ('text' in cellValue) return cellValue.text; // ExcelJS Hyperlink / RichText
+    if ('richText' in cellValue && Array.isArray(cellValue.richText)) {
+      return cellValue.richText.map((part: any) => part.text).join('');
+    }
+    if ('formula' in cellValue && 'result' in cellValue) {
+      return String(cellValue.result);
+    }
+    return JSON.stringify(cellValue); // fallback nếu không match format
+  }
+
+  return String(cellValue).trim();
 }
+
 /*
 export class ImportStudentService {
   async importExcel(filePath: string, userId: string, semesterId: string) {
