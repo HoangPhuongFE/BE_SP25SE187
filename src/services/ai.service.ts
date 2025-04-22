@@ -344,7 +344,9 @@
             issues.push(`Mentor không khớp (FE: ${item.mentorUsername}, hệ thống: ${mentorUsernameFromDb || 'Không có'})`);
           }
     
-          const aiResult = await this.aiService.validateTopicName(item.nameVi, item.nameEn, undefined, { skipDatabaseCheck: false }, topic.id);
+          const aiResult = await this.aiService.validateTopicName(item.nameVi, 
+            item.nameEn, undefined, { skipDatabaseCheck: false },  `${item.nameVi} | ${item.nameEn}` 
+          );
           const confidence = aiResult.confidence  ?? 0.9;
     
           if (!aiResult.isValid) {
