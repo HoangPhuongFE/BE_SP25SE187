@@ -136,11 +136,12 @@ export class ThesisAssignmentService {
           const ai = resultMap.get(item.topicCode);
           return {
             ...item,
-            aiStatus: ai?.isConsistent ? 'Passed' : 'Failed',
+            aiStatus: ai?.aiStatus ?? 'Unknown',
             confidence: ai?.confidence ?? 0,
-            aiMessage: ai?.issues?.join(', ') ?? '',
+            aiMessage: ai?.aiMessage ?? 'Không có thông tin kiểm tra.',
           };
         });
+        
       }
 
       return {
