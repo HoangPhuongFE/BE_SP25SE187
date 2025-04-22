@@ -41,8 +41,7 @@ export class AIController {
 public async batchVerifyDecision(req: Request, res: Response) {
   try {
     const { items } = req.body;
-    const verifiedBy = req.user?.id;
-
+    const verifiedBy = req.user?.userId;
     if (!Array.isArray(items) || items.length === 0 || !verifiedBy) {
       return res.status(400).json({
         success: false,
