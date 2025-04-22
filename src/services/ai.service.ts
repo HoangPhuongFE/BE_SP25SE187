@@ -313,65 +313,40 @@
     
           const issues: string[] = [];
     
+          // So sánh các trường chính
           if (topic.nameVi !== item.nameVi) issues.push('Tên tiếng Việt không khớp');
           if (topic.nameEn !== item.nameEn) issues.push('Tên tiếng Anh không khớp');
     
-          // Fetch groupCode từ proposedGroupId
-          let groupCodeFromDb: string | null = null;
-          if (topic.proposedGroupId) {
-            const group = await prisma.group.findUnique({
-              where: { id: topic.proposedGroupId },
-              select: { groupCode: true },
-            });
-            groupCodeFromDb = group?.groupCode ?? null;
+          const group = await prisma.group.findUnique({
+            where: { id: topic.proposedGroupId ?? '' },
+            select: { groupCode: true },
+          });
+          if (group?.groupCode !== item.groupCode) {
+            issues.push(`Mã nhóm không khớp (FE: ${item.groupCode}, DB: ${group?.groupCode || 'Không có'})`);
           }
     
-          if (groupCodeFromDb !== item.groupCode) {
-            issues.push(`Mã nhóm không khớp (FE: ${item.groupCode}, hệ thống: ${groupCodeFromDb || 'Không có'})`);
+          const mentor = topic.mainSupervisor
+            ? await prisma.user.findUnique({ where: { id: topic.mainSupervisor }, select: { username: true } })
+            : null;
+          if (item.mentorUsername && mentor?.username !== item.mentorUsername) {
+            issues.push(`Mentor không khớp (FE: ${item.mentorUsername}, DB: ${mentor?.username || 'Không có'})`);
           }
     
-          // Fetch mentor username từ mainSupervisor
-          let mentorUsernameFromDb: string | null = null;
-          if (topic.mainSupervisor) {
-            const mentor = await prisma.user.findUnique({
-              where: { id: topic.mainSupervisor },
-              select: { username: true },
-            });
-            mentorUsernameFromDb = mentor?.username ?? null;
-          }
-    
-          if (item.mentorUsername && mentorUsernameFromDb !== item.mentorUsername) {
-            issues.push(`Mentor không khớp (FE: ${item.mentorUsername}, hệ thống: ${mentorUsernameFromDb || 'Không có'})`);
-          }
-    
-          const aiResult = await this.aiService.validateTopicName(item.nameVi, 
-            item.nameEn, undefined, { skipDatabaseCheck: false },  `${item.nameVi} | ${item.nameEn}` 
-          );
-          const confidence = aiResult.confidence  ?? 0.9;
-    
-          if (!aiResult.isValid) {
-            const isDuplicateDB = aiResult.message.includes('Đề tài đã tồn tại');
-            issues.push(
-              isDuplicateDB
-                ? aiResult.message
-                : `AI đánh giá không hợp lệ: ${aiResult.message}`
-            );
-          }
-          
-    
-        
+          // Nếu muốn dùng AI để check semantic, có thể gọi nhẹ nhàng:
+          // const aiResult = await this.aiService.validateTopicName(item.nameVi, item.nameEn, undefined, { skipDatabaseCheck: true });
     
           results.push({
             topicCode: item.topicCode,
-            confidence,
+            isConsistent: issues.length === 0,
+            confidence: issues.length === 0 ? 1 : 0.5,
             issues,
           });
-        } catch (error) {
+        } catch (err) {
           results.push({
             topicCode: item.topicCode,
             isConsistent: false,
             confidence: 0,
-            issues: [`Lỗi xử lý: ${(error as Error).message}`],
+            issues: [`Lỗi xử lý: ${(err as Error).message}`],
           });
         }
       }
