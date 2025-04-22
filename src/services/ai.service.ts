@@ -76,23 +76,131 @@
       }
     }
 
+    // public async validateTopicName(
+    //   nameVi: string,
+    //   nameEn: string,
+    //   topicId?: string
+    // ): Promise<{ isValid: boolean; message: string; similarity?: number; suggestions?: string; similarTopics?: any[] }> {
+    //   try {
+    //     const result = await this._validateTopicName(nameVi, nameEn);
+
+    //     await this.logSystemEvent(
+    //       'VALIDATE_TOPIC_NAME',
+    //       'topic',
+    //       topicId || 'N/A',
+    //       result.message,
+    //       result.isValid ? 'INFO' : 'WARNING',
+    //       { nameVi, nameEn, similarity: result.similarity, suggestions: result.suggestions, similarTopics: result.similarTopics }
+    //     );
+
+    //     if (topicId) {
+    //       await prisma.aIVerificationLog.create({
+    //         data: {
+    //           topicId,
+    //           verification: result.isValid ? 'Passed' : 'Failed',
+    //           originalText: `${nameVi} | ${nameEn}`,
+    //           verifiedText: `${nameVi} | ${nameEn}`,
+    //           similarityScore: result.similarity || 0,
+    //           suggestions: result.suggestions || null,
+    //           verifiedBy: 'AI_System',
+    //           verifiedAt: new Date(),
+    //         },
+    //       });
+    //     }
+
+    //     return {
+    //       isValid: result.isValid,
+    //       message: result.message,
+    //       similarity: result.similarity,
+    //       suggestions: result.suggestions,
+    //       similarTopics: result.similarTopics,
+    //     };
+    //   } catch (error) {
+    //     console.error('Lỗi khi kiểm tra tên đề tài:', error);
+    //     await this.logSystemEvent(
+    //       'VALIDATE_TOPIC_NAME_ERROR',
+    //       'topic',
+    //       topicId || 'N/A',
+    //       'Lỗi khi kiểm tra tên đề tài',
+    //       'ERROR',
+    //       { error: (error as Error).message }
+    //     );
+    //     return {
+    //       isValid: false,
+    //       message: `${MESSAGES.TOPIC.AI_VALIDATION_FAILED} ${(error as Error).message}`,
+    //       similarity: 0,
+    //     };
+    //   }
+    // }
+
+    // private async _validateTopicName(
+    //   nameVi: string,
+    //   nameEn: string
+    // ): Promise<{ isValid: boolean; message: string; similarity?: number; suggestions?: string; similarTopics?: any[] }> {
+    //   if (nameVi.length < 10 || nameVi.length > 200 || nameEn.length < 10 || nameEn.length > 200) {
+    //     return {
+    //       isValid: false,
+    //       message: 'Tên đề tài phải dài từ 10 đến 200 ký tự',
+    //     };
+    //   }
+
+    //   const existingTopic = await prisma.topic.findFirst({
+    //     where: {
+    //       OR: [{ nameVi }, { nameEn }],
+    //     },
+    //   });
+    //   if (existingTopic) {
+    //     const duplicateFields = [];
+    //     if (existingTopic.nameVi === nameVi) duplicateFields.push('tên tiếng Việt');
+    //     if (existingTopic.nameEn === nameEn) duplicateFields.push('tên tiếng Anh');
+    //     return {
+    //       isValid: false,
+    //       message: `Đề tài đã tồn tại với ${duplicateFields.join(', ')}`,
+    //     };
+    //   }
+
+    //   const aiResult = await this.aiService.validateTopicName(nameVi, nameEn, '');
+    //   console.log('Kết quả từ CoreAIService:', aiResult);
+
+    //   const confidence = aiResult.confidence !== undefined ? aiResult.confidence : 0.9;
+    //   let message = aiResult.message;
+
+    //   // Nếu tiêu đề không hợp lệ, cải thiện thông điệp lỗi
+    //   if (!aiResult.isValid && aiResult.similarTopics && aiResult.similarTopics.length > 0) {
+    //     const mostSimilarTopic = aiResult.similarTopics[0];
+    //     const similarityPercentage = (mostSimilarTopic.similarity * 100).toFixed(2);
+    //     message = `Tên đề tài không hợp lệ: Tiêu đề "${mostSimilarTopic.language === 'vi' ? nameVi : nameEn}" trùng lặp với "${mostSimilarTopic.title}" (mức độ tương đồng: ${similarityPercentage}%)`;
+    //   } else if (aiResult.isValid) {
+    //     const confidencePercentage = (confidence * 100).toFixed(2);
+    //     message = `Tên đề tài hợp lệ (mức độ phù hợp: ${confidencePercentage}%)`;
+    //   }
+
+    //   return {
+    //     isValid: aiResult.isValid,
+    //     message,
+    //     similarity: confidence,
+    //     suggestions: aiResult.message?.includes('similarity') ? 'Xem xét đổi tên để tránh trùng lặp' : undefined,
+    //     similarTopics: aiResult.similarTopics,
+    //   };
+    // }
+    //  Hàm kiểm tra integrity dữ liệu topic với AI + rule
+
+
     public async validateTopicName(
       nameVi: string,
       nameEn: string,
-      topicId?: string
-    ): Promise<{ isValid: boolean; message: string; similarity?: number; suggestions?: string; similarTopics?: any[] }> {
+      topicId?: string,
+      options?: { skipDatabaseCheck?: boolean }
+    ): Promise<{
+      isValid: boolean;
+      message: string;
+      similarity?: number;
+      suggestions?: string;
+      similarTopics?: any[];
+    }> {
       try {
-        const result = await this._validateTopicName(nameVi, nameEn);
-
-        await this.logSystemEvent(
-          'VALIDATE_TOPIC_NAME',
-          'topic',
-          topicId || 'N/A',
-          result.message,
-          result.isValid ? 'INFO' : 'WARNING',
-          { nameVi, nameEn, similarity: result.similarity, suggestions: result.suggestions, similarTopics: result.similarTopics }
-        );
-
+        const result = await this._validateTopicName(nameVi, nameEn, options);
+    
         if (topicId) {
           await prisma.aIVerificationLog.create({
             data: {
@@ -107,74 +215,65 @@
             },
           });
         }
-
-        return {
-          isValid: result.isValid,
-          message: result.message,
-          similarity: result.similarity,
-          suggestions: result.suggestions,
-          similarTopics: result.similarTopics,
-        };
+    
+        return result;
       } catch (error) {
-        console.error('Lỗi khi kiểm tra tên đề tài:', error);
-        await this.logSystemEvent(
-          'VALIDATE_TOPIC_NAME_ERROR',
-          'topic',
-          topicId || 'N/A',
-          'Lỗi khi kiểm tra tên đề tài',
-          'ERROR',
-          { error: (error as Error).message }
-        );
         return {
           isValid: false,
-          message: `${MESSAGES.TOPIC.AI_VALIDATION_FAILED} ${(error as Error).message}`,
+          message: `AI validation failed: ${(error as Error).message}`,
           similarity: 0,
         };
       }
     }
-
+    
     private async _validateTopicName(
       nameVi: string,
-      nameEn: string
-    ): Promise<{ isValid: boolean; message: string; similarity?: number; suggestions?: string; similarTopics?: any[] }> {
+      nameEn: string,
+      options?: { skipDatabaseCheck?: boolean }
+    ): Promise<{
+      isValid: boolean;
+      message: string;
+      similarity?: number;
+      suggestions?: string;
+      similarTopics?: any[];
+    }> {
       if (nameVi.length < 10 || nameVi.length > 200 || nameEn.length < 10 || nameEn.length > 200) {
         return {
           isValid: false,
           message: 'Tên đề tài phải dài từ 10 đến 200 ký tự',
         };
       }
-
-      const existingTopic = await prisma.topic.findFirst({
-        where: {
-          OR: [{ nameVi }, { nameEn }],
-        },
-      });
-      if (existingTopic) {
-        const duplicateFields = [];
-        if (existingTopic.nameVi === nameVi) duplicateFields.push('tên tiếng Việt');
-        if (existingTopic.nameEn === nameEn) duplicateFields.push('tên tiếng Anh');
-        return {
-          isValid: false,
-          message: `Đề tài đã tồn tại với ${duplicateFields.join(', ')}`,
-        };
+    
+      if (!options?.skipDatabaseCheck) {
+        const existingTopic = await prisma.topic.findFirst({
+          where: {
+            OR: [{ nameVi }, { nameEn }],
+          },
+        });
+    
+        if (existingTopic) {
+          const duplicateFields = [];
+          if (existingTopic.nameVi === nameVi) duplicateFields.push('tên tiếng Việt');
+          if (existingTopic.nameEn === nameEn) duplicateFields.push('tên tiếng Anh');
+          return {
+            isValid: false,
+            message: `Đề tài đã tồn tại với ${duplicateFields.join(', ')}`,
+          };
+        }
       }
-
+    
       const aiResult = await this.aiService.validateTopicName(nameVi, nameEn, '');
-      console.log('Kết quả từ CoreAIService:', aiResult);
-
-      const confidence = aiResult.confidence !== undefined ? aiResult.confidence : 0.9;
+      const confidence = aiResult.confidence ?? 0.9;
+    
       let message = aiResult.message;
-
-      // Nếu tiêu đề không hợp lệ, cải thiện thông điệp lỗi
-      if (!aiResult.isValid && aiResult.similarTopics && aiResult.similarTopics.length > 0) {
-        const mostSimilarTopic = aiResult.similarTopics[0];
-        const similarityPercentage = (mostSimilarTopic.similarity * 100).toFixed(2);
-        message = `Tên đề tài không hợp lệ: Tiêu đề "${mostSimilarTopic.language === 'vi' ? nameVi : nameEn}" trùng lặp với "${mostSimilarTopic.title}" (mức độ tương đồng: ${similarityPercentage}%)`;
+      if (!aiResult.isValid && (aiResult.similarTopics ?? []).length > 0) {
+        const mostSimilar = (aiResult.similarTopics ?? [])[0];
+        const sim = (mostSimilar.similarity * 100).toFixed(2);
+        message = `Tên đề tài không hợp lệ: Tiêu đề "${mostSimilar.title}" trùng với "${nameVi}" (tương đồng ${sim}%)`;
       } else if (aiResult.isValid) {
-        const confidencePercentage = (confidence * 100).toFixed(2);
-        message = `Tên đề tài hợp lệ (mức độ phù hợp: ${confidencePercentage}%)`;
+        message = `Tên đề tài hợp lệ (mức độ phù hợp: ${(confidence * 100).toFixed(2)}%)`;
       }
-
+    
       return {
         isValid: aiResult.isValid,
         message,
@@ -183,8 +282,7 @@
         similarTopics: aiResult.similarTopics,
       };
     }
-    //  Hàm kiểm tra integrity dữ liệu topic với AI + rule
-
+    
     public async batchVerifyDecision(
       items: Array<{
         topicCode: string;
