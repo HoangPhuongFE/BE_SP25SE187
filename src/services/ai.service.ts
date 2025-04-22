@@ -262,7 +262,7 @@
         }
       }
     
-      const aiResult = await this.aiService.validateTopicName(nameVi, nameEn, '');
+      const aiResult = await this.aiService.validateTopicName(nameVi, nameEn, undefined, { skipDatabaseCheck: false }, '');
       const confidence = aiResult.confidence ?? 0.9;
     
       let message = aiResult.message;
@@ -344,7 +344,7 @@
             issues.push(`Mentor không khớp (FE: ${item.mentorUsername}, hệ thống: ${mentorUsernameFromDb || 'Không có'})`);
           }
     
-          const aiResult = await this.aiService.validateTopicName(item.nameVi, item.nameEn, topic.id);
+          const aiResult = await this.aiService.validateTopicName(item.nameVi, item.nameEn, undefined, { skipDatabaseCheck: false }, topic.id);
           const confidence = aiResult.confidence  ?? 0.9;
     
           if (!aiResult.isValid) {
@@ -357,7 +357,7 @@
           }
           
     
-          
+        
     
           results.push({
             topicCode: item.topicCode,

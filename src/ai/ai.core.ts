@@ -28,7 +28,7 @@ export class CoreAIService {
     return this.provider;
   }
 
-  public async validateTopicName(nameVi: string, nameEn: string, _nameProject: string): Promise<AIValidationResult> {
+  public async validateTopicName(nameVi: string, nameEn: string, undefined: undefined, p0: { skipDatabaseCheck: boolean; }, _nameProject: string): Promise<AIValidationResult> {
     console.log('CoreAIService config:', this.config);
     console.log('CoreAIService provider:', this.provider ? 'Có provider' : 'Không có provider');
     if (!this.config.enabled || !this.provider) {
