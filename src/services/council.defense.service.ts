@@ -1328,104 +1328,216 @@ export class CouncilDefenseService {
     }
 
     // Đánh giá từng sinh viên
+    // async evaluateDefenseMember(
+    //     defenseScheduleId: string,
+    //     studentId: string,
+    //     data: { result: "PASS" | "NOT_PASS"; feedback?: string },
+    //     userId: string
+    // ) {
+    //     try {
+    //         // 1. Kiểm tra vai trò từ UserRole
+    //         const userRoles = await prisma.userRole.findMany({
+    //             where: {
+    //                 userId,
+    //                 isActive: true,
+    //                 isDeleted: false,
+    //             },
+    //             include: { role: { select: { name: true } } }, // Chỉ lấy name để tối ưu
+    //         });
+
+    //         const roleNames = userRoles.map((ur) => ur.role.name);
+    //         // console.log("User roles:", roleNames);
+
+    //         // 2. Các vai trò được phép
+    //         const allowedRoles = ["lecturer", "council_chairman", "council_secretary", "council_member"];
+    //         const hasPermission = roleNames.some((role) => allowedRoles.includes(role));
+
+    //         if (!hasPermission) {
+    //             return {
+    //                 success: false,
+    //                 status: HTTP_STATUS.FORBIDDEN,
+    //                 message: "Bạn không có quyền đánh giá (yêu cầu lecturer hoặc vai trò hội đồng)!",
+    //             };
+    //         }
+
+    //         // 3. Kiểm tra lịch bảo vệ có tồn tại không
+    //         const defenseSchedule = await prisma.defenseSchedule.findUnique({
+    //             where: {
+    //                 id: defenseScheduleId,
+    //                 isDeleted: false,
+    //             },
+    //         });
+
+    //         if (!defenseSchedule) {
+    //             return {
+    //                 success: false,
+    //                 status: HTTP_STATUS.NOT_FOUND,
+    //                 message: "Lịch bảo vệ không tồn tại!",
+    //             };
+    //         }
+
+    //         // 4. Kiểm tra sinh viên có trong lịch bảo vệ không
+    //         const defenseMember = await prisma.defenseMemberResult.findUnique({
+    //             where: {
+    //                 defenseScheduleId_studentId: {
+    //                     defenseScheduleId: defenseScheduleId,
+    //                     studentId: studentId,
+    //                 },
+    //                 isDeleted: false,
+    //             },
+    //         });
+
+    //         if (!defenseMember) {
+    //             return {
+    //                 success: false,
+    //                 status: HTTP_STATUS.NOT_FOUND,
+    //                 message: "Sinh viên không thuộc lịch bảo vệ này!",
+    //             };
+    //         }   
+            
+
+    //         // 5. Cập nhật kết quả đánh giá
+    //         const updatedResult = await prisma.defenseMemberResult.update({
+    //             where: {
+    //                 defenseScheduleId_studentId: {
+    //                     defenseScheduleId: defenseScheduleId,
+    //                     studentId: studentId,
+    //                 },
+    //             },
+    //             data: {
+    //                 result: data.result,
+    //                 feedback: data.feedback,
+    //                 evaluatedBy: userId,
+    //                 evaluatedAt: new Date(),
+    //             },
+    //         });
+
+    //         return {
+    //             success: true,
+    //             status: HTTP_STATUS.OK,
+    //             message: "Đánh giá thành công!",
+    //             data: updatedResult,
+    //         };
+    //     } catch (error) {
+    //         console.error("Lỗi khi đánh giá:", error);
+    //         return {
+    //             success: false,
+    //             status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+    //             message: "Lỗi hệ thống!",
+    //         };
+    //     }
+    // }
     async evaluateDefenseMember(
-        defenseScheduleId: string,
-        studentId: string,
-        data: { result: "PASS" | "NOT_PASS"; feedback?: string },
-        userId: string
-    ) {
-        try {
-            // 1. Kiểm tra vai trò từ UserRole
-            const userRoles = await prisma.userRole.findMany({
-                where: {
-                    userId,
-                    isActive: true,
-                    isDeleted: false,
-                },
-                include: { role: { select: { name: true } } }, // Chỉ lấy name để tối ưu
-            });
+  defenseScheduleId: string,
+  studentId: string,
+  data: { result: "PASS" | "NOT_PASS"; feedback?: string },
+  userId: string
+) {
+  try {
+    const userRoles = await prisma.userRole.findMany({
+      where: { userId, isActive: true, isDeleted: false },
+      include: { role: { select: { name: true } } },
+    });
 
-            const roleNames = userRoles.map((ur) => ur.role.name);
-            // console.log("User roles:", roleNames);
-
-            // 2. Các vai trò được phép
-            const allowedRoles = ["lecturer", "council_chairman", "council_secretary", "council_member"];
-            const hasPermission = roleNames.some((role) => allowedRoles.includes(role));
-
-            if (!hasPermission) {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.FORBIDDEN,
-                    message: "Bạn không có quyền đánh giá (yêu cầu lecturer hoặc vai trò hội đồng)!",
-                };
-            }
-
-            // 3. Kiểm tra lịch bảo vệ có tồn tại không
-            const defenseSchedule = await prisma.defenseSchedule.findUnique({
-                where: {
-                    id: defenseScheduleId,
-                    isDeleted: false,
-                },
-            });
-
-            if (!defenseSchedule) {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.NOT_FOUND,
-                    message: "Lịch bảo vệ không tồn tại!",
-                };
-            }
-
-            // 4. Kiểm tra sinh viên có trong lịch bảo vệ không
-            const defenseMember = await prisma.defenseMemberResult.findUnique({
-                where: {
-                    defenseScheduleId_studentId: {
-                        defenseScheduleId: defenseScheduleId,
-                        studentId: studentId,
-                    },
-                    isDeleted: false,
-                },
-            });
-
-            if (!defenseMember) {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.NOT_FOUND,
-                    message: "Sinh viên không thuộc lịch bảo vệ này!",
-                };
-            }
-
-            // 5. Cập nhật kết quả đánh giá
-            const updatedResult = await prisma.defenseMemberResult.update({
-                where: {
-                    defenseScheduleId_studentId: {
-                        defenseScheduleId: defenseScheduleId,
-                        studentId: studentId,
-                    },
-                },
-                data: {
-                    result: data.result,
-                    feedback: data.feedback,
-                    evaluatedBy: userId,
-                    evaluatedAt: new Date(),
-                },
-            });
-
-            return {
-                success: true,
-                status: HTTP_STATUS.OK,
-                message: "Đánh giá thành công!",
-                data: updatedResult,
-            };
-        } catch (error) {
-            console.error("Lỗi khi đánh giá:", error);
-            return {
-                success: false,
-                status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-                message: "Lỗi hệ thống!",
-            };
-        }
+    const roleNames = userRoles.map((ur) => ur.role.name);
+    const allowedRoles = ["lecturer", "council_chairman", "council_secretary", "council_member"];
+    if (!roleNames.some((role) => allowedRoles.includes(role))) {
+      return {
+        success: false,
+        status: HTTP_STATUS.FORBIDDEN,
+        message: "Bạn không có quyền đánh giá!",
+      };
     }
+
+    const defenseSchedule = await prisma.defenseSchedule.findUnique({
+      where: { id: defenseScheduleId, isDeleted: false },
+    });
+
+    if (!defenseSchedule) {
+      return {
+        success: false,
+        status: HTTP_STATUS.NOT_FOUND,
+        message: "Lịch bảo vệ không tồn tại!",
+      };
+    }
+
+    const defenseMember = await prisma.defenseMemberResult.findUnique({
+      where: {
+        defenseScheduleId_studentId: {
+          defenseScheduleId,
+          studentId,
+        },
+        isDeleted: false,
+
+      },
+      include: {
+        defenseSchedule: { select: { groupId: true, defenseRound: true } }, 
+      },
+    });
+
+    if (!defenseMember) {
+      return {
+        success: false,
+        status: HTTP_STATUS.NOT_FOUND,
+        message: "Sinh viên không thuộc lịch bảo vệ này!",
+      };
+    }
+
+    // ❗ NEW: Không cho phép chấm nếu sinh viên đã PASS ở vòng trước
+    const previousPassed = await prisma.defenseMemberResult.findFirst({
+        where: {
+          studentId,
+          result: "PASS",
+          isDeleted: false,
+          defenseSchedule: {
+            groupId: defenseMember.defenseSchedule.groupId, 
+            defenseRound: {
+              lt: defenseMember.defenseSchedule.defenseRound,
+            },
+            isDeleted: false,
+          },
+        },
+      });
+      
+    if (previousPassed) {
+      return {
+        success: false,
+        status: HTTP_STATUS.BAD_REQUEST,
+        message: "Sinh viên này đã đạt ở vòng trước, không thể cập nhật lại!",
+      };
+    }
+
+    const updatedResult = await prisma.defenseMemberResult.update({
+      where: {
+        defenseScheduleId_studentId: {
+          defenseScheduleId,
+          studentId,
+        },
+      },
+      data: {
+        result: data.result,
+        feedback: data.feedback,
+        evaluatedBy: userId,
+        evaluatedAt: new Date(),
+      },
+    });
+
+    return {
+      success: true,
+      status: HTTP_STATUS.OK,
+      message: "Đánh giá thành công!",
+      data: updatedResult,
+    };
+  } catch (error) {
+    console.error("Lỗi khi đánh giá:", error);
+    return {
+      success: false,
+      status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      message: "Lỗi hệ thống!",
+    };
+  }
+}
+
     // Thay đổi thành viên hội đồng bảo vệ
     async updateDefenseCouncilMembers(
         councilId: string,
