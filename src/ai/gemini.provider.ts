@@ -42,20 +42,6 @@ export class GeminiProvider implements AIProvider {
 
         Tiêu đề tiếng Anh:
         ${oldTitlesEn}
-
-        Yêu cầu:
-        1. Kiểm tra xem tiêu đề mới có trùng lặp hoặc quá giống với tiêu đề cũ không (dựa trên ngữ nghĩa).
-        2. Đảm bảo tên tiếng Anh là bản dịch hợp lý của tên tiếng Việt.
-        3. Tránh nội dung không phù hợp hoặc không rõ ràng.
-        4. Tính toán mức độ tin cậy (confidence) từ 0 đến 1 dựa trên độ tương đồng ngữ nghĩa (1 là hoàn toàn khác biệt, 0 là trùng hoàn toàn). Nếu không trùng, confidence phải lớn hơn 0.9.
-
-        Trả về JSON với:
-        - isValid (boolean): true nếu không trùng (độ tương đồng < 0.9), false nếu trùng
-        - message (string): giải thích kết quả
-        - confidence (number): mức độ tin cậy từ 0 đến 1 (dựa trên độ tương đồng ngữ nghĩa, phải có giá trị)
-        - similarTopics (array): danh sách các đề tài tương tự với {topicCode, title, language, similarity}
-
-        Chỉ trả về JSON, không thêm giải thích hoặc lưu ý bổ sung.
       `;
 
       console.log('Gửi yêu cầu đến Google Gemini với prompt:', prompt);

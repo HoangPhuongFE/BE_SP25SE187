@@ -1483,7 +1483,7 @@ export class CouncilDefenseService {
       };
     }
 
-    // ❗ NEW: Không cho phép chấm nếu sinh viên đã PASS ở vòng trước
+    //  NEW: Không cho phép chấm nếu sinh viên đã PASS ở vòng trước
     const previousPassed = await prisma.defenseMemberResult.findFirst({
         where: {
           studentId,
