@@ -335,12 +335,19 @@
           // Nếu muốn dùng AI để check semantic, có thể gọi nhẹ nhàng:
           // const aiResult = await this.aiService.validateTopicName(item.nameVi, item.nameEn, undefined, { skipDatabaseCheck: true });
     
+         
           results.push({
             topicCode: item.topicCode,
-            isConsistent: issues.length === 0,
             confidence: issues.length === 0 ? 1 : 0.5,
+            isConsistent: issues.length === 0,
             issues,
+            aiStatus: issues.length === 0 ? 'Passed' : 'Failed',
+            aiMessage:
+              issues.length === 0
+                ? 'Dữ liệu trong biểu mẫu quyết định khớp với hệ thống.'
+                : `Có lỗi: ${issues.join('; ')}`,
           });
+          
         } catch (err) {
           results.push({
             topicCode: item.topicCode,
