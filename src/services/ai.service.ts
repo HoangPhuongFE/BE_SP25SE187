@@ -357,28 +357,10 @@
           }
           
     
-          const isConsistent = issues.length === 0;
-    
-          if (!isConsistent) {
-            await prisma.aIVerificationLog.create({
-              data: {
-                topicId: topic.id,
-                verification: 'Failed',
-                originalText: `${topic.nameVi} | ${topic.nameEn}`,
-                verifiedText: `${item.nameVi} | ${item.nameEn}`,
-                similarityScore: confidence,
-                suggestions: aiResult.message,
-                verifiedBy,
-                verifiedAt: new Date(),
-              },
-            });
-    
-        
-          }
+          
     
           results.push({
             topicCode: item.topicCode,
-            isConsistent,
             confidence,
             issues,
           });
