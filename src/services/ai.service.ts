@@ -269,18 +269,7 @@ export class AIService {
             },
           });
   
-          await prisma.systemLog.create({
-            data: {
-              userId: verifiedBy,
-              action: 'BATCH_VERIFY_TOPIC',
-              entityType: 'topic',
-              entityId: topic.id,
-              description: 'Phát hiện sai lệch khi duyệt hàng loạt đề tài',
-              severity: 'WARNING',
-              metadata: { issues },
-              ipAddress: '::1',
-            },
-          });
+       
         }
   
         results.push({
