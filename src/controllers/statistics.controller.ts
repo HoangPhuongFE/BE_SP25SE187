@@ -6,7 +6,10 @@ import { getStudentQualificationStatisticsService ,
   getDefenseRoundStatisticsService,
   getStudentGroupStatusStatisticsService,
   getGroupTopicStatusStatisticsService,
-
+  getDefenseResultSummaryStatistics,
+  getDefenseResultByRoundStatistics,
+  getGroupCreationTypeStatisticsService,
+  
  } from "../services/statistics.service";
 
 export const getStudentQualificationStatistics = async (req: Request, res: Response) => {
@@ -106,4 +109,47 @@ export const getGroupTopicStatusStatistics = async (req: Request, res: Response)
     return res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
+export const getDefenseResultSummary = async (req: Request, res: Response) => {
+  try {
+    const semesterId = req.query.semesterId?.toString();
+    if (!semesterId) return res.status(400).json({ message: "semesterId is required" });
+
+    const stats = await getDefenseResultSummaryStatistics(semesterId);
+    return res.json(stats);
+  } catch (error) {
+    console.error("Error in getDefenseResultSummary:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const getDefenseResultByRound = async (req: Request, res: Response) => {
+  try {
+    const semesterId = req.query.semesterId?.toString();
+    if (!semesterId) return res.status(400).json({ message: "semesterId is required" });
+
+    const stats = await getDefenseResultByRoundStatistics(semesterId);
+    return res.json(stats);
+  } catch (error) {
+    console.error("Error in getDefenseResultByRound:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+export const getGroupCreationTypeStatistics = async (req: Request, res: Response) => {
+  try {
+    const semesterId = req.query.semesterId?.toString();
+    if (!semesterId) {
+      return res.status(400).json({ message: "semesterId is required" });
+    }
+
+    const stats = await getGroupCreationTypeStatisticsService(semesterId);
+    return res.json(stats);
+  } catch (error) {
+    console.error("Error in getGroupCreationTypeStatistics:", error);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 

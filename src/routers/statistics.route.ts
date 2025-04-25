@@ -7,6 +7,9 @@ import { getStudentQualificationStatistics ,
     getDefenseRoundStatistics,
     getStudentGroupStatusStatistics,
     getGroupTopicStatusStatistics,
+    getDefenseResultSummary,
+    getDefenseResultByRound,
+    getGroupCreationTypeStatistics,
 
 } from "../controllers/statistics.controller";
 import {  authenticateToken } from "../middleware/user.middleware";
@@ -34,5 +37,12 @@ router.get("/student-group-status",authenticateToken, getStudentGroupStatusStati
 
 //  Thống kê số nhóm đã có đề tài và chưa có đề tài
 router.get("/group-topic-status", authenticateToken, getGroupTopicStatusStatistics);
+
+//Tổng hợp tỷ lệ PASS / NOT_PASS toàn kỳ
+router.get("/defense-result-summary", authenticateToken, getDefenseResultSummary);
+//Tỷ lệ PASS / NOT_PASS theo từng vòng bảo vệ 
+router.get("/defense-result-by-round", authenticateToken, getDefenseResultByRound);
+//Số lượng nhóm tự tạo vs nhóm được hệ thống tự tạo
+router.get("/group-creation-type", authenticateToken, getGroupCreationTypeStatistics);
 
 export default router;
