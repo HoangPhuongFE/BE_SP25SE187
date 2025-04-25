@@ -89,6 +89,7 @@ export class SystemConfigService {
   async getAllConfigKeys(): Promise<{ key: string; defaultValue: number | string }[]> {
     return [
       { key: "MAX_GROUP_MEMBERS", defaultValue: 5 },
+      { key: "MIN_GROUP_MEMBERS", defaultValue: 4 }, 
       { key: "MAX_GROUP_MENTORS", defaultValue: 2 },
       { key: "MAX_GROUPS_PER_MENTOR", defaultValue: 4 },
       { key: "MAX_TOPICS_PER_COUNCIL_SCHEDULE", defaultValue: 4 },
@@ -110,6 +111,11 @@ export class SystemConfigService {
   async getMaxGroupMembers(): Promise<number> {
     return this.getSystemConfigValue("MAX_GROUP_MEMBERS", 5) as Promise<number>;
   }
+
+  async getMinGroupMembers(): Promise<number> {
+    return this.getSystemConfigValue("MIN_GROUP_MEMBERS", 4) as Promise<number>;
+  }
+  
 
   async getMaxGroupMentors(): Promise<number> {
     return this.getSystemConfigValue("MAX_GROUP_MENTORS", 2) as Promise<number>;
