@@ -1,4 +1,4 @@
-// src/AI/ai.interface.ts
+// src/ai/ai.interface.ts
 export interface AIValidationResult {
   isValid: boolean;
   message: string;
@@ -18,7 +18,13 @@ export interface AIConfig {
 }
 
 export interface AIProvider {
-  validateTopicName(nameVi: string, nameEn: string, nameProject: string): Promise<AIValidationResult>;
+  validateTopicName(
+    nameVi: string,
+    nameEn: string,
+    oldTopics: Array<{ topicCode: string; nameVi: string; nameEn: string; }>
+  ): Promise<AIValidationResult>;
+  
   validateTopic(topicName: string, description: string): Promise<AIValidationResult>;
+  
   train(trainingData: { topics: Array<{ nameVi: string; nameEn: string; nameProject: string; description: string; isValid: boolean; }> }): Promise<AIValidationResult>;
 }

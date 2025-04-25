@@ -157,7 +157,8 @@ export class TopicService {
       }
 
       const nameValidation = await this.aiService.validateTopicName(data.nameVi, data.nameEn, undefined, {
-        skipDatabaseCheck: true, // <--- CHỈ AI check ở bước này
+        skipDatabaseCheck: true,
+        semesterId: data.semesterId,
       });
       if (!nameValidation.isValid) {
         return {
@@ -367,7 +368,10 @@ export class TopicService {
         };
       }
 
-      const nameValidation = await this.aiService.validateTopicName(data.nameVi, data.nameEn, undefined, { skipDatabaseCheck: true });
+      const nameValidation = await this.aiService.validateTopicName(data.nameVi, data.nameEn, undefined, {
+        skipDatabaseCheck: true,
+        semesterId: data.semesterId,
+      });
       if (!nameValidation.isValid) {
         return {
           success: false,
@@ -446,7 +450,10 @@ export class TopicService {
         include: { majors: true },
       });
 
-      await this.aiService.validateTopicName(data.nameVi, data.nameEn, newTopic.id, { skipDatabaseCheck: true });
+      await this.aiService.validateTopicName(data.nameVi, data.nameEn, newTopic.id, {
+        skipDatabaseCheck: true,
+        semesterId: ''
+      });
 
       let draftDocument;
       if (data.draftFileUrl) {

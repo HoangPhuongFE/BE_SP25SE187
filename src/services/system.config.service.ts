@@ -102,7 +102,8 @@ export class SystemConfigService {
       { key: "MAX_DEFENSE_REVIEWERS", defaultValue: 3 },
       { key: "MAX_REVIEW_MEMBERS", defaultValue: 2 },
       { key: "MAX_COUNCIL_MEMBERS", defaultValue: 2 },
-      { key: "MAX_COUNCILS_PER_SEMESTER", defaultValue: 5 }
+      { key: "MAX_COUNCILS_PER_SEMESTER", defaultValue: 5 },
+      { key: "AI_TOPIC_FILTER_COUNT", defaultValue: 3 },
     ];
   }
 
@@ -165,4 +166,9 @@ export class SystemConfigService {
   async getMaxCouncilsPerSemester(): Promise<number> {
     return this.getSystemConfigValue("MAX_COUNCILS_PER_SEMESTER", 5) as Promise<number>;
   }
+
+  async getAITopicFilterCount(): Promise<number> {
+    return this.getSystemConfigValue("AI_TOPIC_FILTER_COUNT", 3) as Promise<number>;
+  }
+
 }

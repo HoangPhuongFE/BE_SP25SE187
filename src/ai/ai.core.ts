@@ -28,9 +28,14 @@ export class CoreAIService {
     return this.provider;
   }
 
-  public async validateTopicName(nameVi: string, nameEn: string, undefined: undefined, p0: { skipDatabaseCheck: boolean; }, _nameProject: string): Promise<AIValidationResult> {
+  public async validateTopicName(
+    nameVi: string,
+    nameEn: string,
+    oldTopics: Array<{ topicCode: string; nameVi: string; nameEn: string }>
+  ): Promise<AIValidationResult> {
     console.log('CoreAIService config:', this.config);
     console.log('CoreAIService provider:', this.provider ? 'Có provider' : 'Không có provider');
+
     if (!this.config.enabled || !this.provider) {
       console.log('AI bị tắt, trả về kết quả mặc định');
       return {
@@ -39,7 +44,8 @@ export class CoreAIService {
         confidence: 1.0,
       };
     }
-    return this.provider.validateTopicName(nameVi, nameEn, '');
+
+    return this.provider.validateTopicName(nameVi, nameEn, oldTopics);
   }
 
   public updateConfig(newConfig: Partial<AIConfig>) {
