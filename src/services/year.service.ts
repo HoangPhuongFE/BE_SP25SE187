@@ -8,7 +8,7 @@ export class YearService {
   async getAllYears(page: number, pageSize: number) {
     return paginate(prisma.year, { page, pageSize }, { orderBy: { year: "asc" } });
   }
-
+//
   // Tạo mới Year
   async createYear(year: number) {
     return prisma.year.create({
