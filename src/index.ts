@@ -35,6 +35,10 @@ import businessTopicRouter from './routers/business.topic.router';
 import importBlock3Router from './routers/importBlock3.router';
 import thesisAssignmentRouter from './routers/thesisAssignment.router'; 
 import staticRoutes from "./routers/statistics.route";
+import interMajorConfigRouter from './routers/interMajorConfig.router';
+import interMajorGroupRouter from './routers/interMajorGroup.router';
+import interMajorTopicRouter from './routers/interMajorTopic.router';
+
 
 import { errorHandler } from './middleware/errorHandler';
 
@@ -94,6 +98,9 @@ app.use('/api/business/topics', businessTopicRouter);
 app.use('/api', importBlock3Router);
 app.use('/api', thesisAssignmentRouter); 
 app.use('/api/statistics', staticRoutes); 
+app.use('/api', interMajorConfigRouter);
+app.use('/api', interMajorGroupRouter);
+app.use('/api', interMajorTopicRouter);
 
 // Start the server
 const PORT = process.env.PORT || 3000;
