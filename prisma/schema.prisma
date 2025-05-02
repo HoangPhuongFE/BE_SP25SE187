@@ -137,7 +137,7 @@ model Semester {
   SubmissionPeriod SubmissionPeriod[]
   userRoles        UserRole[]         @relation(name: "UserRoleToSemester")
   decisions        Decision[]
-  majorPairConfigs MajorPairConfig[] 
+  majorPairConfigs MajorPairConfig[]
   isDeleted        Boolean            @default(false)
 
   @@map("semesters")
@@ -170,16 +170,17 @@ model SemesterStudent {
 }
 
 model Major {
-  id              String            @id @default(uuid())
-  name            String            @unique
-  createdAt       DateTime          @default(now()) @map("created_at")
-  updatedAt       DateTime          @updatedAt @map("updated_at")
-  students        Student[]
-  specializations Specialization[]
-  topics          Topic[]           @relation("MajorTopics")
-  isDeleted       Boolean           @default(false)
-  pairedAsFirst   MajorPairConfig[] @relation("MajorPairFirst")
-  pairedAsSecond  MajorPairConfig[] @relation("MajorPairSecond")
+  id               String            @id @default(uuid())
+  name             String            @unique
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  students         Student[]
+  specializations  Specialization[]
+  topics           Topic[]           @relation("MajorTopics")
+  defenseSchedules DefenseSchedule[] @relation("DefenseScheduleToMajor")
+  isDeleted        Boolean           @default(false)
+  pairedAsFirst    MajorPairConfig[] @relation("MajorPairFirst")
+  pairedAsSecond   MajorPairConfig[] @relation("MajorPairSecond")
 
   @@map("majors")
 }
@@ -336,8 +337,8 @@ model Topic {
   isInterMajor       Boolean             @default(false)
   majorPairConfigId  String?             @map("major_pair_config_id")
   majorPairConfig    MajorPairConfig?    @relation("TopicMajorPair", fields: [majorPairConfigId], references: [id])
-  @@map("topics")
 
+  @@map("topics")
 }
 
 model TopicAssignment {
@@ -389,7 +390,6 @@ model Group {
 
   @@unique([semesterId, groupCode], name: "semesterId_groupCode")
   @@map("groups")
-
 }
 
 model GroupMentor {
@@ -694,6 +694,8 @@ model DefenseSchedule {
   defenseRound  Int                   @map("defense_round")
   status        String
   notes         String?               @db.Text
+  majorId       String?                @map("major_id")
+  major         Major?                 @relation("DefenseScheduleToMajor", fields: [majorId], references: [id]) 
   createdAt     DateTime              @default(now()) @map("created_at")
   council       Council               @relation(fields: [councilId], references: [id])
   group         Group                 @relation(fields: [groupId], references: [id])
@@ -772,20 +774,21 @@ model SubmissionPeriod {
 }
 
 model MajorPairConfig {
-  id             String    @id @default(uuid())
-  name           String    @map("name")             // Tên config, ví dụ "SE ↔ AI"
-  semesterId     String    @map("semester_id")      
-  firstMajorId   String    @map("first_major_id")
-  secondMajorId  String    @map("second_major_id")
-  isActive       Boolean   @default(true)
+  id            String  @id @default(uuid())
+  name          String  @map("name") // Tên config, ví dụ "SE ↔ AI"
+  semesterId    String  @map("semester_id")
+  firstMajorId  String  @map("first_major_id")
+  secondMajorId String  @map("second_major_id")
+  isActive      Boolean @default(true)
 
-  semester       Semester  @relation(fields: [semesterId], references: [id])
-  firstMajor     Major     @relation("MajorPairFirst",  fields: [firstMajorId],  references: [id])
-  secondMajor    Major     @relation("MajorPairSecond", fields: [secondMajorId], references: [id])
+  semester    Semester @relation(fields: [semesterId], references: [id])
+  firstMajor  Major    @relation("MajorPairFirst", fields: [firstMajorId], references: [id])
+  secondMajor Major    @relation("MajorPairSecond", fields: [secondMajorId], references: [id])
 
-  topics         Topic[]   @relation("TopicMajorPair")
-  groups         Group[]   @relation("GroupMajorPair")
-  isDeleted   Boolean  @default(false) 
+  topics    Topic[] @relation("TopicMajorPair")
+  groups    Group[] @relation("GroupMajorPair")
+  isDeleted Boolean @default(false)
+
   @@unique([semesterId, firstMajorId, secondMajorId], name: "uk_major_pair_semester")
   @@map("major_pair_configs")
 }

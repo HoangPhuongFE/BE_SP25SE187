@@ -206,8 +206,8 @@ export class InterMajorTopicService {
     majorPairConfigId: string;
     submissionPeriodId: string;
     createdBy: string;
-    mainMentorEmail?: string;
-    subMentorEmail?: string;
+    mainMentorId?: string;
+    subMentorId?: string;
     groupId?: string;
     groupCode?: string;
     isBusiness?: boolean;
@@ -265,15 +265,15 @@ export class InterMajorTopicService {
       const topicCode = `${majorCode1}-${majorCode2}-${semesterCode}-${(topicCount + 1).toString().padStart(3, '0')}`;
 
       let mainMentorId: string | null = null;
-      if (data.mainMentorEmail) {
-        const mentor = await prisma.user.findUnique({ where: { email: data.mainMentorEmail }, select: { id: true } });
+      if (data.mainMentorId) {
+        const mentor = await prisma.user.findUnique({ where: { email: data.mainMentorId }, select: { id: true } });
         if (!mentor) return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Mentor chính không hợp lệ!' };
         mainMentorId = mentor.id;
       }
 
       let subMentorId: string | null = null;
-      if (data.subMentorEmail) {
-        const mentor = await prisma.user.findUnique({ where: { email: data.subMentorEmail }, select: { id: true } });
+      if (data.subMentorId) {
+        const mentor = await prisma.user.findUnique({ where: { email: data.subMentorId }, select: { id: true } });
         if (!mentor) return { success: false, status: HTTP_STATUS.NOT_FOUND, message: 'Mentor phụ không hợp lệ!' };
         subMentorId = mentor.id;
       }

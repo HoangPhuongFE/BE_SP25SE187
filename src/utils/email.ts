@@ -14,21 +14,48 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// export const sendEmail = async (
+//   recipientEmail: string,
+//   subject: string,
+//   content: string,
+//   attachment?: string
+// ) => {
+//   const mailOptions: nodemailer.SendMailOptions = {
+//     from: process.env.EMAIL_USER,
+//     to: recipientEmail,
+//     subject,
+//     text: content,
+//   };
+//   if (attachment) {
+//     mailOptions.attachments = [{ path: attachment }];
+//   }
+//   try {
+//     await transporter.sendMail(mailOptions);
+//     console.log(`Email sent to ${recipientEmail}`);
+//     return true;
+//   } catch (error) {
+//     console.error(`Error sending email to ${recipientEmail}:`, error);
+//     throw error;
+//   }
+// };
+
 export const sendEmail = async (
   recipientEmail: string,
   subject: string,
-  content: string,
+  content: string, // HTML content
   attachment?: string
 ) => {
   const mailOptions: nodemailer.SendMailOptions = {
     from: process.env.EMAIL_USER,
     to: recipientEmail,
     subject,
-    text: content,
+    html: content, //  Đây là dòng quan trọng cần sửa
   };
+
   if (attachment) {
     mailOptions.attachments = [{ path: attachment }];
   }
+
   try {
     await transporter.sendMail(mailOptions);
     console.log(`Email sent to ${recipientEmail}`);
