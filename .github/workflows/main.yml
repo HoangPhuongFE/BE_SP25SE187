@@ -38,7 +38,7 @@ jobs:
           password: ${{ secrets.PASSWORD_PRODUCTION }}
           port: ${{ secrets.PORT_PRODUCTION }}
           script: |
-            echo '${{ secrets.ENV_PROD }}' > .env
+            printf "%s\n" "${{ secrets.ENV_PROD }}" > .env
             docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
             docker pull hoangleuleu/project-management-system-mysql:v1
             docker rm -f project_management_container || true
