@@ -11,8 +11,53 @@ export interface InterMajorConfigDTO {
 }
 
 export class InterMajorConfigService {
+  // async createConfig(data: InterMajorConfigDTO) {
+  //   const { name, firstMajorId, secondMajorId, semesterId } = data;
+  //   if (!firstMajorId || !secondMajorId || !semesterId) {
+  //     return {
+  //       success: false,
+  //       status: HTTP_STATUS.BAD_REQUEST,
+  //       message: 'Thiếu firstMajorId, secondMajorId hoặc semesterId!',
+  //     };
+  //   }
+  //   if (firstMajorId === secondMajorId) {
+  //     return {
+  //       success: false,
+  //       status: HTTP_STATUS.BAD_REQUEST,
+  //       message: 'Hai ngành không được trùng nhau!',
+  //     };
+  //   }
+  //   // Check duplicate for this semester
+  //   const exists = await prisma.majorPairConfig.findFirst({
+  //     where: {
+  //       name,
+  //       firstMajorId,
+  //       secondMajorId,
+  //       semesterId,
+  //       isActive: true,
+  //     },
+  //   });
+  //   if (exists) {
+  //     return {
+  //       success: false,
+  //       status: HTTP_STATUS.CONFLICT,
+  //       message: 'Cấu hình liên ngành đã tồn tại cho học kỳ này!',
+  //     };
+  //   }
+
+  //   const config = await prisma.majorPairConfig.create({
+  //     data: { name, firstMajorId, secondMajorId, semesterId },
+  //   });
+  //   return {
+  //     success: true,
+  //     status: HTTP_STATUS.CREATED,
+  //     message: 'Tạo cấu hình liên ngành thành công!',
+  //     data: config,
+  //   };
+  // }
   async createConfig(data: InterMajorConfigDTO) {
     const { name, firstMajorId, secondMajorId, semesterId } = data;
+  
     if (!firstMajorId || !secondMajorId || !semesterId) {
       return {
         success: false,
@@ -20,6 +65,7 @@ export class InterMajorConfigService {
         message: 'Thiếu firstMajorId, secondMajorId hoặc semesterId!',
       };
     }
+  
     if (firstMajorId === secondMajorId) {
       return {
         success: false,
@@ -27,16 +73,17 @@ export class InterMajorConfigService {
         message: 'Hai ngành không được trùng nhau!',
       };
     }
-    // Check duplicate for this semester
+  
+    // ✅ Kiểm tra trùng theo ràng buộc duy nhất
     const exists = await prisma.majorPairConfig.findFirst({
       where: {
-        name,
+        semesterId,
         firstMajorId,
         secondMajorId,
-        semesterId,
-        isActive: true,
+        isDeleted: false,
       },
     });
+  
     if (exists) {
       return {
         success: false,
@@ -44,18 +91,29 @@ export class InterMajorConfigService {
         message: 'Cấu hình liên ngành đã tồn tại cho học kỳ này!',
       };
     }
-
-    const config = await prisma.majorPairConfig.create({
-      data: { name, firstMajorId, secondMajorId, semesterId },
-    });
-    return {
-      success: true,
-      status: HTTP_STATUS.CREATED,
-      message: 'Tạo cấu hình liên ngành thành công!',
-      data: config,
-    };
+  
+    try {
+      const config = await prisma.majorPairConfig.create({
+        data: { name, firstMajorId, secondMajorId, semesterId },
+      });
+  
+      return {
+        success: true,
+        status: HTTP_STATUS.CREATED,
+        message: 'Tạo cấu hình liên ngành thành công!',
+        data: config,
+      };
+    } catch (error) {
+      console.error('Lỗi khi tạo cấu hình liên ngành:', error);
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: 'Đã xảy ra lỗi khi tạo cấu hình liên ngành!',
+      };
+    }
   }
-
+  
+  
   async getAllConfigs(semesterId: string) {
     if (!semesterId) {
       return {
