@@ -1,4 +1,4 @@
-name: Deploy to VPS with MySQL 
+name: Deploy to VPS with MySQL
 
 on:
   push:
@@ -38,14 +38,13 @@ jobs:
           password: ${{ secrets.PASSWORD_PRODUCTION }}
           port: ${{ secrets.PORT_PRODUCTION }}
           script: |
-            printf "%s\n" "${{ secrets.ENV_PROD }}" > .env
+            echo "${{ secrets.ENV_PROD }}" > .env
             docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
             docker pull hoangleuleu/project-management-system-mysql:v1
             docker rm -f project_management_container || true
             docker run -d -p 6969:3000 \
               --name project_management_container \
               --env-file .env \
-              --add-host=host.docker.internal:host-gateway \
               hoangleuleu/project-management-system-mysql:v1
             docker image prune -f
             docker ps
