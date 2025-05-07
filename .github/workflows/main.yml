@@ -45,6 +45,8 @@ jobs:
             docker rm -f project_management_container || true
             docker run -d -p 6969:3000 \
               --name project_management_container \
+              --env-file .env \
+              --add-host=host.docker.internal:host-gateway \
               hoangleuleu/project-management-system-mysql:v1
             docker image prune -f
             docker ps
