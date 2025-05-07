@@ -1,4 +1,5 @@
 name: Deploy to VPS with MySQL
+
 on:
   push:
     branches:
@@ -11,9 +12,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Create .env file
-        run: echo "${{ secrets.ENV_PROD }}" > .env
 
       - name: Build Docker image
         run: docker build -t hoangleuleu/project-management-system-mysql:v1 .
@@ -40,6 +38,7 @@ jobs:
           password: ${{ secrets.PASSWORD_PRODUCTION }}
           port: ${{ secrets.PORT_PRODUCTION }}
           script: |
+            echo '${{ secrets.ENV_PROD }}' > .env
             docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
             docker pull hoangleuleu/project-management-system-mysql:v1
             docker rm -f project_management_container || true
