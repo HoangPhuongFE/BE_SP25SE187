@@ -91,7 +91,7 @@ async function createDefaultUsers() {
 //hoangleuleu  @github.com
 // Tạo người dùng mặc định cho sinh viên và giảng viên
 // Tạo người dùng mặc định cho sinh viên và giảng viên
-
+  
 
 async function main() {
   console.log('Seeding database...');
