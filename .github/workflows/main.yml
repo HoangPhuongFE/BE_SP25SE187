@@ -1,4 +1,4 @@
-name: Deploy to VPS with MySQL
+name: Deploy to VPS with MySQL 
 
 on:
   push:
