@@ -88,7 +88,8 @@ async function createDefaultUsers() {
   }
 }
 
-//hoangleuleu 
+//hoangleuleu  @github.com
+// Tạo người dùng mặc định cho sinh viên và giảng viên
 
 
 
