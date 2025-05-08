@@ -15,21 +15,21 @@ router.post(
 router.get(
   '/inter-major-configs',
   authenticateToken,
-  checkRole(['academic_officer', 'admin']),
+  checkRole(['academic_officer', 'admin','student','lecturer',"examination_officer", "graduation_thesis_manager"]),
   ctrl.getAllConfigs.bind(ctrl)
 );
 
 router.get(
   '/inter-major-configs/:id',
   authenticateToken,
-  checkRole(['academic_officer', 'admin']),
+  checkRole(['academic_officer', 'admin','student','lecturer',"examination_officer", "graduation_thesis_manager"]),
   ctrl.getConfigById.bind(ctrl)
 );
 
 router.put(
   '/inter-major-configs/:id',
   authenticateToken,
-  checkRole(['academic_officer', 'admin']),
+  checkRole(['academic_officer', 'admin',"examination_officer", "graduation_thesis_manager"]),
   ctrl.updateConfig.bind(ctrl)
 );
 
