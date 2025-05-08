@@ -10,8 +10,7 @@ export class InterMajorConfigController {
   }
 
   async getAllConfigs(req: Request, res: Response) {
-    const { semesterId } = req.query;
-    const result = await interMajorConfigService.getAllConfigs(String(semesterId));
+    const result = await interMajorConfigService.getAllConfigs();
     res.status(result.status).json({ message: result.message, data: result.data });
   }
 

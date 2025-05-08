@@ -135,19 +135,11 @@ export class InterMajorConfigService {
     }
   }
   
-  async getAllConfigs(semesterId: string) {
-    if (!semesterId) {
-      return {
-        success: false,
-        status: HTTP_STATUS.BAD_REQUEST,
-        message: 'Thiếu semesterId!',
-      };
-    }
+  async getAllConfigs() {
     const configs = await prisma.majorPairConfig.findMany({
       where: {
-        semesterId,
         isActive: true,
-        isDeleted: false, 
+        isDeleted: false,
       },
       include: {
         firstMajor: { select: { id: true, name: true } },
