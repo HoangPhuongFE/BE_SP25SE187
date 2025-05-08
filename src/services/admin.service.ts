@@ -12,7 +12,7 @@ interface CreateUserDTO {
   roles: string[];
   semesterId?: string; // Thêm semesterId tùy chọn
 }
-
+// Thêm interface cho UpdateRolesDTO
 interface UpdateRolesDTO {
   userId: string;
   roles: string[];
