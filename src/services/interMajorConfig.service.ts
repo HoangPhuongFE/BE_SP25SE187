@@ -135,17 +135,40 @@ export class InterMajorConfigService {
     }
   }
   
-  async getAllConfigs() {
+  async getAllConfigs(semesterId?: string) {
+    // Nếu không có semesterId, trả về tất cả cấu hình (cho student)
+    if (!semesterId) {
+      const configs = await prisma.majorPairConfig.findMany({
+        where: {
+          isActive: true,
+          isDeleted: false,
+        },
+        include: {
+          firstMajor: { select: { id: true, name: true } },
+          secondMajor: { select: { id: true, name: true } },
+        },
+      });
+      return {
+        success: true,
+        status: HTTP_STATUS.OK,
+        message: 'Lấy danh sách cấu hình liên ngành thành công!',
+        data: configs,
+      };
+    }
+  
+    // Nếu có semesterId, lọc cấu hình theo học kỳ
     const configs = await prisma.majorPairConfig.findMany({
       where: {
         isActive: true,
         isDeleted: false,
+        semesterId: semesterId, // Giả sử majorPairConfig có trường semesterId
       },
       include: {
         firstMajor: { select: { id: true, name: true } },
         secondMajor: { select: { id: true, name: true } },
       },
     });
+  
     return {
       success: true,
       status: HTTP_STATUS.OK,

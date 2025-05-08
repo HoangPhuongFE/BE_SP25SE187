@@ -15,7 +15,7 @@ router.post(
 router.get(
   '/inter-major-configs',
   authenticateToken,
-  checkRole(['academic_officer', 'admin','student','lecturer',"examination_officer", "graduation_thesis_manager"]),
+  checkRole(['academic_officer', 'admin','student','lecturer',"examination_officer", "graduation_thesis_manager"], false),
   ctrl.getAllConfigs.bind(ctrl)
 );
 
