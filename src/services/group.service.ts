@@ -349,8 +349,8 @@ export class GroupService {
 
             // 6️ **Gửi email lời mời**
             if (invitedStudent.user?.email) {
-              //  const invitationLink = `http://103.185.184.198:6969/api/groups/accept-invitation/${invitation.id}`;
-                const invitationLink = `http://localhost:3000/api/groups/accept-invitation/${invitation.id}`;
+               const invitationLink = `http://103.185.184.198:6969/api/groups/accept-invitation/${invitation.id}`;
+               // const invitationLink = `http://localhost:3000/api/groups/accept-invitation/${invitation.id}`;
 
                 const emailContent = `
                 <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
