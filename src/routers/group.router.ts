@@ -16,7 +16,7 @@ router.post(
 router.post(
   "/invite",
   authenticateToken,
-  checkRole(["student", "admin","leader", "mentor"]),
+  checkRole(["student", "admin","leader", "mentor"],false),
   groupController.inviteMember.bind(groupController)
 );
 
