@@ -85,7 +85,7 @@ export class YearService {
           where: { id },
           data: { isDeleted: true },
         });
-  
+          // Ghi log xóa Year
         // 2. Xóa mềm Semester
         console.log(`Marking ${semesterIds.length} Semesters as deleted`);
         updatedCounts.semesters = await tx.semester
