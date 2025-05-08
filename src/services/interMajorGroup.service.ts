@@ -141,6 +141,149 @@ export class InterMajorGroupService {
     }
   }
 
+  async createInterMajorGroupByAcademicOfficer(input: {
+    leaderEmail: string;
+    majorPairConfigId: string;
+    createdBy: string;
+  }) {
+    const { leaderEmail, majorPairConfigId, createdBy } = input;
+  
+    try {
+      // 1. Validate input
+      if (!leaderEmail || !majorPairConfigId || !createdBy) {
+        return {
+          success: false,
+          status: 400,
+          message: "Thiếu thông tin leaderEmail, majorPairConfigId hoặc người tạo.",
+        };
+      }
+  
+      // 2. Kiểm tra majorPairConfig
+      const config = await prisma.majorPairConfig.findUnique({
+        where: { id: majorPairConfigId },
+        include: { semester: true },
+      });
+  
+      if (!config || !config.isActive || config.isDeleted) {
+        return {
+          success: false,
+          status: 404,
+          message: "Cấu hình liên ngành không hợp lệ hoặc không tồn tại.",
+        };
+      }
+  
+      const semesterId = config.semesterId;
+      const semester = config.semester;
+  
+      // 3. Tìm trưởng nhóm theo email
+      const leader = await prisma.student.findFirst({
+        where: { user: { email: leaderEmail } },
+        include: { user: true, major: true },
+      });
+  
+      if (!leader || !leader.major) {
+        return {
+          success: false,
+          status: 404,
+          message: "Trưởng nhóm không tồn tại hoặc chưa gán chuyên ngành.",
+        };
+      }
+  
+      // 4. Kiểm tra sinh viên thuộc học kỳ
+      const studentSemester = await prisma.semesterStudent.findFirst({
+        where: { studentId: leader.id, semesterId },
+      });
+  
+      if (!studentSemester) {
+        return {
+          success: false,
+          status: 400,
+          message: "Sinh viên không thuộc học kỳ liên ngành.",
+        };
+      }
+  
+      if (studentSemester.qualificationStatus.trim().toLowerCase() !== "qualified") {
+        return {
+          success: false,
+          status: 400,
+          message: `Sinh viên không đủ điều kiện. Trạng thái: ${studentSemester.qualificationStatus}`,
+        };
+      }
+  
+      // 5. Kiểm tra đã thuộc nhóm chưa
+      const existingMember = await prisma.groupMember.findFirst({
+        where: { studentId: leader.id, group: { semesterId } },
+      });
+  
+      if (existingMember) {
+        return {
+          success: false,
+          status: 400,
+          message: "Sinh viên đã là thành viên của một nhóm trong học kỳ này.",
+        };
+      }
+  
+      // 6. Sinh mã nhóm
+      const groupCode = await this.generateUniqueGroupCode("IM", semesterId, new Date(semester.startDate));
+      const maxMembers = await systemConfigService.getMaxGroupMembers();
+      if (maxMembers <= 0) {
+        return { success: false, status: 500, message: "Giá trị cấu hình số lượng thành viên không hợp lệ." };
+      }
+  
+      const leaderRole = await prisma.role.findUnique({ where: { name: "leader" } });
+      if (!leaderRole) {
+        return { success: false, status: 500, message: "Vai trò leader không tồn tại." };
+      }
+  
+      // 7. Tạo nhóm liên ngành
+      const newGroup = await prisma.group.create({
+        data: {
+          groupCode,
+          semesterId,
+          createdBy,
+          status: "ACTIVE",
+          maxMembers,
+          isMultiMajor: true,
+          majorPairConfigId,
+          members: {
+            create: [
+              {
+                studentId: leader.id,
+                roleId: leaderRole.id,
+                status: "ACTIVE",
+                userId: leader.userId,
+              },
+            ],
+          },
+        },
+        include: {
+          members: { include: { role: true } },
+        },
+      });
+  
+      return {
+        success: true,
+        status: 201,
+        message: "Nhóm liên ngành đã được tạo thành công.",
+        data: {
+          ...newGroup,
+          members: newGroup.members.map((m) => ({
+            studentId: m.studentId,
+            role: m.role.name,
+            status: m.status,
+          })),
+        },
+      };
+    } catch (error) {
+      console.error("Lỗi khi tạo nhóm liên ngành:", error);
+      return {
+        success: false,
+        status: 500,
+        message: "Lỗi hệ thống khi tạo nhóm liên ngành.",
+      };
+    }
+  }
+  
   private async generateUniqueGroupCode(prefix: string, semesterId: string, startDate: Date) {
     const year = startDate.getFullYear().toString().slice(-2);
     let count = 1;

@@ -168,6 +168,7 @@ router.get(
 router.post(
   "/create-group-by-academic",
   authenticateToken, // Xác thực token
+  checkRole(["academic_officer"],false),
   groupController.createGroupByAcademicOfficer.bind(groupController)
 );
 
