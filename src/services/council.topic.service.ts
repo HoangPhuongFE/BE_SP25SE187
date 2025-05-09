@@ -33,12 +33,12 @@ export class CouncilTopicService {
       if (creatorRoles.includes("academic_officer") || creatorRoles.includes("admin")) {
         return { success: false, status: HTTP_STATUS.FORBIDDEN, message: "Academic officer và admin không được phép tạo hội đồng." };
       }
-  
+
       const semester = await prisma.semester.findUnique({ where: { id: data.semesterId } });
       if (!semester) {
         return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Học kỳ không tồn tại!" };
       }
-  
+
       if (data.submissionPeriodId) {
         const submissionPeriod = await prisma.submissionPeriod.findUnique({
           where: { id: data.submissionPeriodId },
@@ -47,7 +47,7 @@ export class CouncilTopicService {
           return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Đợt xét duyệt không tồn tại!" };
         }
       }
-  
+
       if (data.relatedSubmissionPeriodId) {
         const relatedSubmissionPeriod = await prisma.submissionPeriod.findUnique({
           where: { id: data.relatedSubmissionPeriodId },
@@ -59,27 +59,27 @@ export class CouncilTopicService {
           return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: "Đợt xét duyệt liên quan phải là loại TOPIC!" };
         }
       }
-  
+
       if (data.startDate >= data.endDate) {
         return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc." };
       }
-  
+
       const now = new Date();
       let computedStatus = data.status || "ACTIVE";
       if (now < data.startDate) computedStatus = "UPCOMING";
       else if (now >= data.startDate && now <= data.endDate) computedStatus = "ACTIVE";
       else computedStatus = "COMPLETE";
-  
+
       const prefix = `${(data.type || "CHECK-TOPIC").toUpperCase()}-${data.round || 1}-${semester.code}`;
       const count = await prisma.council.count({ where: { code: { startsWith: prefix } } });
       const sequenceNumber = (count + 1).toString().padStart(3, "0");
       const councilCode = `${prefix}-${sequenceNumber}`;
-  
+
       const existingCouncil = await prisma.council.findUnique({ where: { code: councilCode } });
       if (existingCouncil) {
         return { success: false, status: HTTP_STATUS.CONFLICT, message: "Mã hội đồng đã tồn tại. Vui lòng kiểm tra lại thông tin hoặc thay đổi round/type để tạo mã mới." };
       }
-  
+
       const newCouncil = await prisma.council.create({
         data: {
           name: data.name,
@@ -95,7 +95,7 @@ export class CouncilTopicService {
           code: councilCode,
         },
       });
-  
+
       return { success: true, status: HTTP_STATUS.CREATED, message: "Tạo hội đồng thành công!", data: newCouncil };
     } catch (error: any) {
       console.error("Lỗi khi tạo hội đồng:", error);
@@ -125,7 +125,7 @@ export class CouncilTopicService {
         else computedStatus = "COMPLETE";
         updateData.status = computedStatus;
       }
-  
+
       if (data.relatedSubmissionPeriodId) {
         const relatedSubmissionPeriod = await prisma.submissionPeriod.findUnique({
           where: { id: data.relatedSubmissionPeriodId },
@@ -138,12 +138,12 @@ export class CouncilTopicService {
         }
         updateData.relatedSubmissionPeriodId = data.relatedSubmissionPeriodId;
       }
-  
+
       const updatedCouncil = await prisma.council.update({
         where: { id: councilId },
         data: updateData,
       });
-  
+
       return { success: true, status: HTTP_STATUS.OK, message: COUNCIL_MESSAGE.COUNCIL_UPDATED, data: updatedCouncil };
     } catch (error) {
       console.error("Lỗi khi cập nhật hội đồng topic:", error);
@@ -474,8 +474,32 @@ export class CouncilTopicService {
       }
 
       const councilMember = await prisma.councilMember.findFirst({
-        where: { userId, council: { type: 'CHECK-TOPIC', isDeleted: false }, isDeleted: false },
+        where: {
+          userId,
+          council: { type: 'CHECK-TOPIC', isDeleted: false },
+          isDeleted: false,
+        },
       });
+
+      // Nếu không phải hội đồng → kiểm tra vai trò
+      if (!councilMember) {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          include: { roles: { include: { role: true } } },
+        });
+
+        const userRoles = user?.roles.map(r => r.role.name.toLowerCase()) || [];
+        const isAuthorizedManager = userRoles.includes("examination_officer") || userRoles.includes("graduation_thesis_manager");
+
+        if (!isAuthorizedManager) {
+          return {
+            success: false,
+            status: HTTP_STATUS.FORBIDDEN,
+            message: 'Bạn không phải là thành viên của bất kỳ hội đồng CHECK-TOPIC nào đang hoạt động!',
+          };
+        }
+      }
+
 
       if (!councilMember) {
         return { success: false, status: HTTP_STATUS.FORBIDDEN, message: 'Bạn không phải là thành viên của bất kỳ hội đồng CHECK-TOPIC nào đang hoạt động!' };
