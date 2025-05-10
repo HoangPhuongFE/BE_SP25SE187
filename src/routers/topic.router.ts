@@ -112,7 +112,7 @@ router.get(
 router.put(
   '/:topicId/delete', // Thay đổi từ DELETE sang PUT để phù hợp với xóa mềm
   authenticateToken,
-  checkRole(['admin', 'graduation_thesis_manager', 'academic_officer', 'lecturer']),
+  checkRole(['admin', 'graduation_thesis_manager', 'academic_officer', 'lecturer'],false),
   topicController.deleteTopic.bind(topicController)
 );
 

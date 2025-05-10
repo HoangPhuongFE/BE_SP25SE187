@@ -11,8 +11,11 @@ export class TopicController {
   constructor() {
     this.topicService = new TopicService(); // Khởi tạo TopicService
   }
-  async createTopic(
-    req: Request<any, any, {
+  async  createTopic(
+  req: Request<
+    any,
+    any,
+    {
       nameVi: string;
       nameEn: string;
       description: string;
@@ -27,75 +30,84 @@ export class TopicController {
       groupId?: string;
       groupCode?: string;
       draftFileUrl?: string;
-      submissionPeriodId: string; // Bắt buộc, không tùy chọn
-    }> & { user?: { userId: string } },
-    res: Response
-  ) {
-    try {
-      const createdBy = req.user?.userId;
-      if (!createdBy) {
-        return res.status(HTTP_STATUS.UNAUTHORIZED).json({
-          success: false,
-          message: 'Không xác định được người dùng!',
-          status: HTTP_STATUS.UNAUTHORIZED,
-        });
-      }
-
-      const {
-        nameVi,
-        nameEn,
-        description,
-        semesterId,
-        majorId,
-        isBusiness,
-        businessPartner,
-        source,
-        subSupervisor,
-        subSupervisorEmail,
-        name,
-        groupId,
-        groupCode,
-        draftFileUrl,
-        submissionPeriodId,
-      } = req.body;
-
-      // Kiểm tra các trường bắt buộc
-      if (!nameVi || !nameEn || !description || !semesterId || !majorId || !submissionPeriodId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-          success: false,
-          message: 'Thiếu thông tin bắt buộc: nameVi, nameEn, description, semesterId, majorId, hoặc submissionPeriodId!',
-          status: HTTP_STATUS.BAD_REQUEST,
-        });
-      }
-
-      const result = await topicService.createTopic({
-        nameVi,
-        nameEn,
-        description,
-        semesterId,
-        majorId,
-        isBusiness: isBusiness === 'true' || isBusiness === true,
-        businessPartner,
-        source,
-        subSupervisor,
-        subSupervisorEmail,
-        name,
-        createdBy,
-        draftFileUrl,
-        groupId,
-        groupCode,
-        submissionPeriodId,
-      });
-
-      return res.status(result.status).json(result);
-    } catch (error) {
-      console.error('Lỗi trong createTopic:', error);
-      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      submissionPeriodId: string;
+    }
+  > & { user?: { userId: string } },
+  res: Response
+) {
+  try {
+    const createdBy = req.user?.userId;
+    if (!createdBy) {
+      return res.status(HTTP_STATUS.UNAUTHORIZED).json({
         success: false,
-        message: 'Lỗi hệ thống khi tạo đề tài!',
+        message: 'Không xác định được người dùng!',
+        status: HTTP_STATUS.UNAUTHORIZED,
       });
     }
+
+    const {
+      nameVi,
+      nameEn,
+      description,
+      semesterId,
+      majorId,
+      isBusiness,
+      businessPartner,
+      source,
+      subSupervisor,
+      subSupervisorEmail,
+      name,
+      groupId,
+      groupCode,
+      draftFileUrl,
+      submissionPeriodId,
+    } = req.body;
+
+    // Kiểm tra các trường bắt buộc
+    const missingFields = [];
+    if (!nameVi) missingFields.push('nameVi');
+    if (!nameEn) missingFields.push('nameEn');
+    if (!description) missingFields.push('description');
+    if (!semesterId) missingFields.push('semesterId');
+    if (!majorId) missingFields.push('majorId');
+    if (!submissionPeriodId) missingFields.push('submissionPeriodId');
+
+    if (missingFields.length > 0) {
+      return res.status(HTTP_STATUS.BAD_REQUEST).json({
+        success: false,
+        message: `Thiếu các trường bắt buộc: ${missingFields.join(', ')}!`,
+        status: HTTP_STATUS.BAD_REQUEST,
+      });
+    }
+
+    const result = await topicService.createTopic({
+      nameVi,
+      nameEn,
+      description,
+      semesterId,
+      majorId,
+      isBusiness: isBusiness === 'true' || isBusiness === true,
+      businessPartner,
+      source,
+      subSupervisor,
+      subSupervisorEmail,
+      name,
+      createdBy,
+      draftFileUrl,
+      groupId,
+      groupCode,
+      submissionPeriodId,
+    });
+
+    return res.status(result.status).json(result);
+  } catch (error) {
+    console.error('Lỗi trong createTopic:', error);
+    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Lỗi hệ thống khi tạo đề tài!',
+    });
   }
+}
 
   async updateTopic(req: Request, res: Response) {
     try {
