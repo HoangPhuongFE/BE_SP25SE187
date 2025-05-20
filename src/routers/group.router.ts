@@ -5,7 +5,7 @@ import { authenticateToken, checkRole } from "../middleware/user.middleware";
 const router = Router();
 const groupController = new GroupController();
 
-// 1️ Tạo nhóm
+// 1 Tạo nhóm
 router.post(
   "/create",
   authenticateToken,

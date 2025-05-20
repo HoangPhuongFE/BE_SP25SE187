@@ -15,7 +15,7 @@ router.post(
 router.post(
   '/inter-major-topics/with-mentors',
   authenticateToken,
-  checkRole(['lecturer', 'academic_officer']), // hoặc ['admin', 'lecturer', 'academic_officer']
+  checkRole(['lecturer', 'academic_officer']), 
   interMajorTopicController.createInterMajorTopicWithMentors.bind(interMajorTopicController)
 );
 export default router;

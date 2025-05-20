@@ -75,7 +75,6 @@ CREATE TABLE `students` (
     `student_code` VARCHAR(191) NOT NULL,
     `major_id` VARCHAR(191) NOT NULL,
     `specialization_id` VARCHAR(191) NULL,
-    `personal_email` VARCHAR(191) NULL,
     `status` ENUM('PENDING', 'ACTIVE', 'INACTIVE') NOT NULL DEFAULT 'ACTIVE',
     `import_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `import_source` VARCHAR(191) NOT NULL,
@@ -120,6 +119,7 @@ CREATE TABLE `semester_students` (
     `status` VARCHAR(191) NOT NULL DEFAULT 'PENDING',
     `isEligible` BOOLEAN NOT NULL DEFAULT false,
     `qualificationStatus` VARCHAR(191) NOT NULL DEFAULT 'not qualified',
+    `block3` BOOLEAN NOT NULL DEFAULT false,
     `registeredAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
@@ -234,6 +234,7 @@ CREATE TABLE `councils` (
     `council_start_date` DATETIME(3) NULL,
     `council_end_date` DATETIME(3) NULL,
     `submission_period_id` VARCHAR(191) NULL,
+    `related_submission_period_id` VARCHAR(191) NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
     UNIQUE INDEX `councils_council_code_key`(`council_code`),
@@ -262,6 +263,8 @@ CREATE TABLE `topics` (
     `reviewReason` TEXT NULL,
     `proposed_group_id` VARCHAR(191) NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
+    `isInterMajor` BOOLEAN NOT NULL DEFAULT false,
+    `major_pair_config_id` VARCHAR(191) NULL,
 
     UNIQUE INDEX `topics_topic_code_key`(`topic_code`),
     PRIMARY KEY (`id`)
@@ -299,6 +302,7 @@ CREATE TABLE `groups` (
     `updated_at` DATETIME(3) NOT NULL,
     `isLocked` BOOLEAN NOT NULL DEFAULT false,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
+    `major_pair_config_id` VARCHAR(191) NULL,
 
     UNIQUE INDEX `groups_semester_id_group_code_key`(`semester_id`, `group_code`),
     PRIMARY KEY (`id`)
@@ -407,7 +411,7 @@ CREATE TABLE `system_logs` (
     `action` VARCHAR(191) NOT NULL,
     `entity_type` VARCHAR(191) NOT NULL,
     `entity_id` VARCHAR(191) NOT NULL,
-    `description` VARCHAR(191) NULL,
+    `description` TEXT NULL,
     `error` TEXT NULL,
     `stack_trace` TEXT NULL,
     `severity` VARCHAR(191) NOT NULL,
@@ -455,11 +459,18 @@ CREATE TABLE `notifications` (
 CREATE TABLE `decisions` (
     `id` VARCHAR(191) NOT NULL,
     `decision_name` VARCHAR(191) NOT NULL,
-    `decision_title` VARCHAR(191) NULL,
+    `decision_title` TEXT NULL,
+    `decision_date` DATETIME(3) NULL,
+    `based_on_json` TEXT NULL,
+    `participants_json` TEXT NULL,
+    `clauses_json` TEXT NULL,
+    `proposal` VARCHAR(191) NULL,
+    `content` VARCHAR(191) NULL,
+    `type` ENUM('DRAFT', 'FINAL') NULL,
     `draft_file` VARCHAR(191) NULL,
     `final_file` VARCHAR(191) NULL,
     `decisionURL` VARCHAR(191) NULL,
-    `status` VARCHAR(191) NOT NULL,
+    `signature` VARCHAR(191) NULL,
     `semesterId` VARCHAR(191) NULL,
     `created_by` VARCHAR(191) NOT NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -559,8 +570,7 @@ CREATE TABLE `defense_schedules` (
     `defense_round` INTEGER NOT NULL,
     `status` VARCHAR(191) NOT NULL,
     `notes` TEXT NULL,
-    `result` VARCHAR(191) NULL,
-    `feedback` VARCHAR(191) NULL,
+    `major_id` VARCHAR(191) NULL,
     `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
@@ -628,6 +638,20 @@ CREATE TABLE `submission_periods` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
+CREATE TABLE `major_pair_configs` (
+    `id` VARCHAR(191) NOT NULL,
+    `name` VARCHAR(191) NOT NULL,
+    `semester_id` VARCHAR(191) NOT NULL,
+    `first_major_id` VARCHAR(191) NOT NULL,
+    `second_major_id` VARCHAR(191) NOT NULL,
+    `isActive` BOOLEAN NOT NULL DEFAULT true,
+    `isDeleted` BOOLEAN NOT NULL DEFAULT false,
+
+    UNIQUE INDEX `major_pair_configs_semester_id_first_major_id_second_major_i_key`(`semester_id`, `first_major_id`, `second_major_id`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- CreateTable
 CREATE TABLE `_MajorTopics` (
     `A` VARCHAR(191) NOT NULL,
     `B` VARCHAR(191) NOT NULL,
@@ -691,6 +715,9 @@ ALTER TABLE `councils` ADD CONSTRAINT `councils_topicass_id_fkey` FOREIGN KEY (`
 ALTER TABLE `councils` ADD CONSTRAINT `councils_submission_period_id_fkey` FOREIGN KEY (`submission_period_id`) REFERENCES `submission_periods`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `councils` ADD CONSTRAINT `councils_related_submission_period_id_fkey` FOREIGN KEY (`related_submission_period_id`) REFERENCES `submission_periods`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `topics` ADD CONSTRAINT `topics_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -706,6 +733,9 @@ ALTER TABLE `topics` ADD CONSTRAINT `topics_proposed_group_id_fkey` FOREIGN KEY 
 ALTER TABLE `topics` ADD CONSTRAINT `topics_submission_period_id_fkey` FOREIGN KEY (`submission_period_id`) REFERENCES `submission_periods`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `topics` ADD CONSTRAINT `topics_major_pair_config_id_fkey` FOREIGN KEY (`major_pair_config_id`) REFERENCES `major_pair_configs`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `topic_assignments` ADD CONSTRAINT `topic_assignments_topic_id_fkey` FOREIGN KEY (`topic_id`) REFERENCES `topics`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -716,6 +746,9 @@ ALTER TABLE `groups` ADD CONSTRAINT `groups_semester_id_fkey` FOREIGN KEY (`seme
 
 -- AddForeignKey
 ALTER TABLE `groups` ADD CONSTRAINT `groups_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `groups` ADD CONSTRAINT `groups_major_pair_config_id_fkey` FOREIGN KEY (`major_pair_config_id`) REFERENCES `major_pair_configs`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `group_mentors` ADD CONSTRAINT `group_mentors_group_id_fkey` FOREIGN KEY (`group_id`) REFERENCES `groups`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -823,6 +856,9 @@ ALTER TABLE `council_members` ADD CONSTRAINT `council_members_role_id_fkey` FORE
 ALTER TABLE `feedbacks` ADD CONSTRAINT `feedbacks_meeting_id_fkey` FOREIGN KEY (`meeting_id`) REFERENCES `meeting_schedules`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_major_id_fkey` FOREIGN KEY (`major_id`) REFERENCES `majors`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE `defense_schedules` ADD CONSTRAINT `defense_schedules_council_id_fkey` FOREIGN KEY (`council_id`) REFERENCES `councils`(`council_id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -848,6 +884,15 @@ ALTER TABLE `submission_periods` ADD CONSTRAINT `submission_periods_semester_id_
 
 -- AddForeignKey
 ALTER TABLE `submission_periods` ADD CONSTRAINT `submission_periods_created_by_fkey` FOREIGN KEY (`created_by`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `major_pair_configs` ADD CONSTRAINT `major_pair_configs_semester_id_fkey` FOREIGN KEY (`semester_id`) REFERENCES `semesters`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `major_pair_configs` ADD CONSTRAINT `major_pair_configs_first_major_id_fkey` FOREIGN KEY (`first_major_id`) REFERENCES `majors`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE `major_pair_configs` ADD CONSTRAINT `major_pair_configs_second_major_id_fkey` FOREIGN KEY (`second_major_id`) REFERENCES `majors`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE `_MajorTopics` ADD CONSTRAINT `_MajorTopics_A_fkey` FOREIGN KEY (`A`) REFERENCES `majors`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

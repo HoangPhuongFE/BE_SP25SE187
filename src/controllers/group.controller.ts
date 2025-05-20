@@ -166,18 +166,18 @@ async createGroup(req: AuthenticatedRequest, res: Response) {
     }
   }
 
-  async randomizeGroups(req: AuthenticatedRequest, res: Response) {
-    try {
-      const { semesterId } = req.body;
-      const result = await groupService.randomizeGroups(
-        semesterId,
-        req.user!.userId
-      );
-      return res.status(201).json(result);
-    } catch (error) {
-      return res.status(500).json({ message: (error as Error).message });
+    async randomizeGroups(req: AuthenticatedRequest, res: Response) {
+      try {
+        const { semesterId } = req.body;
+        const result = await groupService.randomizeGroups(
+          semesterId,
+          req.user!.userId
+        );
+        return res.status(201).json(result);
+      } catch (error) {
+        return res.status(500).json({ message: (error as Error).message });
+      }
     }
-  }
 
   // Đổi Leader
   async changeLeader(req: AuthenticatedRequest, res: Response) {
