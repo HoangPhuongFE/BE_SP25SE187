@@ -209,7 +209,7 @@ export class GroupService {
             // 3️ Kiểm tra quyền của người mời
             // Kiểm tra quyền của người mời
             const userRoles = inviter.roles.map((r) => r.role.name.toLowerCase());
-            if (!userRoles.includes("admin") && !userRoles.includes("leader") && !userRoles.includes("academic_officer")) {
+            if ( !userRoles.includes("leader") && !userRoles.includes("academic_officer")) {
                 const inviterStudent = await prisma.student.findFirst({ where: { userId: invitedById } });
 
                 // Truy vấn roleId của "leader"
@@ -775,6 +775,7 @@ export class GroupService {
         const professionMap: { [key: string]: string } = {
             "Software Engineering": "SE",
             "Artificial Intelligence": "AI",
+
         };
 
         const majorCode = professionMap[professionName] ??

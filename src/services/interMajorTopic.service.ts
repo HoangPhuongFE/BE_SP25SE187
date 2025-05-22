@@ -12,187 +12,183 @@ export class InterMajorTopicService {
   private aiService = new AIService();
 
   // Tạo topic liên ngành
-  async createInterMajorTopic(data: {
-    nameVi: string;
-    nameEn: string;
-    description: string;
-    semesterId: string;
-    majorPairConfigId: string;
-    submissionPeriodId: string;
-    createdBy: string;
-    isBusiness?: boolean;
-    businessPartner?: string;
-    source?: string;
-    draftFileUrl?: string;
-    draftFileName?: string;
-    groupId?: string;
-    groupCode?: string;
-  }) {
-    try {
-      const { nameVi, nameEn, description, semesterId, majorPairConfigId, submissionPeriodId, createdBy } = data;
+async createInterMajorTopic(data: {
+  nameVi: string;
+  nameEn: string;
+  description: string;
+  semesterId: string;
+  majorPairConfigId: string;
+  submissionPeriodId: string;
+  createdBy: string;
+  isBusiness?: boolean;
+  businessPartner?: string;
+  source?: string;
+  draftFileUrl?: string;
+  draftFileName?: string;
+  groupId?: string;
+  groupCode?: string;
+}) {
+  try {
+    const { nameVi, nameEn, description, semesterId, majorPairConfigId, submissionPeriodId, createdBy } = data;
 
-      if (!semesterId || !submissionPeriodId || !createdBy || !majorPairConfigId) {
-        return {
-          success: false,
-          status: HTTP_STATUS.BAD_REQUEST,
-          message: 'Thiếu thông tin bắt buộc!',
-        };
-      }
-
-      // Validate học kỳ
-      const semester = await prisma.semester.findUnique({
-        where: { id: semesterId, isDeleted: false },
-        select: { id: true, code: true },
-      });
-      if (!semester || !semester.code) {
-        return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: 'Học kỳ không tồn tại!',
-        };
-      }
-
-      // Validate MajorPairConfig
-      const majorPairConfig = await prisma.majorPairConfig.findUnique({
-        where: { id: majorPairConfigId },
-        include: {
-          firstMajor: { select: { id: true, name: true } },
-          secondMajor: { select: { id: true, name: true } },
-        },
-      });
-      if (!majorPairConfig || !majorPairConfig.isActive) {
-        return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: 'Cấu hình liên ngành không hợp lệ!',
-        };
-      }
-
-      const major1 = majorPairConfig.firstMajor;
-      const major2 = majorPairConfig.secondMajor;
-
-      // Validate submissionPeriod
-      const submissionPeriod = await prisma.submissionPeriod.findUnique({
-        where: { id: submissionPeriodId, isDeleted: false },
-        select: { id: true },
-      });
-      if (!submissionPeriod) {
-        return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: 'Đợt xét duyệt không hợp lệ!',
-        };
-      }
-
-      // Validate tên đề tài bằng AI
-      const aiValidation = await this.aiService.validateTopicName(
-        nameVi,
-        nameEn,
-        undefined,
-        { skipDatabaseCheck: true, semesterId }
-      );
-      if (!aiValidation.isValid) {
-        return {
-          success: false,
-          status: HTTP_STATUS.BAD_REQUEST,
-          message: aiValidation.message,
-        };
-      }
-
-      // Generate topicCode
-      const semesterCode = semester.code.toUpperCase();
-      const majorCode1 = major1.name.split(' ').map(word => word[0]).join('').toUpperCase();
-      const majorCode2 = major2.name.split(' ').map(word => word[0]).join('').toUpperCase();
-      const topicCount = await prisma.topic.count({ where: { semesterId } });
-      const topicCode = `${majorCode1}-${majorCode2}-${semesterCode}-${(topicCount + 1).toString().padStart(3, '0')}`;
-
-      // Xử lý group nếu có groupCode
-      let groupIdToUse = data.groupId;
-      if (!groupIdToUse && data.groupCode) {
-        const group = await prisma.group.findUnique({
-          where: { semesterId_groupCode: { semesterId, groupCode: data.groupCode } },
-          select: { id: true, isMultiMajor: true },
-        });
-        if (!group || !group.isMultiMajor) {
-          return {
-            success: false,
-            status: HTTP_STATUS.BAD_REQUEST,
-            message: 'Nhóm không tồn tại hoặc không phải nhóm liên ngành!',
-          };
-        }
-        groupIdToUse = group.id;
-      }
-
-      const isBusiness = data.isBusiness === true;
-
-      // Tạo đề tài liên ngành
-      const newTopic = await prisma.topic.create({
-        data: {
-          topicCode,
-          nameVi,
-          nameEn,
-          description,
-          semesterId,
-          submissionPeriodId,
-          createdBy,
-          name: nameVi,
-          isBusiness,
-          businessPartner: data.businessPartner,
-          source: data.source,
-          proposedGroupId: groupIdToUse,
-          majorPairConfigId,
-          majors: { connect: [{ id: major1.id }, { id: major2.id }] },
-          status: 'PENDING',
-        },
-      });
-
-      // Ghi log hệ thống
-      await prisma.systemLog.create({
-        data: {
-          userId: createdBy,
-          action: 'CREATE_INTER_MAJOR_TOPIC',
-          entityType: 'topic',
-          entityId: newTopic.id,
-          description: 'Đề tài liên ngành đã được tạo thành công',
-          severity: 'INFO',
-          ipAddress: '::1',
-        },
-      });
-
-      const confidence = aiValidation.similarity || 0.9;
-
-      return {
-        success: true,
-        status: HTTP_STATUS.CREATED,
-        message: `Đề tài đã được tạo thành công (mức độ phù hợp: ${(confidence * 100).toFixed(2)}%)`,
-        data: newTopic,
-      };
-
-    } catch (error) {
-      console.error('Lỗi tạo topic liên ngành:', error);
-      await prisma.systemLog.create({
-        data: {
-          userId: 'system',
-          action: 'CREATE_INTER_MAJOR_TOPIC_ERROR',
-          entityType: 'topic',
-          entityId: 'N/A',
-          description: 'Lỗi khi tạo đề tài liên ngành',
-          severity: 'ERROR',
-          ipAddress: '::1',
-        },
-      });
+    if (!semesterId || !submissionPeriodId || !createdBy || !majorPairConfigId) {
       return {
         success: false,
-        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        message: 'Lỗi hệ thống khi tạo đề tài liên ngành.',
+        status: HTTP_STATUS.BAD_REQUEST,
+        message: 'Thiếu thông tin bắt buộc!',
       };
     }
+
+    // Validate học kỳ
+    const semester = await prisma.semester.findUnique({
+      where: { id: semesterId, isDeleted: false },
+      select: { id: true, code: true },
+    });
+    if (!semester || !semester.code) {
+      return {
+        success: false,
+        status: HTTP_STATUS.NOT_FOUND,
+        message: 'Học kỳ không tồn tại!',
+      };
+    }
+
+    // Validate MajorPairConfig
+    const majorPairConfig = await prisma.majorPairConfig.findUnique({
+      where: { id: majorPairConfigId },
+      include: {
+        firstMajor: { select: { id: true, name: true } },
+        secondMajor: { select: { id: true, name: true } },
+      },
+    });
+    if (!majorPairConfig || !majorPairConfig.isActive) {
+      return {
+        success: false,
+        status: HTTP_STATUS.NOT_FOUND,
+        message: 'Cấu hình liên ngành không hợp lệ!',
+      };
+    }
+
+    const major1 = majorPairConfig.firstMajor;
+    const major2 = majorPairConfig.secondMajor;
+
+    // Validate submissionPeriod
+    const submissionPeriod = await prisma.submissionPeriod.findUnique({
+      where: { id: submissionPeriodId, isDeleted: false },
+      select: { id: true },
+    });
+    if (!submissionPeriod) {
+      return {
+        success: false,
+        status: HTTP_STATUS.NOT_FOUND,
+        message: 'Đợt xét duyệt không hợp lệ!',
+      };
+    }
+
+    // Validate tên đề tài bằng AI
+    const aiValidation = await this.aiService.validateTopicName(
+      nameVi,
+      nameEn,
+      undefined,
+      { skipDatabaseCheck: true, semesterId }
+    );
+    if (!aiValidation.isValid) {
+      return {
+        success: false,
+        status: HTTP_STATUS.BAD_REQUEST,
+        message: aiValidation.message,
+      };
+    }
+
+    // Generate topicCode
+    const semesterCode = semester.code.toUpperCase();
+    const majorCode1 = major1.name.split(' ').map(word => word[0]).join('').toUpperCase();
+    const majorCode2 = major2.name.split(' ').map(word => word[0]).join('').toUpperCase();
+    const topicCount = await prisma.topic.count({ where: { semesterId } });
+    const topicCode = `${majorCode1}-${majorCode2}-${semesterCode}-${(topicCount + 1).toString().padStart(3, '0')}`;
+
+    // Xử lý group nếu có groupCode
+    let groupIdToUse = data.groupId;
+    if (!groupIdToUse && data.groupCode) {
+      const group = await prisma.group.findUnique({
+        where: { semesterId_groupCode: { semesterId, groupCode: data.groupCode } },
+        select: { id: true, isMultiMajor: true },
+      });
+      if (!group || !group.isMultiMajor) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: 'Nhóm không tồn tại hoặc không phải nhóm liên ngành!',
+        };
+      }
+      groupIdToUse = group.id;
+    }
+
+    const isBusiness = data.isBusiness === true;
+
+    // Tạo đề tài liên ngành
+    const newTopic = await prisma.topic.create({
+      data: {
+        topicCode,
+        nameVi,
+        nameEn,
+        description,
+        semesterId,
+        submissionPeriodId,
+        createdBy,
+        name: nameVi,
+        isBusiness,
+        businessPartner: data.businessPartner,
+        source: data.source,
+        proposedGroupId: groupIdToUse,
+        majorPairConfigId,
+        majors: { connect: [{ id: major1.id }, { id: major2.id }] },
+        status: 'PENDING',
+        mainSupervisor: createdBy, // Gán mainSupervisor là createdBy
+      },
+    });
+
+    // Ghi log hệ thống
+    await prisma.systemLog.create({
+      data: {
+        userId: createdBy,
+        action: 'CREATE_INTER_MAJOR_TOPIC',
+        entityType: 'topic',
+        entityId: newTopic.id,
+        description: 'Đề tài liên ngành đã được tạo thành công',
+        severity: 'INFO',
+        ipAddress: '::1',
+      },
+    });
+
+    const confidence = aiValidation.similarity || 0.9;
+
+    return {
+      success: true,
+      status: HTTP_STATUS.CREATED,
+      message: `Đề tài đã được tạo thành công (mức độ phù hợp: ${(confidence * 100).toFixed(2)}%)`,
+      data: newTopic,
+    };
+
+  } catch (error) {
+    console.error('Lỗi tạo topic liên ngành:', error);
+    await prisma.systemLog.create({
+      data: {
+        userId: 'system',
+        action: 'CREATE_INTER_MAJOR_TOPIC_ERROR',
+        entityType: 'topic',
+        entityId: 'N/A',
+        description: 'Lỗi khi tạo đề tài liên ngành',
+        severity: 'ERROR',
+        ipAddress: '::1',
+      },
+    });
+    return {
+      success: false,
+      status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      message: 'Lỗi hệ thống khi tạo đề tài liên ngành.',
+    };
   }
-
-
-
-
-
+}
 
 
 
