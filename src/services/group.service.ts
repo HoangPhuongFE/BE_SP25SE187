@@ -209,7 +209,7 @@ export class GroupService {
             // 3️ Kiểm tra quyền của người mời
             // Kiểm tra quyền của người mời
             const userRoles = inviter.roles.map((r) => r.role.name.toLowerCase());
-            if ( !userRoles.includes("leader") && !userRoles.includes("academic_officer")) {
+            if (!userRoles.includes("leader") && !userRoles.includes("academic_officer")) {
                 const inviterStudent = await prisma.student.findFirst({ where: { userId: invitedById } });
 
                 // Truy vấn roleId của "leader"
@@ -349,7 +349,7 @@ export class GroupService {
 
             // 6️ **Gửi email lời mời**
             if (invitedStudent.user?.email) {
-                 const invitationLink = `http://103.185.184.198:6969/api/groups/accept-invitation/${invitation.id}`;
+                const invitationLink = `http://103.185.184.198:6969/api/groups/accept-invitation/${invitation.id}`;
                 //const invitationLink = `http://localhost:3000/api/groups/accept-invitation/${invitation.id}`;
 
                 const emailContent = `
@@ -543,7 +543,7 @@ export class GroupService {
         return { message: "Lời mời đã được chấp nhận." };
     }
 
- 
+
 
     async getGroupsBySemester(semesterId: string, userId: string) {
         const user = await prisma.user.findUnique({
@@ -761,6 +761,51 @@ export class GroupService {
         }
     }
     // Hàm tạo mã nhóm duy nhất theo học kỳ và tên ngành
+    // private async generateUniqueGroupCode(
+    //     professionName: string,
+    //     semesterId: string,
+    //     semesterStartDate: Date
+    // ): Promise<string> {
+    //     if (!professionName || !semesterId || !semesterStartDate) {
+    //         throw new Error("Thiếu thông tin cần thiết để tạo mã nhóm.");
+    //     }
+
+    //     const yearSuffix = semesterStartDate.getFullYear().toString().slice(-2);
+
+    //     const professionMap: { [key: string]: string } = {
+    //         "Software Engineering": "SE",
+    //         "Artificial Intelligence": "AI",
+
+    //     };
+
+    //     const majorCode = professionMap[professionName] ??
+    //         (professionName.length >= 2 ? professionName.slice(0, 2).toUpperCase() : (professionName[0] + "X").toUpperCase());
+
+    //     const groupCodePrefix = `G${yearSuffix}${majorCode}`;
+
+    //     let sequenceNumber = 1;
+    //     let groupCode = `${groupCodePrefix}${sequenceNumber.toString().padStart(3, "0")}`;
+
+    //     const maxAttempts = 1000;
+
+    //     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    //         const existingGroup = await prisma.group.findUnique({
+    //             where: { semesterId_groupCode: { semesterId, groupCode } },
+    //         });
+
+    //         if (!existingGroup) {
+    //             // mã hoàn toàn mới
+    //             return groupCode;
+    //         }
+
+    //         // Nếu tồn tại nhưng đã bị xóa mềm → không được dùng lại (UNIQUE vẫn bị vi phạm nếu bị khôi phục)
+    //         sequenceNumber++;
+    //         groupCode = `${groupCodePrefix}${sequenceNumber.toString().padStart(3, "0")}`;
+    //     }
+
+    //     throw new Error(`Không thể tạo mã nhóm duy nhất sau ${maxAttempts} lần thử cho prefix ${groupCodePrefix}.`);
+    // }
+
     private async generateUniqueGroupCode(
         professionName: string,
         semesterId: string,
@@ -772,20 +817,36 @@ export class GroupService {
 
         const yearSuffix = semesterStartDate.getFullYear().toString().slice(-2);
 
-        const professionMap: { [key: string]: string } = {
-            "Software Engineering": "SE",
-            "Artificial Intelligence": "AI",
+        // Hàm lấy mã ngành từ chữ cái đầu mỗi từ
+        const getMajorCode = (name: string): string => {
+            const professionMap: { [key: string]: string } = {
+                "Software Engineering": "SE",
+                "Artificial Intelligence": "AI",
+                "Information Assurance": "IA",
+                "Information Technology Systems": "ITS"
+            };
 
+            if (professionMap[name]) {
+                return professionMap[name];
+            }
+
+            // Dự phòng: Lấy chữ cái đầu mỗi từ
+            const words = name.trim().split(/\s+/);
+            if (words.length > 1) {
+                return words.map(word => word[0]).join("").toUpperCase();
+            }
+
+            // Dự phòng cho tên ngắn: lấy 2 chữ cái đầu hoặc chữ cái đầu + "X"
+            return name.length >= 2
+                ? name.slice(0, 2).toUpperCase()
+                : (name[0] + "X").toUpperCase();
         };
 
-        const majorCode = professionMap[professionName] ??
-            (professionName.length >= 2 ? professionName.slice(0, 2).toUpperCase() : (professionName[0] + "X").toUpperCase());
-
+        const majorCode = getMajorCode(professionName);
         const groupCodePrefix = `G${yearSuffix}${majorCode}`;
 
         let sequenceNumber = 1;
         let groupCode = `${groupCodePrefix}${sequenceNumber.toString().padStart(3, "0")}`;
-
         const maxAttempts = 1000;
 
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -794,11 +855,9 @@ export class GroupService {
             });
 
             if (!existingGroup) {
-                // mã hoàn toàn mới
                 return groupCode;
             }
 
-            // Nếu tồn tại nhưng đã bị xóa mềm → không được dùng lại (UNIQUE vẫn bị vi phạm nếu bị khôi phục)
             sequenceNumber++;
             groupCode = `${groupCodePrefix}${sequenceNumber.toString().padStart(3, "0")}`;
         }
@@ -808,8 +867,6 @@ export class GroupService {
 
 
 
-
-   
 
 
     async randomizeGroups(semesterId: string, createdBy: string): Promise<any> {
