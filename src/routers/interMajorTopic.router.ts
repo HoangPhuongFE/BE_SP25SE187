@@ -9,13 +9,13 @@ const interMajorTopicController = new InterMajorTopicController();
 router.post(
   "/inter-major-topics",
   authenticateToken,
-  checkRole(["lecturer", "academic_officer"]),
+  checkRole(["lecturer", ]),
   interMajorTopicController.createInterMajorTopic.bind(interMajorTopicController)
 );
 router.post(
   '/inter-major-topics/with-mentors',
   authenticateToken,
-  checkRole(['lecturer', 'academic_officer']), 
+  checkRole(['academic_officer']),
   interMajorTopicController.createInterMajorTopicWithMentors.bind(interMajorTopicController)
 );
 export default router;

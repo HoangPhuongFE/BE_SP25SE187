@@ -36,7 +36,7 @@ export class SubmissionPeriodService {
       }
   
       const creatorRoles = creator.roles.map((r) => r.role.name.toLowerCase());
-      if (creatorRoles.includes("academic_officer") || creatorRoles.includes("admin")) {
+      if (creatorRoles.includes("academic_officer")) {
         return {
           success: false,
           status: HTTP_STATUS.FORBIDDEN,

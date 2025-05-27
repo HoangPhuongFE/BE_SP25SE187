@@ -53,47 +53,47 @@ export const USER_MESSAGE = {
 
 // Thông báo liên quan đến xác thực
 export const AUTH_MESSAGE = {
-  LOGIN_SUCCESS: "Login successful",
-  REGISTER_SUCCESS: "Registration successful",
-  LOGOUT_SUCCESS: "Logout successful",
-  GOOGLE_LOGIN_FAILED: "Google login failed",
+  LOGIN_SUCCESS: "Đăng nhập thành công",
+  REGISTER_SUCCESS: "Đăng ký tài khoản thành công",
+  LOGOUT_SUCCESS: "Đăng xuất thành công",
+  GOOGLE_LOGIN_FAILED: "Đăng nhập bằng Google thất bại",
 } as const;
 
 // Thông báo cho quản trị viên
 export const ADMIN_MESSAGE = {
-  CREATE_USER_SUCCESS: "User created successfully",
-  DELETE_USER_SUCCESS: "User deleted successfully",
-  UPDATE_USER_SUCCESS: "User updated successfully",
-  UPDATE_ROLES_SUCCESS: "User roles updated successfully",
-  INVALID_ROLE: "One or more roles are invalid",
-  EMAIL_EXISTS: "Email already exists",
-  USERNAME_EXISTS: "Username already exists",
-  USER_NOT_FOUND: "User not found",
-  MISSING_FIELDS: "User ID and roles are required",
-  STUDENT_ROLE_RESTRICTION: "User with the role 'student' cannot have additional roles",
+  CREATE_USER_SUCCESS: "Tạo người dùng thành công",
+  DELETE_USER_SUCCESS: "Xóa người dùng thành công",
+  UPDATE_USER_SUCCESS: "Cập nhật người dùng thành công",
+  UPDATE_ROLES_SUCCESS: "Cập nhật vai trò người dùng thành công",
+  INVALID_ROLE: "Vai trò không hợp lệ",
+  EMAIL_EXISTS: "Email đã tồn tại",
+  USERNAME_EXISTS: "Tên đăng nhập đã tồn tại",
+  USER_NOT_FOUND: "Không tìm thấy người dùng",
+  MISSING_FIELDS: "Yêu cầu có ID người dùng và vai trò",
+  STUDENT_ROLE_RESTRICTION: "Người dùng có vai trò 'sinh viên' không được có thêm vai trò khác",
 } as const;
 
 // Thông báo liên quan đến xử lý dữ liệu
 export const DATA_MESSAGE = {
-  IMPORT_SUCCESS: "Data imported successfully",
-  IMPORT_FAILED: "Data import failed",
-  INVALID_FILE_FORMAT: "Invalid file format",
-  DUPLICATE_ENTRY: "Duplicate data detected",
-  MISSING_REQUIRED_FIELDS: "Missing required fields in the file",
-  STUDENT_ALREADY_EXISTS: "Student already exists in the system",
-  USER_ALREADY_EXISTS: "User already exists in the system",
-  MISSING_SEMESTER: "Select semester before importing",
-  NO_STUDENTS_FOUND: "No students found for the selected semester",
-  UNAUTHORIZED: 'Unauthorized access',
-
+  IMPORT_SUCCESS: "Nhập dữ liệu thành công",
+  IMPORT_FAILED: "Nhập dữ liệu thất bại",
+  INVALID_FILE_FORMAT: "Định dạng tệp không hợp lệ",
+  DUPLICATE_ENTRY: "Phát hiện dữ liệu trùng lặp",
+  MISSING_REQUIRED_FIELDS: "Thiếu các trường bắt buộc trong tệp",
+  STUDENT_ALREADY_EXISTS: "Sinh viên đã tồn tại trong hệ thống",
+  USER_ALREADY_EXISTS: "Người dùng đã tồn tại trong hệ thống",
+  MISSING_SEMESTER: "Vui lòng chọn học kỳ trước khi nhập dữ liệu",
+  NO_STUDENTS_FOUND: "Không tìm thấy sinh viên trong học kỳ đã chọn",
+  UNAUTHORIZED: "Truy cập không được phép",
 } as const;
 
 // Thông báo cho nhật ký hệ thống
 export const SYSTEM_LOG_MESSAGE = {
-  LOG_CREATED: "System log entry created",
-  LOG_UPDATED: "System log entry updated",
-  LOG_DELETED: "System log entry deleted",
+  LOG_CREATED: "Đã tạo bản ghi nhật ký hệ thống",
+  LOG_UPDATED: "Đã cập nhật bản ghi nhật ký hệ thống",
+  LOG_DELETED: "Đã xóa bản ghi nhật ký hệ thống",
 } as const;
+
 
 // Thông báo liên quan đến học kỳ
 export const SEMESTER_MESSAGE = {
@@ -159,12 +159,26 @@ export default COUNCIL_MESSAGE;
 
 // Thông báo cho sinh viên
 export const STUDENT_MESSAGE = {
-  STUDENT_NOT_FOUND: "Student not found",
-  STUDENT_ADDED: "Student added successfully",
-  STUDENT_UPDATED: "Student information updated successfully",
-  STUDENT_DELETED: "Student removed successfully",
-  STUDENTS_FETCHED: "Students fetched successfully",
-  STUDENT_LIST_EMPTY: "No students found for the selected semester",
+  STUDENT_NOT_FOUND: "Không tìm thấy sinh viên",
+  STUDENT_ADDED: "Thêm sinh viên thành công",
+  STUDENT_UPDATED: "Cập nhật thông tin sinh viên thành công",
+  STUDENT_DELETED: "Xóa sinh viên thành công",
+  STUDENTS_FETCHED: "Lấy danh sách sinh viên thành công",
+  STUDENT_LIST_EMPTY: "Không có sinh viên trong học kỳ đã chọn",
+} as const;
+
+export const EXPORT_MESSAGE = {
+  EXPORT_SUCCESS: "Xuất dữ liệu thành công",
+  EXPORT_FAILED: "Xuất dữ liệu thất bại",
+  NO_DATA_FOUND: "Không có dữ liệu trong học kỳ đã chọn",
+} as const;
+
+export const YEAR_MESSAGE = {
+  YEAR_CREATED: "Tạo năm học thành công",
+  YEAR_UPDATED: "Cập nhật năm học thành công",
+  YEAR_DELETED: "Xóa năm học thành công",
+  YEAR_NOT_FOUND: "Không tìm thấy năm học",
+  YEAR_FETCHED: "Lấy danh sách năm học thành công",
 } as const;
 
 // Thông báo chung
@@ -173,21 +187,6 @@ export const GENERAL_MESSAGE = {
   ACTION_FAILED: "Thao tác thất bại",
   SERVER_ERROR: "Lỗi máy chủ nội bộ",
 } as const;
-
-export const EXPORT_MESSAGE = {
-  EXPORT_SUCCESS: "Export completed successfully.",
-  EXPORT_FAILED: "Failed to export the data.",
-  NO_DATA_FOUND: "No data found for the selected semester.",
-} as const;
-
-export const YEAR_MESSAGE = {
-  YEAR_CREATED: "Year created successfully",
-  YEAR_UPDATED: "Year updated successfully",
-  YEAR_DELETED: "Year deleted successfully",
-  YEAR_NOT_FOUND: "Year not found",
-  YEAR_FETCHED: "Years fetched successfully",
-};
-
 export const TOPIC_MESSAGE = {
   TOPIC_CREATED: "Tạo đề tài thành công",
   TOPIC_UPDATED: "Cập nhật đề tài thành công",
@@ -236,16 +235,16 @@ export const TOPIC_MESSAGE = {
 
 
 export const MEETING_MESSAGE = {
-  MEETING_CREATED: "Meeting created successfully",
-  MEETING_UPDATED: "Meeting updated successfully",
-  MEETING_DELETED: "Meeting deleted successfully",
-  MEETING_NOT_FOUND: "Meeting not found",
-  UNAUTHORIZED_MENTOR: "You are not the mentor of this group",
-  INVALID_MEETING_TIME: "Invalid meeting time",
-  INVALID_MEETING_URL: "Invalid meeting URL",
-  GROUP_NOT_FOUND: "Group not found",
-  DELETE_TIME_EXPIRED: "Cannot delete meeting before 1 day of the meeting",
-  UPDATE_TIME_EXPIRED: "Cannot update meeting before 1 day of the meeting",
+  MEETING_CREATED: "Tạo buổi họp thành công",
+  MEETING_UPDATED: "Cập nhật buổi họp thành công",
+  MEETING_DELETED: "Xóa buổi họp thành công",
+  MEETING_NOT_FOUND: "Không tìm thấy buổi họp",
+  UNAUTHORIZED_MENTOR: "Bạn không phải là giảng viên hướng dẫn của nhóm này",
+  INVALID_MEETING_TIME: "Thời gian họp không hợp lệ",
+  INVALID_MEETING_URL: "Liên kết họp không hợp lệ",
+  GROUP_NOT_FOUND: "Không tìm thấy nhóm",
+  DELETE_TIME_EXPIRED: "Không thể xóa buổi họp trước 1 ngày diễn ra",
+  UPDATE_TIME_EXPIRED: "Không thể cập nhật buổi họp trước 1 ngày diễn ra",
 } as const;
 
 export const TOPIC_SUBMISSION_PERIOD_MESSAGE = {

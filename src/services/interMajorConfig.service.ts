@@ -194,36 +194,166 @@ export class InterMajorConfigService {
   
 
   async deleteConfig(configId: string) {
-    if (!configId) {
-      return {
-        success: false,
-        status: HTTP_STATUS.BAD_REQUEST,
-        message: 'Thiếu configId!',
-      };
-    }
-  
-    const existingConfig = await prisma.majorPairConfig.findFirst({
-      where: { id: configId, isDeleted: false },
-    });
-  
-    if (!existingConfig) {
-      return {
-        success: false,
-        status: HTTP_STATUS.NOT_FOUND,
-        message: 'Không tìm thấy cấu hình liên ngành!',
-      };
-    }
-  
-    await prisma.majorPairConfig.update({
-      where: { id: configId },
-      data: { isDeleted: true, isActive: false },
-    });
-  
+  if (!configId) {
     return {
-      success: true,
-      status: HTTP_STATUS.OK,
-      message: 'Xóa mềm cấu hình liên ngành thành công!',
+      success: false,
+      status: HTTP_STATUS.BAD_REQUEST,
+      message: 'Thiếu configId!',
     };
   }
+
+  // Kiểm tra cấu hình tồn tại
+  const existingConfig = await prisma.majorPairConfig.findFirst({
+    where: { id: configId, isDeleted: false },
+  });
+
+  if (!existingConfig) {
+    return {
+      success: false,
+      status: HTTP_STATUS.NOT_FOUND,
+      message: 'Không tìm thấy cấu hình liên ngành!',
+    };
+  }
+
+  try {
+    // Thực hiện xóa mềm trong một transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Tìm tất cả các nhóm liên quan đến cấu hình
+      const groups = await tx.group.findMany({
+        where: { majorPairConfigId: configId, isDeleted: false },
+        select: { id: true },
+      });
+
+      const groupIds = groups.map((g) => g.id);
+
+      // 2. Tìm tất cả đề tài liên quan đến cấu hình
+      const topics = await tx.topic.findMany({
+        where: { majorPairConfigId: configId, isDeleted: false },
+        select: { id: true },
+      });
+
+      const topicIds = topics.map((t) => t.id);
+
+      // 3. Xóa mềm các dữ liệu liên quan đến nhóm
+      if (groupIds.length > 0) {
+        // Xóa mềm lịch xét duyệt (ReviewSchedule)
+        await tx.reviewSchedule.updateMany({
+          where: { groupId: { in: groupIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+
+        // Xóa mềm lịch bảo vệ (DefenseSchedule)
+        const defenseSchedules = await tx.defenseSchedule.findMany({
+          where: { groupId: { in: groupIds }, isDeleted: false },
+          select: { id: true },
+        });
+        const defenseScheduleIds = defenseSchedules.map((ds) => ds.id);
+
+        await tx.defenseSchedule.updateMany({
+          where: { groupId: { in: groupIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+
+        // Xóa mềm kết quả bảo vệ (DefenseMemberResult)
+        await tx.defenseMemberResult.updateMany({
+          where: { defenseScheduleId: { in: defenseScheduleIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+
+        // Xóa mềm báo cáo tiến độ (ProgressReport)
+        await tx.progressReport.updateMany({
+          where: { groupId: { in: groupIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+
+        // Xóa mềm lịch họp (MeetingSchedule)
+        const meetingSchedules = await tx.meetingSchedule.findMany({
+          where: { groupId: { in: groupIds }, isDeleted: false },
+          select: { id: true },
+        });
+        const meetingScheduleIds = meetingSchedules.map((ms) => ms.id);
+
+        await tx.meetingSchedule.updateMany({
+          where: { groupId: { in: groupIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+
+        // Xóa mềm phản hồi (Feedback)
+        await tx.feedback.updateMany({
+          where: { meetingId: { in: meetingScheduleIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+
+        // Xóa mềm nhóm mentor (GroupMentor)
+        await tx.groupMentor.updateMany({
+          where: { groupId: { in: groupIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+
+        // Xóa mềm thành viên nhóm (GroupMember)
+        await tx.groupMember.updateMany({
+          where: { groupId: { in: groupIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+
+        // Xóa mềm nhóm (Group)
+        await tx.group.updateMany({
+          where: { id: { in: groupIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+      }
+
+      // 4. Xóa mềm các dữ liệu liên quan đến đề tài
+      if (topicIds.length > 0) {
+        // Xóa mềm phân công đề tài (TopicAssignment)
+        await tx.topicAssignment.updateMany({
+          where: { topicId: { in: topicIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+
+        // Xóa mềm tài liệu (Document)
+        await tx.document.updateMany({
+          where: { topicId: { in: topicIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+
+        // Xóa mềm đề tài (Topic)
+        await tx.topic.updateMany({
+          where: { id: { in: topicIds }, isDeleted: false },
+          data: { isDeleted: true },
+        });
+      }
+
+      // 5. Xóa mềm cấu hình liên ngành (MajorPairConfig)
+      await tx.majorPairConfig.update({
+        where: { id: configId },
+        data: { isDeleted: true, isActive: false },
+      });
+
+      return { success: true };
+    });
+
+    if (result.success) {
+      return {
+        success: true,
+        status: HTTP_STATUS.OK,
+        message: 'Xóa mềm cấu hình liên ngành và các dữ liệu liên quan thành công!',
+      };
+    }
+
+    return {
+      success: false,
+      status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      message: 'Lỗi trong quá trình xóa mềm cấu hình liên ngành!',
+    };
+  } catch (error) {
+    console.error('Lỗi khi xóa mềm cấu hình liên ngành:', error);
+    return {
+      success: false,
+      status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+      message: 'Lỗi hệ thống khi xóa mềm cấu hình liên ngành!',
+    };
+  }
+}
   
 }

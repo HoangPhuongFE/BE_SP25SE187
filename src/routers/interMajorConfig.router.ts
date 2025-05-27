@@ -8,7 +8,7 @@ const ctrl = new InterMajorConfigController();
 router.post(
   '/inter-major-configs',
   authenticateToken,
-  checkRole(['academic_officer', 'admin']),
+  checkRole([ 'admin']),
   ctrl.createConfig.bind(ctrl)
 );
 
@@ -29,14 +29,14 @@ router.get(
 router.put(
   '/inter-major-configs/:id',
   authenticateToken,
-  checkRole(['academic_officer', 'admin',"examination_officer", "graduation_thesis_manager"]),
+  checkRole([ 'admin']),
   ctrl.updateConfig.bind(ctrl)
 );
 
 router.delete(
   '/inter-major-configs/:id/delete',
   authenticateToken,
-  checkRole(['academic_officer', 'admin']),
+  checkRole(['admin']),
   ctrl.deleteConfig.bind(ctrl)
 );
 

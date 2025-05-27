@@ -30,8 +30,8 @@ export class CouncilTopicService {
         return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Người tạo không tồn tại!" };
       }
       const creatorRoles = creator.roles.map(r => r.role.name.toLowerCase());
-      if (creatorRoles.includes("academic_officer") || creatorRoles.includes("admin")) {
-        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: "Academic officer và admin không được phép tạo hội đồng." };
+      if (creatorRoles.includes("academic_officer") ) {
+        return { success: false, status: HTTP_STATUS.FORBIDDEN, message: "Academic officer không được phép tạo hội đồng." };
       }
 
       const semester = await prisma.semester.findUnique({ where: { id: data.semesterId } });

@@ -9,14 +9,14 @@ const groupController = new GroupController();
 router.post(
   "/create",
   authenticateToken,
-  checkRole(["student", "graduation_thesis_manager", "academic_officer"], false),
+  checkRole(["student"], false),
   groupController.createGroup.bind(groupController)
 );
 // 2️ Mời thành viên
 router.post(
   "/invite",
   authenticateToken,
-  checkRole(["student", "admin","leader", "mentor"],false),
+  checkRole(["student","leader"],false),
   groupController.inviteMember.bind(groupController)
 );
 
@@ -73,7 +73,7 @@ router.post(
 router.put(
   '/delete/:groupId', 
   authenticateToken,
-  checkRole(['leader', 'student', 'graduation_thesis_manager', 'academic_officer']),
+  checkRole(['leader', 'student', 'academic_officer']),
   groupController.deleteGroup.bind(groupController)
 );
 
@@ -142,7 +142,7 @@ router.get(
 router.post(
   "/randomize",
   authenticateToken,
-  checkRole(["graduation_thesis_manager", "academic_officer"]),
+  checkRole([ "academic_officer"]),
   groupController.randomizeGroups.bind(groupController)
 );
 
@@ -150,8 +150,7 @@ router.post(
 router.put(
   "/change-mentor",
   authenticateToken,
-  checkRole([ "graduation_thesis_manager", "academic_officer"]),
- 
+  checkRole([ "academic_officer"]),
   groupController.updateMentor.bind(groupController)
 );
 

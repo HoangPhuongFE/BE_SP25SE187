@@ -8,49 +8,49 @@ const councilTopicController = new CouncilTopicController();
 router.post(
   '/',
   authenticateToken,
-  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager"]),
+  checkRole(["examination_officer"]),
   councilTopicController.createCouncil.bind(councilTopicController)
 );
 
 router.get(
   '/',
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager", 'lecturer', 'council_member']),
+  checkRole(["examination_officer", "examination_officer","graduation_thesis_manager", 'lecturer', 'council_member']),
   councilTopicController.getCouncils.bind(councilTopicController)
 );
 
 router.get(
   '/:id',
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager", 'lecturer']),
+  checkRole(["examination_officer", 'lecturer']),
   councilTopicController.getCouncilById.bind(councilTopicController)
 );
 
 router.put(
   '/:id',
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager"]),
+  checkRole(["examination_officer"]),
   councilTopicController.updateCouncil.bind(councilTopicController)
 );
 
 router.put(
   '/:id/delete',
   authenticateToken,
-  checkRole(['examination_officer', 'graduation_thesis_manager']),
+  checkRole(['examination_officer']),
   councilTopicController.deleteCouncil.bind(councilTopicController)
 );
 
 router.post(
   "/members/:councilId",
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager"]),
+  checkRole(["examination_officer"]),
   councilTopicController.addMemberToCouncil.bind(councilTopicController)
 );
 
 router.delete(
   "/council/:councilId/user/:userId",
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager"]),
+  checkRole(["examination_officer", ]),
   councilTopicController.removeMemberFromCouncil.bind(councilTopicController)
 );
 
@@ -64,7 +64,7 @@ router.get(
 router.put(
   '/topics/:topicId/review',
   authenticateToken,
-  checkRole(['council_member', "lecturer", "graduation_thesis_manager"], false),
+  checkRole(['council_member', "lecturer"], false),
   councilTopicController.reviewTopicByCouncilMember.bind(councilTopicController)
 );
 

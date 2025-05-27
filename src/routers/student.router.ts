@@ -7,18 +7,13 @@ const router = express.Router();
 const studentController = new StudentController();
 
 
-router.get("/gets", studentController.getStudentList.bind(studentController));
 
 
 router.put("/:studentId",checkRole(["graduation_thesis_manager", "examination_officer"]), studentController.updateStudentHandler.bind(studentController));
 
-router.delete("/delete/:studentId", authenticateToken,
-    checkRole([ "graduation_thesis_manager", "examination_officer"]), studentController.deleteStudentHandler.bind(studentController));
 
 router.get("/:semesterId", studentController.getStudentsBySemester.bind(studentController));
 
-router.delete("/semester/:semesterId", authenticateToken,
-    checkRole([ "graduation_thesis_manager", "examination_officer"]), studentController.deleteAllStudentsBySemesterHandler.bind(studentController));
 
 
 export default router;

@@ -9,7 +9,7 @@ const topicController = new TopicController();
 router.post(
   '/',
   authenticateToken,
-  checkRole(['academic_officer', 'admin', 'lecturer', 'graduation_thesis_manager']),
+  checkRole([ 'lecturer']),
   topicController.createTopic.bind(topicController)
 );
 
@@ -17,7 +17,7 @@ router.post(
 router.put(
   '/:topicId',
   authenticateToken,
-  checkRole(['academic_officer', 'graduation_thesis_manager', 'lecturer']),
+  checkRole(['lecturer']),
   topicController.updateTopic.bind(topicController)
 );
 
@@ -137,14 +137,14 @@ router.get(
 
 router.post('/create-with-mentors',
   authenticateToken,
-  checkRole(['academic_officer',  'graduation_thesis_manager']),
+  checkRole(['academic_officer']),
   topicController.createTopicWithMentors.bind(topicController));
 
 //  gán mentor hoặc nhóm vào đề tài
 router.post(
   '/:topicId/assign',
   authenticateToken,
-  checkRole(['academic_officer', 'graduation_thesis_manager']),
+  checkRole(['academic_officer']),
   topicController.assignMentorsOrGroup.bind(topicController)
 );
 

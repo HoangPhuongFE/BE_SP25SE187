@@ -12,7 +12,7 @@ router.post(
   '/import',
     authenticateToken, // Middleware xác thực token
     // Middleware xác thực token và kiểm tra vai trò
-  checkRole(['academic_officer']), // Yêu cầu vai trò "business" và semesterId
+  checkRole(["graduation_thesis_manager"]), // Yêu cầu vai trò "graduation_thesis_manager"
     upload.single('file'), // Middleware multer để xử lý file upload
   businessTopicController.importBusinessTopics.bind(businessTopicController)
 );

@@ -116,11 +116,11 @@ export class TopicService {
       const roleName = userRole.role.name.toUpperCase();
       const semesterStatus = semester.status.toUpperCase();
 
-      if (!['LECTURER', 'ACADEMIC_OFFICER'].includes(roleName)) {
+      if (!['LECTURER'].includes(roleName)) {
         return {
           success: false,
           status: HTTP_STATUS.FORBIDDEN,
-          message: 'Chỉ Academic Officer hoặc Lecturer mới được tạo đề tài!',
+          message: 'Chỉ Lecturer mới được tạo đề tài!',
         };
       }
 

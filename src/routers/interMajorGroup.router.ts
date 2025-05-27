@@ -8,7 +8,7 @@ const interMajorGroupController = new InterMajorGroupController();
 router.post(
   '/inter-major-groups',
   authenticateToken,
-  checkRole(['academic_officer','student','lecturer',"examination_officer"],false),
+  checkRole(['student']),
   interMajorGroupController.createGroup.bind(interMajorGroupController)
 );
 router.post(
