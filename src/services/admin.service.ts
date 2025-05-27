@@ -621,10 +621,39 @@ export class AdminService {
     return { message: `Xóa mềm người dùng và các dữ liệu liên quan ${semesterId ? `trong học kỳ ${semesterCode}` : 'toàn bộ'} thành công!`, data: updatedUser };
   }
 
-  async getUsers() {
+  async getUsers(semesterId?: string) {
+    const adminRoles = ['graduation_thesis_manager', 'examination_officer', 'academic_officer'];
+
     return prisma.user.findMany({
       where: {
-        isDeleted: false
+        isDeleted: false,
+        OR: [
+          // Users with admin roles (not filtered by semesterId)
+          {
+            roles: {
+              some: {
+                role: {
+                  name: { in: adminRoles },
+                },
+                isDeleted: false,
+              },
+            },
+          },
+          // Users with other roles filtered by semesterId (if provided)
+          {
+            ...(semesterId && {
+              roles: {
+                some: {
+                  semesterId,
+                  isDeleted: false,
+                  semester: {
+                    isDeleted: false,
+                  },
+                },
+              },
+            }),
+          },
+        ],
       },
       select: {
         id: true,
@@ -635,18 +664,32 @@ export class AdminService {
           where: {
             isDeleted: false,
             semester: {
-              isDeleted: false
-            }
+              isDeleted: false,
+            },
+            // Only apply semesterId filter for non-admin roles
+            OR: [
+              {
+                role: {
+                  name: { notIn: adminRoles },
+                },
+                ...(semesterId && { semesterId }),
+              },
+              {
+                role: {
+                  name: { in: adminRoles },
+                },
+              },
+            ],
           },
           select: {
             role: true,
             semester: {
               select: {
                 id: true,
-                code: true
-              }
-            }
-          }
+                code: true,
+              },
+            },
+          },
         },
       },
     });
