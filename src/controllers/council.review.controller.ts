@@ -288,30 +288,7 @@ export class CouncilReviewController {
     return res.status(result.status).json(result);
   }
 
-  // Trong CouncilReviewController
-  // async confirmDefenseRound(req: Request, res: Response) {
-  //   try {
-  //     const { groupCode, defenseRound } = req.body;
 
-  //     // Kiểm tra dữ liệu đầu vào
-  //     if (!groupCode || !defenseRound) {
-  //       return res.status(400).json({
-  //         success: false,
-  //         message: "Thiếu groupCode hoặc defenseRound!",
-  //       });
-  //     }
-
-  //     // Gọi service để xử lý
-  //     const userId = req.user!.userId;
-  //     const result = await councilReviewService.confirmDefenseRound(groupCode, defenseRound, userId);
-  //     return res.status(result.status).json(result);
-  //   } catch (error) {
-  //     return res.status(500).json({
-  //       success: false,
-  //       message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
-  //     });
-  //   }
-  // }
   async confirmDefenseRound(req: Request, res: Response) {
     try {
       const { groupCode, defenseRound, mentorDecision } = req.body;

@@ -37,7 +37,6 @@ import interMajorConfigRouter from './routers/interMajorConfig.router';
 import interMajorGroupRouter from './routers/interMajorGroup.router';
 import interMajorTopicRouter from './routers/interMajorTopic.router';
 
-
 import { errorHandler } from './middleware/errorHandler';
 
 config();
