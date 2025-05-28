@@ -22,7 +22,6 @@ CREATE TABLE `users` (
     `updatedAt` DATETIME(3) NOT NULL,
     `isDeleted` BOOLEAN NOT NULL DEFAULT false,
 
-    UNIQUE INDEX `users_username_key`(`username`),
     UNIQUE INDEX `users_email_key`(`email`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -460,6 +459,8 @@ CREATE TABLE `decisions` (
     `id` VARCHAR(191) NOT NULL,
     `decision_name` VARCHAR(191) NOT NULL,
     `decision_title` TEXT NULL,
+    `decision_name_A` VARCHAR(191) NOT NULL,
+    `decision_title_B` TEXT NULL,
     `decision_date` DATETIME(3) NULL,
     `based_on_json` TEXT NULL,
     `participants_json` TEXT NULL,

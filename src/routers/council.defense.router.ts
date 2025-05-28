@@ -9,7 +9,7 @@ const councilDefenseController = new CouncilDefenseController();
 router.post(
     '/',
     authenticateToken,
-    checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager"]),
+    checkRole([ "graduation_thesis_manager"]),
     councilDefenseController.createDefenseCouncil.bind(councilDefenseController)
 );
 
@@ -17,14 +17,14 @@ router.post(
 router.post(
     '/:councilId/members',
     authenticateToken,
-    checkRole(["examination_officer", "graduation_thesis_manager"]),
+    checkRole([ "graduation_thesis_manager"]),
     councilDefenseController.addMemberToCouncil.bind(councilDefenseController)
 );
 // Route mới: Lấy danh sách hội đồng bảo vệ
 router.get(
     '/',
     authenticateToken,
-    checkRole(["examination_officer", "graduation_thesis_manager", "lecturer", "council_member"]),
+    checkRole(["graduation_thesis_manager", "lecturer", "council_member"]),
     councilDefenseController.getDefenseCouncils.bind(councilDefenseController)
 );
 
@@ -32,14 +32,14 @@ router.get(
 router.get(
     '/:councilId',
     authenticateToken,
-    checkRole(["examination_officer", "graduation_thesis_manager", "lecturer", "council_member"]),
+    checkRole([ "graduation_thesis_manager", "lecturer", "council_member"]),
     councilDefenseController.getDefenseCouncilById.bind(councilDefenseController)
 );
 // Tạo lịch bảo vệ (Thêm nhóm vào hội đồng)
 router.post(
     '/schedules',
     authenticateToken,
-    checkRole(["examination_officer", "graduation_thesis_manager"]),
+    checkRole(["graduation_thesis_manager"]),
     councilDefenseController.createDefenseSchedule.bind(councilDefenseController)
 );
 
@@ -47,7 +47,7 @@ router.post(
 router.put(
     '/:councilId/delete',
     authenticateToken,
-    checkRole(["examination_officer", "graduation_thesis_manager"]),
+    checkRole(["graduation_thesis_manager"]),
     councilDefenseController.deleteDefenseCouncil.bind(councilDefenseController)
 );
 
@@ -55,7 +55,7 @@ router.put(
 router.put(
     '/:councilId',
     authenticateToken,
-    checkRole(["examination_officer", "graduation_thesis_manager"]),
+    checkRole(["graduation_thesis_manager"]),
     councilDefenseController.updateDefenseCouncil.bind(councilDefenseController)
 );
 
@@ -95,30 +95,29 @@ router.get(
 router.put(
     '/schedules/:defenseScheduleId/students/:studentId/evaluate',
     authenticateToken,
-    checkRole(["lecturer", "council_secretary", "council_chairman"
-    ]),
+    checkRole([ "council_secretary", "council_chairman"]),
     councilDefenseController.evaluateDefenseMember.bind(councilDefenseController)
 );
 // Route mới: Thay đổi thành viên hội đồng
 router.put(
     '/council/:councilId/members',
     authenticateToken,
-    checkRole(["examination_officer", "graduation_thesis_manager"]),
+    checkRole(["graduation_thesis_manager"]),
     councilDefenseController.updateDefenseCouncilMembers.bind(councilDefenseController)
 );
 
 router.delete(
     '/council/:councilId/user/:userId',
     authenticateToken,
-    checkRole(["examination_officer", "graduation_thesis_manager"]),
+    checkRole(["graduation_thesis_manager"]),
     councilDefenseController.removeCouncilMember.bind(councilDefenseController)
 );
 // Cập nhật trạng thái và ghi chú của lịch bảo vệ
 router.put(
     '/schedules/:scheduleId/update',
     authenticateToken,
-    checkRole(["examination_officer", "graduation_thesis_manager", "lecturer", "council_member"]),
+    checkRole([ "council_secretary", "council_chairman"]),
     councilDefenseController.updateDefenseScheduleStatus.bind(councilDefenseController)
   );
-  
+  //"lecturer", "council_member",
 export default router;

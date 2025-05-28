@@ -9,7 +9,7 @@ const councilReviewController = new CouncilReviewController();
 router.post(
   '/',
   authenticateToken,
-  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager"]),
+  checkRole([ "graduation_thesis_manager"]),
   councilReviewController.createCouncil.bind(councilReviewController)
 );
 
@@ -17,7 +17,7 @@ router.post(
 router.get(
   '/',
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager", "lecturer", "council_member"]),
+  checkRole(["graduation_thesis_manager", "lecturer", "council_member"]),
   councilReviewController.getCouncils.bind(councilReviewController)
 );
 
@@ -25,7 +25,7 @@ router.get(
 router.get(
   '/:id',
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager", "lecturer", "council_member"]),
+  checkRole(["graduation_thesis_manager", "lecturer", "council_member"]),
   councilReviewController.getCouncilById.bind(councilReviewController)
 );
 
@@ -33,7 +33,7 @@ router.get(
 router.put(
   '/:id',
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager"]),
+  checkRole(["graduation_thesis_manager"]),
   councilReviewController.updateCouncil.bind(councilReviewController)
 );
 
@@ -41,7 +41,7 @@ router.put(
 router.put(
   '/:id/delete',
   authenticateToken,
-  checkRole(['examination_officer', 'graduation_thesis_manager']),
+  checkRole(['graduation_thesis_manager']),
   councilReviewController.deleteCouncil.bind(councilReviewController)
 );
 
@@ -49,7 +49,7 @@ router.put(
 router.post(
   "/:councilId/members",
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager"]),
+  checkRole(["graduation_thesis_manager"]),
   councilReviewController.addMemberToCouncil.bind(councilReviewController)
 );
 
@@ -57,7 +57,7 @@ router.post(
 router.delete(
   "/council/:councilId/user/:userId",
   authenticateToken,
-  checkRole(["examination_officer", "graduation_thesis_manager"]),
+  checkRole(["graduation_thesis_manager"]),
   councilReviewController.removeMemberFromCouncil.bind(councilReviewController)
 );
 
@@ -73,7 +73,7 @@ router.get(
 router.post(
   '/schedules',
   authenticateToken,
-  checkRole(['examination_officer', 'graduation_thesis_manager']),
+  checkRole([ 'graduation_thesis_manager']),
   councilReviewController.createReviewSchedule.bind(councilReviewController)
 );
 
@@ -105,7 +105,7 @@ router.put(
 router.put(
   '/review-assignments/:assignmentId/update',
   authenticateToken,
-  checkRole(['lecturer',"council_member"]),
+  checkRole(['lecturer', "council_member"]),
   councilReviewController.updateReviewAssignment.bind(councilReviewController)
 );
 

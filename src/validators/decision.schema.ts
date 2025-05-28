@@ -1,13 +1,15 @@
-// 📁 src/validators/decision.schema.ts
 
 import { z } from "zod";
 
 export const createDecisionSchema = z.object({
   decisionName: z.string().min(1, "Số quyết định không được để trống"),
   decisionTitle: z.string().optional(),
+  decisionNameA: z.string().min(1, "Số quyết định A không được để trống"), // Add
+  decisionTitleB: z.string().optional(), // Add
   decisionDate: z.string().optional().refine((val) => !val || !isNaN(Date.parse(val)), {
     message: "Ngày ký phải là định dạng ngày hợp lệ",
   }),
+
   basedOn: z.array(z.string()).optional(),
   participants: z.string().optional(),
   clauses: z.array(z.string()).optional(),

@@ -558,6 +558,8 @@ model Decision {
 
   decisionName  String    @map("decision_name") // Số quyết định (123)
   decisionTitle String?   @map("decision_title") @db.Text // Tiêu đề quyết định
+  decisionNameA  String    @map("decision_name_A") // Số quyết định (123)
+  decisionTitleB String?   @map("decision_title_B") @db.Text // Tiêu đề quyết định
   decisionDate  DateTime? @map("decision_date") // Ngày ký quyết định
 
   basedOnJson      String? @map("based_on_json") @db.Text // Mảng căn cứ (JSON.stringify)

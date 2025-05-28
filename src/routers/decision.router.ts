@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.post("/decisions",
   authenticateToken,
-  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager"]),
+  checkRole([ "academic_officer"]),
   createDecisionController);
 
 router.get("/decisions",
@@ -28,12 +28,12 @@ router.get("/decisions/:id",
 
 router.put("/decisions/:id",
   authenticateToken,
-  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager"]),
+  checkRole([ "academic_officer"]),
   updateDecisionController);
 
 router.put("/decisions/:id/delete",
   authenticateToken,
-  checkRole(["examination_officer", "academic_officer", "graduation_thesis_manager"]),
+  checkRole([ "academic_officer"]),
   deleteDecisionController);
 
 export default router;

@@ -7,6 +7,9 @@ export class DecisionService {
       data: {
         decisionName: data.decisionName,
         decisionTitle: data.decisionTitle,
+        decisionNameA: data.decisionNameA, // Add this line to include the required property
+
+        decisionTitleB: data.decisionTitleB,
         decisionDate: data.decisionDate ? new Date(data.decisionDate) : undefined,
         basedOnJson: data.basedOn ? JSON.stringify(data.basedOn) : undefined,
         participantsJson: data.participants ? JSON.stringify(data.participants) : undefined,
@@ -27,6 +30,8 @@ export class DecisionService {
       id: newDecision.id,
       decisionName: newDecision.decisionName,
       decisionTitle: newDecision.decisionTitle,
+      decisionNameA: newDecision.decisionNameA,
+      decisionTitleB: newDecision.decisionTitleB,
       decisionDate: newDecision.decisionDate,
       proposal: newDecision.proposal,
       content: newDecision.content,
@@ -55,6 +60,8 @@ export class DecisionService {
       id: decision.id,
       decisionName: decision.decisionName,
       decisionTitle: decision.decisionTitle,
+      decisionNameA: decision.decisionNameA, // Thêm vào response
+      decisionTitleB: decision.decisionTitleB, // Thêm vào response
       decisionDate: decision.decisionDate,
       proposal: decision.proposal,
       content: decision.content,
@@ -83,6 +90,8 @@ export class DecisionService {
       id: d.id,
       decisionName: d.decisionName,
       decisionTitle: d.decisionTitle,
+      decisionNameA: d.decisionNameA, // Thêm vào response
+      decisionTitleB: d.decisionTitleB, // Thêm vào response
       decisionDate: d.decisionDate,
       proposal: d.proposal,
       content: d.content,
@@ -112,6 +121,8 @@ export class DecisionService {
       data: {
         decisionName: data.decisionName,
         decisionTitle: data.decisionTitle,
+        decisionNameA: data.decisionNameA, // Thêm vào cập nhật
+        decisionTitleB: data.decisionTitleB, // Thêm vào cập nhật
         decisionDate: data.decisionDate ? new Date(data.decisionDate) : undefined,
         basedOnJson: data.basedOn ? JSON.stringify(data.basedOn) : undefined,
         participantsJson: data.participants ? JSON.stringify(data.participants) : undefined,
@@ -131,6 +142,8 @@ export class DecisionService {
       id: updated.id,
       decisionName: updated.decisionName,
       decisionTitle: updated.decisionTitle,
+      decisionNameA: updated.decisionNameA, // Thêm vào response
+      decisionTitleB: updated.decisionTitleB, // Thêm vào response
       decisionDate: updated.decisionDate,
       proposal: updated.proposal,
       content: updated.content,
@@ -164,6 +177,8 @@ export class DecisionService {
       id: deleted.id,
       decisionName: deleted.decisionName,
       decisionTitle: deleted.decisionTitle,
+      decisionNameA: deleted.decisionNameA, // Thêm vào response
+      decisionTitleB: deleted.decisionTitleB, // Thêm vào response
       decisionDate: deleted.decisionDate,
       proposal: deleted.proposal,
       content: deleted.content,
