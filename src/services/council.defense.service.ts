@@ -1110,7 +1110,7 @@ export class CouncilDefenseService {
 
             const roleNames = userRoles.map((ur) => ur.role.name);
            // const allowedRoles = ["lecturer", "council_chairman", "council_secretary", "council_member"];
-            const allowedRoles = ["council_chairman", "council_secretary"];
+            const allowedRoles = ["council_chairman", "council_secretary","lecturer"];
 
             if (!roleNames.some((role) => allowedRoles.includes(role))) {
                 return {
