@@ -95,7 +95,7 @@ router.get(
 router.put(
     '/schedules/:defenseScheduleId/students/:studentId/evaluate',
     authenticateToken,
-    checkRole([ "council_secretary", "council_chairman"]),
+    checkRole([ "council_secretary", "council_chairman","lecturer"]),
     councilDefenseController.evaluateDefenseMember.bind(councilDefenseController)
 );
 // Route mới: Thay đổi thành viên hội đồng
@@ -116,7 +116,7 @@ router.delete(
 router.put(
     '/schedules/:scheduleId/update',
     authenticateToken,
-    checkRole([ "council_secretary", "council_chairman"]),
+    checkRole([ "council_secretary", "council_chairman", "lecturer"]),
     councilDefenseController.updateDefenseScheduleStatus.bind(councilDefenseController)
   );
   //"lecturer", "council_member",
