@@ -133,9 +133,13 @@ export class AdminController {
     return res.status(500).json({ message });
   }
 }
-  async getUsers(req: AuthenticatedRequest, res: Response) {
+ async getUsers(req: AuthenticatedRequest, res: Response) {
     try {
-      const users = await adminService.getUsers();
+      const semesterId = req.query.semesterId as string | undefined;
+      if (!semesterId) {
+        return res.status(400).json({ message: 'semesterId là bắt buộc' });
+      }
+      const users = await adminService.getUsers(semesterId);
       res.status(200).json({ users });
     } catch (error) {
       res.status(500).json({ message: (error as Error).message });
