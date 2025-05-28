@@ -35,7 +35,7 @@ import staticRoutes from "./routers/statistics.route";
 import interMajorConfigRouter from './routers/interMajorConfig.router';
 import interMajorGroupRouter from './routers/interMajorGroup.router';
 import interMajorTopicRouter from './routers/interMajorTopic.router';
-
+import thesisAssignmentRouter from './routers/thesisAssignment.router';
 import { errorHandler } from './middleware/errorHandler';
 
 config();
@@ -94,7 +94,7 @@ app.use('/api/statistics', staticRoutes);
 app.use('/api', interMajorConfigRouter);
 app.use('/api', interMajorGroupRouter);
 app.use('/api', interMajorTopicRouter);
-//
+app.use('/api', thesisAssignmentRouter);
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
