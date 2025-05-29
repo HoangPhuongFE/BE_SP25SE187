@@ -288,7 +288,7 @@ export class CouncilReviewService {
           },
         },
       });
-      
+
 
       if (!council) {
         return {
@@ -717,7 +717,7 @@ export class CouncilReviewService {
     }
   }
 
- 
+
 
   async createReviewSchedule(data: {
     councilId: string;
@@ -728,7 +728,7 @@ export class CouncilReviewService {
     try {
       const councilId = String(data.councilId).trim();
       const maxTopicsPerSchedule = await systemConfigService.getMaxTopicsPerCouncilSchedule();
-  
+
       if (data.groups.length < 1 || data.groups.length > maxTopicsPerSchedule) {
         return {
           success: false,
@@ -736,12 +736,12 @@ export class CouncilReviewService {
           message: `Số lượng nhóm phải từ 1 đến ${maxTopicsPerSchedule}!`,
         };
       }
-  
+
       const council = await prisma.council.findUnique({
         where: { id: councilId, isDeleted: false },
         include: { members: { include: { user: true } } },
       });
-  
+
       if (!council) {
         return {
           success: false,
@@ -749,9 +749,9 @@ export class CouncilReviewService {
           message: "Hội đồng không tồn tại!",
         };
       }
-  
+
       const reviewRound = council.round || 1; // Use 'round' property or default to 1
-  
+
       const reviewTimes = data.groups.map((g) => g.reviewTime.getTime());
       if (new Set(reviewTimes).size !== reviewTimes.length) {
         return {
@@ -760,11 +760,11 @@ export class CouncilReviewService {
           message: "Có các nhóm trong danh sách bị trùng thời gian chấm điểm!",
         };
       }
-  
+
       const allSchedules = await prisma.reviewSchedule.findMany({
         where: { councilId, isDeleted: false },
       });
-  
+
       for (const group of data.groups) {
         const conflict = allSchedules.find(
           (s) => Math.abs(s.reviewTime.getTime() - group.reviewTime.getTime()) < 1000
@@ -777,20 +777,20 @@ export class CouncilReviewService {
           };
         }
       }
-  
+
       const groupIds = data.groups.map((g) => g.groupId);
-  
+
       const topicAssignments = await prisma.topicAssignment.findMany({
         where: { groupId: { in: groupIds }, status: "ASSIGNED", isDeleted: false },
         include: {
           topic: { select: { id: true, name: true, status: true } },
         },
       });
-  
+
       const groupsWithoutTopic = groupIds.filter(
         (groupId) => !topicAssignments.some((ta) => ta.groupId === groupId)
       );
-  
+
       if (groupsWithoutTopic.length > 0) {
         return {
           success: false,
@@ -798,7 +798,7 @@ export class CouncilReviewService {
           message: `Các nhóm chưa được phân công đề tài: ${groupsWithoutTopic.join(", ")}`,
         };
       }
-  
+
       const validStatuses = ["APPROVED"];
       const invalidTopics = topicAssignments.filter(
         (ta) => !validStatuses.includes(ta.topic.status)
@@ -811,13 +811,13 @@ export class CouncilReviewService {
           message: `Các đề tài không hợp lệ để chấm:\n${details.join("\n")}`,
         };
       }
-  
+
       const topicGroupMap = topicAssignments.map((ta) => ({
         topicId: ta.topic.id,
         topicName: ta.topic.name,
         groupId: ta.groupId,
       }));
-  
+
       const existingSchedules = await prisma.reviewSchedule.findMany({
         where: {
           councilId,
@@ -826,13 +826,13 @@ export class CouncilReviewService {
         },
         include: { topic: { select: { name: true } } },
       });
-  
+
       const conflicts = topicGroupMap.filter((tg) =>
         existingSchedules.some(
           (s) => s.topicId === tg.topicId && s.groupId === tg.groupId
         )
       );
-  
+
       if (conflicts.length > 0) {
         const details = conflicts.map((c) => `- ${c.topicName}`);
         return {
@@ -841,7 +841,7 @@ export class CouncilReviewService {
           message: `Các đề tài đã có lịch ở vòng ${reviewRound} của hội đồng này:\n${details.join("\n")}`,
         };
       }
-  
+
       const councilMemberIds = council.members.map((m) => m.userId);
       const groupMentors = await prisma.groupMentor.findMany({
         where: { groupId: { in: groupIds }, isDeleted: false },
@@ -850,7 +850,7 @@ export class CouncilReviewService {
           group: { select: { groupCode: true } },
         },
       });
-  
+
       for (const ta of topicAssignments) {
         const mentors = groupMentors.filter((gm) => gm.groupId === ta.groupId);
         const conflictMentor = mentors.find((gm) =>
@@ -864,15 +864,15 @@ export class CouncilReviewService {
           };
         }
       }
-  
+
       // ✅ Tạo lịch và assignment
       const newSchedules = await prisma.$transaction(async (tx) => {
         const created = [];
-  
+
         for (const group of data.groups) {
           const ta = topicAssignments.find((ta) => ta.groupId === group.groupId);
           if (!ta) continue;
-  
+
           const schedule = await tx.reviewSchedule.create({
             data: {
               councilId,
@@ -900,7 +900,7 @@ export class CouncilReviewService {
               council: { select: { name: true } },
             },
           });
-  
+
           const assignment = await tx.reviewAssignment.create({
             data: {
               councilId,
@@ -911,13 +911,13 @@ export class CouncilReviewService {
               reviewScheduleId: schedule.id,
             },
           });
-  
+
           created.push({ schedule, assignment });
         }
-  
+
         return created;
       });
-  
+
       return {
         success: true,
         status: HTTP_STATUS.CREATED,
@@ -933,8 +933,8 @@ export class CouncilReviewService {
       };
     }
   }
-  
-  
+
+
 
 
 
@@ -1052,134 +1052,134 @@ export class CouncilReviewService {
   }
 
   // API 5: Mentor xem lịch nhóm
-async getReviewScheduleForMentor(userId: string, semesterId: string) {
+  async getReviewScheduleForMentor(userId: string, semesterId: string) {
     try {
-        // 1. Lấy danh sách nhóm mà user là mentor, lọc theo semesterId
-        const mentorGroups = await prisma.groupMentor.findMany({
-            where: {
-                mentorId: userId,
-                isDeleted: false,
-                group: { semesterId: semesterId }, // Lọc theo semesterId
-            },
-            select: { groupId: true },
-        });
+      // 1. Lấy danh sách nhóm mà user là mentor, lọc theo semesterId
+      const mentorGroups = await prisma.groupMentor.findMany({
+        where: {
+          mentorId: userId,
+          isDeleted: false,
+          group: { semesterId: semesterId }, // Lọc theo semesterId
+        },
+        select: { groupId: true },
+      });
 
-        const groupIds = mentorGroups.map(gm => gm.groupId);
-        if (groupIds.length === 0) {
-            return {
-                success: false,
-                status: HTTP_STATUS.NOT_FOUND,
-                message: "Bạn hiện không phụ trách nhóm nào!",
-            };
-        }
+      const groupIds = mentorGroups.map(gm => gm.groupId);
+      if (groupIds.length === 0) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: "Bạn hiện không phụ trách nhóm nào!",
+        };
+      }
 
-        // 2. Truy vấn đầy đủ dữ liệu ReviewSchedule và TopicAssignment
-        const schedules = await prisma.reviewSchedule.findMany({
-            where: {
-                groupId: { in: groupIds },
-                isDeleted: false,
-                council: { semesterId: semesterId }, // Lọc theo semesterId
+      // 2. Truy vấn đầy đủ dữ liệu ReviewSchedule và TopicAssignment
+      const schedules = await prisma.reviewSchedule.findMany({
+        where: {
+          groupId: { in: groupIds },
+          isDeleted: false,
+          council: { semesterId: semesterId }, // Lọc theo semesterId
+        },
+        include: {
+          council: { select: { id: true, code: true, name: true, status: true, type: true, round: true } },
+          group: {
+            select: {
+              id: true,
+              groupCode: true,
+              semesterId: true,
+              status: true,
+              topicAssignments: {
+                where: { isDeleted: false },
+                select: {
+                  defendStatus: true,
+                  defenseRound: true,
+                },
+              },
             },
+          },
+          topic: { select: { id: true, topicCode: true, name: true, status: true } },
+          assignments: {
             include: {
-                council: { select: { id: true, code: true, name: true, status: true, type: true, round: true } },
-                group: {
-                    select: {
-                        id: true,
-                        groupCode: true,
-                        semesterId: true,
-                        status: true,
-                        topicAssignments: {
-                            where: { isDeleted: false },
-                            select: {
-                                defendStatus: true,
-                                defenseRound: true,
-                            },
-                        },
-                    },
-                },
-                topic: { select: { id: true, topicCode: true, name: true, status: true } },
-                assignments: {
-                    include: {
-                        council: { select: { id: true, name: true } },
-                        topic: { select: { id: true, topicCode: true, name: true } },
-                        reviewer: { select: { id: true, fullName: true, email: true } },
-                        reviewSchedule: {
-                            select: { id: true, reviewTime: true, room: true, reviewRound: true, status: true, note: true },
-                        },
-                    },
-                },
-                documents: {
-                    where: { documentType: "REVIEW_REPORT", isDeleted: false },
-                    select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true, uploadedBy: true },
-                },
+              council: { select: { id: true, name: true } },
+              topic: { select: { id: true, topicCode: true, name: true } },
+              reviewer: { select: { id: true, fullName: true, email: true } },
+              reviewSchedule: {
+                select: { id: true, reviewTime: true, room: true, reviewRound: true, status: true, note: true },
+              },
             },
-        });
+          },
+          documents: {
+            where: { documentType: "REVIEW_REPORT", isDeleted: false },
+            select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true, uploadedBy: true },
+          },
+        },
+      });
 
-        if (schedules.length === 0) {
-            return {
-                success: false,
-                status: HTTP_STATUS.OK,
-                message: "Hiện tại chưa có lịch chấm điểm nào cho các nhóm bạn phụ trách!",
-            };
-        }
-
-        // 3. Chuẩn bị dữ liệu trả về
-        const result = schedules.map(schedule => ({
-            schedule: {
-                id: schedule.id,
-                councilId: schedule.councilId,
-                groupId: schedule.groupId,
-                topicId: schedule.topicId,
-                reviewTime: schedule.reviewTime,
-                room: schedule.room,
-                reviewRound: schedule.council.round,
-                note: schedule.note,
-                status: schedule.status,
-                isDeleted: schedule.isDeleted,
-                defendStatus: schedule.group.topicAssignments[0]?.defendStatus || null,
-                defenseRound: schedule.group.topicAssignments[0]?.defenseRound || null,
-                council: schedule.council,
-                group: schedule.group,
-                topic: schedule.topic,
-                mentorDecision: schedule.assignments[0]?.score || null,
-            },
-            assignments: schedule.assignments.map(assignment => ({
-                id: assignment.id,
-                councilId: assignment.councilId,
-                topicId: assignment.topicId,
-                reviewerId: assignment.reviewerId,
-                score: assignment.score,
-                feedback: assignment.feedback,
-                status: assignment.status,
-                reviewRound: assignment.reviewRound,
-                assignedAt: assignment.assignedAt,
-                reviewedAt: assignment.reviewedAt,
-                reviewScheduleId: assignment.reviewScheduleId,
-                isDeleted: assignment.isDeleted,
-                council: assignment.council,
-                topic: assignment.topic,
-                reviewer: assignment.reviewer,
-                reviewSchedule: assignment.reviewSchedule,
-                mentorDecision: assignment.score || null,
-            })),
-            documents: schedule.documents,
-        }));
-
+      if (schedules.length === 0) {
         return {
-            success: true,
-            status: HTTP_STATUS.OK,
-            message: "Lấy lịch chấm điểm thành công!",
-            data: result,
+          success: false,
+          status: HTTP_STATUS.OK,
+          message: "Hiện tại chưa có lịch chấm điểm nào cho các nhóm bạn phụ trách!",
         };
+      }
+
+      // 3. Chuẩn bị dữ liệu trả về
+      const result = schedules.map(schedule => ({
+        schedule: {
+          id: schedule.id,
+          councilId: schedule.councilId,
+          groupId: schedule.groupId,
+          topicId: schedule.topicId,
+          reviewTime: schedule.reviewTime,
+          room: schedule.room,
+          reviewRound: schedule.council.round,
+          note: schedule.note,
+          status: schedule.status,
+          isDeleted: schedule.isDeleted,
+          defendStatus: schedule.group.topicAssignments[0]?.defendStatus || null,
+          defenseRound: schedule.group.topicAssignments[0]?.defenseRound || null,
+          council: schedule.council,
+          group: schedule.group,
+          topic: schedule.topic,
+          mentorDecision: schedule.assignments[0]?.score || null,
+        },
+        assignments: schedule.assignments.map(assignment => ({
+          id: assignment.id,
+          councilId: assignment.councilId,
+          topicId: assignment.topicId,
+          reviewerId: assignment.reviewerId,
+          score: assignment.score,
+          feedback: assignment.feedback,
+          status: assignment.status,
+          reviewRound: assignment.reviewRound,
+          assignedAt: assignment.assignedAt,
+          reviewedAt: assignment.reviewedAt,
+          reviewScheduleId: assignment.reviewScheduleId,
+          isDeleted: assignment.isDeleted,
+          council: assignment.council,
+          topic: assignment.topic,
+          reviewer: assignment.reviewer,
+          reviewSchedule: assignment.reviewSchedule,
+          mentorDecision: assignment.score || null,
+        })),
+        documents: schedule.documents,
+      }));
+
+      return {
+        success: true,
+        status: HTTP_STATUS.OK,
+        message: "Lấy lịch chấm điểm thành công!",
+        data: result,
+      };
     } catch (error) {
-        console.error("Lỗi khi lấy lịch chấm điểm cho mentor:", error);
-        return {
-            success: false,
-            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-            message: "Lỗi hệ thống khi lấy lịch chấm điểm!",
-        };
+      console.error("Lỗi khi lấy lịch chấm điểm cho mentor:", error);
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: "Lỗi hệ thống khi lấy lịch chấm điểm!",
+      };
     }
-}
+  }
 
   // API 6: Leader thêm URL
   async addUrlToReviewSchedule(scheduleId: string, url: string, userId: string) {
@@ -1498,7 +1498,7 @@ async getReviewScheduleForMentor(userId: string, semesterId: string) {
     }
   }
 
-  
+
 
   // async confirmDefenseRound(groupCode: string, defenseRound: number | null, userId: string, mentorDecision: "PASS" | "NOT_PASS") {
   //   try {
@@ -1606,193 +1606,145 @@ async getReviewScheduleForMentor(userId: string, semesterId: string) {
     defenseRound: number | null,
     userId: string,
     mentorDecision: "PASS" | "NOT_PASS"
-) {
+  ) {
     try {
-        // Kiểm tra mentorDecision
-        if (mentorDecision === "PASS" && defenseRound !== 1 && defenseRound !== 2) {
-            return {
-                success: false,
-                status: HTTP_STATUS.BAD_REQUEST,
-                message: "Vòng bảo vệ phải là 1 hoặc 2 khi xác nhận PASS!",
-            };
-        }
-
-        if (mentorDecision === "NOT_PASS" && defenseRound !== null) {
-            return {
-                success: false,
-                status: HTTP_STATUS.BAD_REQUEST,
-                message: "Khi chọn NOT_PASS, defenseRound phải để trống!",
-            };
-        }
-
-        // Nếu không có semesterId, tìm tất cả nhóm mà mentor phụ trách
-        if (!semesterId) {
-            const mentorGroups = await prisma.groupMentor.findMany({
-                where: {
-                    mentorId: userId,
-                    isDeleted: false,
-                    group: {
-                        groupCode,
-                        isDeleted: false,
-                    },
-                },
-                include: {
-                    group: {
-                        select: {
-                            id: true,
-                            semesterId: true,
-                            semester: { select: { id: true, code: true, status: true } },
-                        },
-                    },
-                },
-            });
-
-            if (mentorGroups.length === 0) {
-                return {
-                    success: false,
-                    status: HTTP_STATUS.NOT_FOUND,
-                    message: `Không tìm thấy nhóm với mã ${groupCode} mà bạn phụ trách!`,
-                };
-            }
-
-            if (mentorGroups.length > 1) {
-                const semesters = mentorGroups.map(mg => ({
-                    id: mg.group.semester.id,
-                    code: mg.group.semester.code,
-                    status: mg.group.semester.status,
-                }));
-                return {
-                    success: false,
-                    status: HTTP_STATUS.BAD_REQUEST,
-                    message: `Tìm thấy nhiều nhóm với mã ${groupCode} trong các học kỳ khác nhau. Vui lòng cung cấp semesterId!`,
-                    availableSemesters: semesters,
-                };
-            }
-
-            // Nếu chỉ có một nhóm, lấy semesterId từ nhóm
-            semesterId = mentorGroups[0].group.semesterId;
-        }
-
-        // Tìm nhóm với groupCode và semesterId
-        const group = await prisma.group.findFirst({
-            where: {
-                groupCode,
-                semesterId,
-                isDeleted: false,
-            },
-            include: {
-                semester: { select: { code: true } },
-            },
-        });
-
-        if (!group) {
-            return {
-                success: false,
-                status: HTTP_STATUS.NOT_FOUND,
-                message: `Không tìm thấy nhóm với mã ${groupCode} trong học kỳ này!`,
-            };
-        }
-
-        // Kiểm tra quyền mentor
-        const mentorGroup = await prisma.groupMentor.findFirst({
-            where: {
-                mentorId: userId,
-                groupId: group.id,
-                isDeleted: false,
-            },
-        });
-
-        if (!mentorGroup) {
-            return {
-                success: false,
-                status: HTTP_STATUS.FORBIDDEN,
-                message: "Bạn không phải mentor của nhóm này!",
-            };
-        }
-
-        // Tìm phân công đề tài
-        const topicAssignment = await prisma.topicAssignment.findFirst({
-            where: { groupId: group.id, isDeleted: false },
-        });
-        if (!topicAssignment) {
-            return {
-                success: false,
-                status: HTTP_STATUS.BAD_REQUEST,
-                message: "Nhóm chưa được gán đề tài!",
-            };
-        }
-
-        // Kiểm tra trạng thái để tránh xác nhận trùng
-        if (topicAssignment.defendStatus === "CONFIRMED" || topicAssignment.defendStatus === "UN_CONFIRMED") {
-            return {
-                success: false,
-                status: HTTP_STATUS.BAD_REQUEST,
-                message: "Vòng bảo vệ của nhóm này đã được xác nhận trước đó!",
-            };
-        }
-
-        // Xử lý quyết định
-        let defendStatus: string;
-        let message: string;
-        let updateData: any = {};
-
-        if (mentorDecision === "PASS") {
-            defendStatus = "CONFIRMED";
-            message = `Xác nhận nhóm đi bảo vệ vòng ${defenseRound} thành công!`;
-            updateData = {
-                defenseRound: defenseRound!.toString(),
-                defendStatus,
-            };
-        } else {
-            defendStatus = "UN_CONFIRMED";
-            message = "Nhóm được đánh giá không đạt và không được tham gia bảo vệ!";
-            updateData = {
-                defendStatus,
-                defenseRound: null,
-            };
-        }
-
-        // Cập nhật và ghi log trong transaction
-        const result = await prisma.$transaction(async (tx) => {
-            // Cập nhật topicAssignment
-            const updatedAssignment = await tx.topicAssignment.update({
-                where: { id: topicAssignment.id },
-                data: updateData,
-            });
-
-            // Ghi log
-            await tx.systemLog.create({
-                data: {
-                    userId,
-                    action: "confirmDefenseRound",
-                    entityType: "TopicAssignment",
-                    entityId: updatedAssignment.id,
-                    description: `Mentor ${userId} confirmed defense round for group ${group.id} (code: ${groupCode}, semester: ${group.semester.code}) with decision ${mentorDecision}`,
-                    severity: "INFO",
-                    createdAt: new Date(),
-                    ipAddress: "unknown", // Thay bằng req.ip nếu có
-                    isDeleted: false,
-                },
-            });
-
-            return updatedAssignment;
-        });
-
+      // Kiểm tra mentorDecision
+      if (mentorDecision === "PASS" && defenseRound !== 1 && defenseRound !== 2) {
         return {
-            success: true,
-            status: HTTP_STATUS.OK,
-            message,
-            data: result,
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: "Vòng bảo vệ phải là 1 hoặc 2 khi xác nhận PASS!",
         };
+      }
+
+      if (mentorDecision === "NOT_PASS" && defenseRound !== null) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: "Khi chọn NOT_PASS, defenseRound phải để trống!",
+        };
+      }
+
+      // Tìm nhóm với groupCode và semesterId
+      const group = await prisma.group.findFirst({
+        where: {
+          groupCode,
+          semesterId,
+          isDeleted: false,
+        },
+        include: {
+          semester: { select: { code: true } },
+        },
+      });
+
+      if (!group) {
+        return {
+          success: false,
+          status: HTTP_STATUS.NOT_FOUND,
+          message: `Không tìm thấy nhóm với mã ${groupCode} trong học kỳ này!`,
+        };
+      }
+
+      // Kiểm tra quyền mentor
+      const mentorGroup = await prisma.groupMentor.findFirst({
+        where: {
+          mentorId: userId,
+          groupId: group.id,
+          isDeleted: false,
+        },
+      });
+
+      if (!mentorGroup) {
+        return {
+          success: false,
+          status: HTTP_STATUS.FORBIDDEN,
+          message: "Bạn không phải mentor của nhóm này!",
+        };
+      }
+
+      // Tìm phân công đề tài
+      const topicAssignment = await prisma.topicAssignment.findFirst({
+        where: { groupId: group.id, isDeleted: false },
+      });
+      if (!topicAssignment) {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: "Nhóm chưa được gán đề tài!",
+        };
+      }
+
+      // Kiểm tra trạng thái để tránh xác nhận trùng
+      if (topicAssignment.defendStatus === "CONFIRMED" || topicAssignment.defendStatus === "UN_CONFIRMED") {
+        return {
+          success: false,
+          status: HTTP_STATUS.BAD_REQUEST,
+          message: "Vòng bảo vệ của nhóm này đã được xác nhận trước đó!",
+        };
+      }
+
+      // Xử lý quyết định
+      let defendStatus: string;
+      let message: string;
+      let updateData: any = {};
+
+      if (mentorDecision === "PASS") {
+        defendStatus = "CONFIRMED";
+        message = `Xác nhận nhóm đi bảo vệ vòng ${defenseRound} thành công!`;
+        updateData = {
+          defenseRound: defenseRound!.toString(),
+          defendStatus,
+        };
+      } else {
+        defendStatus = "UN_CONFIRMED";
+        message = "Nhóm được đánh giá không đạt và không được tham gia bảo vệ!";
+        updateData = {
+          defendStatus,
+          defenseRound: null,
+        };
+      }
+
+      // Cập nhật và ghi log trong transaction
+      const result = await prisma.$transaction(async (tx) => {
+        // Cập nhật topicAssignment
+        const updatedAssignment = await tx.topicAssignment.update({
+          where: { id: topicAssignment.id },
+          data: updateData,
+        });
+
+        // Ghi log
+        await tx.systemLog.create({
+          data: {
+            userId,
+            action: "confirmDefenseRound",
+            entityType: "TopicAssignment",
+            entityId: updatedAssignment.id,
+            description: `Mentor ${userId} confirmed defense round for group ${group.id} (code: ${groupCode}, semester: ${group.semester.code}) with decision ${mentorDecision}`,
+            severity: "INFO",
+            createdAt: new Date(),
+            ipAddress: "unknown", // Thay bằng req.ip nếu có
+            isDeleted: false,
+          },
+        });
+
+        return updatedAssignment;
+      });
+
+      return {
+        success: true,
+        status: HTTP_STATUS.OK,
+        message,
+        data: result,
+      };
     } catch (error) {
-        console.error("Lỗi khi xác nhận vòng bảo vệ:", error);
-        return {
-            success: false,
-            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-            message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
-        };
+      console.error("Lỗi khi xác nhận vòng bảo vệ:", error);
+      return {
+        success: false,
+        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+        message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
+      };
     }
-}
+  }
 }
 
 

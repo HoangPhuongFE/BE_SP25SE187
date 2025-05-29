@@ -312,15 +312,16 @@ async getReviewScheduleForMentor(req: Request, res: Response) {
   }
 
 
- async confirmDefenseRound(req: Request, res: Response) {
+async confirmDefenseRound(req: Request, res: Response) {
     try {
-        const { groupCode, semesterId, defenseRound, mentorDecision } = req.body;
+        const { groupCode, defenseRound, mentorDecision } = req.body;
+        const { semesterId } = req.query;
 
         // Kiểm tra dữ liệu đầu vào
-        if (!groupCode || !mentorDecision) {
+        if (!groupCode || !semesterId || !mentorDecision) {
             return res.status(400).json({
                 success: false,
-                message: "Thiếu groupCode hoặc mentorDecision!",
+                message: "Thiếu groupCode, semesterId hoặc mentorDecision!",
             });
         }
 
@@ -346,7 +347,7 @@ async getReviewScheduleForMentor(req: Request, res: Response) {
         const userId = req.user!.userId;
         const result = await councilReviewService.confirmDefenseRound(
             groupCode,
-            semesterId,
+            semesterId as string,
             defenseRound,
             userId,
             mentorDecision
