@@ -101,20 +101,43 @@ export class CouncilDefenseController {
     }
   }
 
+  // async getDefenseScheduleForMentor(req: Request, res: Response) {
+  //   try {
+  //     const userId = req.user?.userId;
+  //     const result = await councilDefenseService.getDefenseScheduleForMentor(userId!);
+  //     res.status(result.status).json(result);
+  //   } catch (error) {
+  //     console.error('Lỗi trong controller getDefenseScheduleForMentor:', error);
+  //     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+  //       success: false,
+  //       status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+  //       message: 'Lỗi hệ thống trong controller!',
+  //     });
+  //   }
+  // }
+
   async getDefenseScheduleForMentor(req: Request, res: Response) {
     try {
-      const userId = req.user?.userId;
-      const result = await councilDefenseService.getDefenseScheduleForMentor(userId!);
-      res.status(result.status).json(result);
+        const userId = req.user?.userId;
+        const { semesterId } = req.query; // Lấy semesterId từ query params
+        if (!semesterId || typeof semesterId !== 'string') {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                status: HTTP_STATUS.BAD_REQUEST,
+                message: 'Vui lòng cung cấp semesterId hợp lệ!',
+            });
+        }
+        const result = await councilDefenseService.getDefenseScheduleForMentor(userId!, semesterId);
+        res.status(result.status).json(result);
     } catch (error) {
-      console.error('Lỗi trong controller getDefenseScheduleForMentor:', error);
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        message: 'Lỗi hệ thống trong controller!',
-      });
+        console.error('Lỗi trong controller getDefenseScheduleForMentor:', error);
+        res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            message: 'Lỗi hệ thống trong controller!',
+        });
     }
-  }
+}
 
   async getDefenseScheduleForStudent(req: Request, res: Response) {
     try {

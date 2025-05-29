@@ -134,7 +134,7 @@ router.get(
   topicController.getAllApprovedTopicsForStudent.bind(topicController)
 );
 
-
+// 12. Tạo đề tài với mentor (chỉ dành cho Academic Officer)
 router.post('/create-with-mentors',
   authenticateToken,
   checkRole(['academic_officer']),

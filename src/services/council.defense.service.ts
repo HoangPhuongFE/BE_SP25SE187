@@ -692,78 +692,155 @@ export class CouncilDefenseService {
 
 
     // Mentor xem danh sách hội đồng bảo vệ
-    async getDefenseScheduleForMentor(userId: string) {
-        try {
-            // Lấy danh sách nhóm mà user là mentor
-            const mentorGroups = await prisma.groupMentor.findMany({
-                where: { mentorId: userId, isDeleted: false },
-                select: { groupId: true },
-            });
-            const groupIds = mentorGroups.map(gm => gm.groupId);
+    // async getDefenseScheduleForMentor(userId: string) {
+    //     try {
+    //         // Lấy danh sách nhóm mà user là mentor
+    //         const mentorGroups = await prisma.groupMentor.findMany({
+    //             where: { mentorId: userId, isDeleted: false },
+    //             select: { groupId: true },
+    //         });
+    //         const groupIds = mentorGroups.map(gm => gm.groupId);
 
-            if (groupIds.length === 0) {
-                return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Bạn không phụ trách nhóm nào!" };
-            }
+    //         if (groupIds.length === 0) {
+    //             return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Bạn không phụ trách nhóm nào!" };
+    //         }
 
-            // Lấy lịch bảo vệ với tất cả thông tin liên quan
-            const schedules = await prisma.defenseSchedule.findMany({
-                where: { groupId: { in: groupIds }, isDeleted: false },
-                include: {
-                    council: {
-                        include: {
-                            members: {
-                                include: {
-                                    user: { select: { id: true, fullName: true, email: true } },
-                                    role: { select: { id: true, name: true } },
-                                },
+    //         // Lấy lịch bảo vệ với tất cả thông tin liên quan
+    //         const schedules = await prisma.defenseSchedule.findMany({
+    //             where: { groupId: { in: groupIds }, isDeleted: false },
+    //             include: {
+    //                 council: {
+    //                     include: {
+    //                         members: {
+    //                             include: {
+    //                                 user: { select: { id: true, fullName: true, email: true } },
+    //                                 role: { select: { id: true, name: true } },
+    //                             },
+    //                         },
+    //                         semester: { select: { id: true, code: true, startDate: true, endDate: true, status: true } },
+    //                         submissionPeriod: { select: { id: true, roundNumber: true, startDate: true, endDate: true, status: true } },
+    //                     },
+    //                 },
+    //                 group: {
+    //                     include: {
+    //                         members: {
+    //                             include: {
+    //                                 student: { select: { id: true, studentCode: true, user: { select: { fullName: true, email: true } } } },
+    //                                 role: { select: { id: true, name: true } },
+    //                             },
+    //                         },
+    //                         mentors: {
+    //                             include: {
+    //                                 mentor: { select: { id: true, fullName: true, email: true } },
+    //                                 role: { select: { id: true, name: true } },
+    //                             },
+    //                         },
+    //                         topicAssignments: {
+    //                             include: {
+    //                                 topic: { select: { id: true, topicCode: true, name: true, status: true } },
+    //                             },
+    //                         },
+    //                     },
+    //                 },
+    //                 memberResults: {
+    //                     include: {
+    //                         student: { select: { id: true, studentCode: true, user: { select: { fullName: true } } } },
+    //                     },
+    //                 },
+    //                 documents: {
+    //                     where: { documentType: "DEFENSE_REPORT", isDeleted: false },
+    //                     select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true, uploadedBy: true },
+    //                 },
+    //             },
+    //         });
+
+    //         if (schedules.length === 0) {
+    //             return { success: false, status: HTTP_STATUS.OK, message: "Hiện chưa có lịch bảo vệ nào cho nhóm bạn phụ trách!" };
+    //         }
+
+    //         return { success: true, status: HTTP_STATUS.OK, message: "Lấy lịch bảo vệ thành công!", data: schedules };
+    //     } catch (error) {
+    //         console.error("Lỗi khi lấy lịch bảo vệ:", error);
+    //         return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
+    //     }
+    // }
+    
+    async getDefenseScheduleForMentor(userId: string, semesterId: string) {
+    try {
+        // Lấy danh sách nhóm mà user là mentor
+        const mentorGroups = await prisma.groupMentor.findMany({
+            where: { mentorId: userId, isDeleted: false },
+            select: { groupId: true },
+        });
+        const groupIds = mentorGroups.map(gm => gm.groupId);
+
+        if (groupIds.length === 0) {
+            return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Bạn không phụ trách nhóm nào!" };
+        }
+
+        // Lấy lịch bảo vệ với tất cả thông tin liên quan, lọc theo semesterId
+        const schedules = await prisma.defenseSchedule.findMany({
+            where: { 
+                groupId: { in: groupIds }, 
+                isDeleted: false,
+                council: { semesterId: semesterId } // Thêm điều kiện lọc theo semesterId
+            },
+            include: {
+                council: {
+                    include: {
+                        members: {
+                            include: {
+                                user: { select: { id: true, fullName: true, email: true } },
+                                role: { select: { id: true, name: true } },
                             },
-                            semester: { select: { id: true, code: true, startDate: true, endDate: true, status: true } },
-                            submissionPeriod: { select: { id: true, roundNumber: true, startDate: true, endDate: true, status: true } },
                         },
-                    },
-                    group: {
-                        include: {
-                            members: {
-                                include: {
-                                    student: { select: { id: true, studentCode: true, user: { select: { fullName: true, email: true } } } },
-                                    role: { select: { id: true, name: true } },
-                                },
-                            },
-                            mentors: {
-                                include: {
-                                    mentor: { select: { id: true, fullName: true, email: true } },
-                                    role: { select: { id: true, name: true } },
-                                },
-                            },
-                            topicAssignments: {
-                                include: {
-                                    topic: { select: { id: true, topicCode: true, name: true, status: true } },
-                                },
-                            },
-                        },
-                    },
-                    memberResults: {
-                        include: {
-                            student: { select: { id: true, studentCode: true, user: { select: { fullName: true } } } },
-                        },
-                    },
-                    documents: {
-                        where: { documentType: "DEFENSE_REPORT", isDeleted: false },
-                        select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true, uploadedBy: true },
+                        semester: { select: { id: true, code: true, startDate: true, endDate: true, status: true } },
+                        submissionPeriod: { select: { id: true, roundNumber: true, startDate: true, endDate: true, status: true } },
                     },
                 },
-            });
+                group: {
+                    include: {
+                        members: {
+                            include: {
+                                student: { select: { id: true, studentCode: true, user: { select: { fullName: true, email: true } } } },
+                                role: { select: { id: true, name: true } },
+                            },
+                        },
+                        mentors: {
+                            include: {
+                                mentor: { select: { id: true, fullName: true, email: true } },
+                                role: { select: { id: true, name: true } },
+                            },
+                        },
+                        topicAssignments: {
+                            include: {
+                                topic: { select: { id: true, topicCode: true, name: true, status: true } },
+                            },
+                        },
+                    },
+                },
+                memberResults: {
+                    include: {
+                        student: { select: { id: true, studentCode: true, user: { select: { fullName: true } } } },
+                    },
+                },
+                documents: {
+                    where: { documentType: "DEFENSE_REPORT", isDeleted: false },
+                    select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true, uploadedBy: true },
+                },
+            },
+        });
 
-            if (schedules.length === 0) {
-                return { success: false, status: HTTP_STATUS.OK, message: "Hiện chưa có lịch bảo vệ nào cho nhóm bạn phụ trách!" };
-            }
-
-            return { success: true, status: HTTP_STATUS.OK, message: "Lấy lịch bảo vệ thành công!", data: schedules };
-        } catch (error) {
-            console.error("Lỗi khi lấy lịch bảo vệ:", error);
-            return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
+        if (schedules.length === 0) {
+            return { success: false, status: HTTP_STATUS.OK, message: "Hiện chưa có lịch bảo vệ nào cho nhóm bạn phụ trách!" };
         }
+
+        return { success: true, status: HTTP_STATUS.OK, message: "Lấy lịch bảo vệ thành công!", data: schedules };
+    } catch (error) {
+        console.error("Lỗi khi lấy lịch bảo vệ:", error);
+        return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
     }
+}
 
     async getDefenseScheduleForStudent(userId: string) {
         try {
