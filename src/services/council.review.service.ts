@@ -1606,145 +1606,140 @@ export class CouncilReviewService {
     defenseRound: number | null,
     userId: string,
     mentorDecision: "PASS" | "NOT_PASS"
-  ) {
+) {
     try {
-      // Kiểm tra mentorDecision
-      if (mentorDecision === "PASS" && defenseRound !== 1 && defenseRound !== 2) {
-        return {
-          success: false,
-          status: HTTP_STATUS.BAD_REQUEST,
-          message: "Vòng bảo vệ phải là 1 hoặc 2 khi xác nhận PASS!",
-        };
-      }
+        // Kiểm tra mentorDecision
+        if (mentorDecision === "PASS" && defenseRound !== 1 && defenseRound !== 2) {
+            return {
+                success: false,
+                status: HTTP_STATUS.BAD_REQUEST,
+                message: "Vòng bảo vệ phải là 1 hoặc 2 khi xác nhận PASS!",
+            };
+        }
 
-      if (mentorDecision === "NOT_PASS" && defenseRound !== null) {
-        return {
-          success: false,
-          status: HTTP_STATUS.BAD_REQUEST,
-          message: "Khi chọn NOT_PASS, defenseRound phải để trống!",
-        };
-      }
+        if (mentorDecision === "NOT_PASS" && defenseRound !== null) {
+            return {
+                success: false,
+                status: HTTP_STATUS.BAD_REQUEST,
+                message: "Khi chọn NOT_PASS, defenseRound phải để trống!",
+            };
+        }
 
-      // Tìm nhóm với groupCode và semesterId
-      const group = await prisma.group.findFirst({
-        where: {
-          groupCode,
-          semesterId,
-          isDeleted: false,
-        },
-        include: {
-          semester: { select: { code: true } },
-        },
-      });
-
-      if (!group) {
-        return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: `Không tìm thấy nhóm với mã ${groupCode} trong học kỳ này!`,
-        };
-      }
-
-      // Kiểm tra quyền mentor
-      const mentorGroup = await prisma.groupMentor.findFirst({
-        where: {
-          mentorId: userId,
-          groupId: group.id,
-          isDeleted: false,
-        },
-      });
-
-      if (!mentorGroup) {
-        return {
-          success: false,
-          status: HTTP_STATUS.FORBIDDEN,
-          message: "Bạn không phải mentor của nhóm này!",
-        };
-      }
-
-      // Tìm phân công đề tài
-      const topicAssignment = await prisma.topicAssignment.findFirst({
-        where: { groupId: group.id, isDeleted: false },
-      });
-      if (!topicAssignment) {
-        return {
-          success: false,
-          status: HTTP_STATUS.BAD_REQUEST,
-          message: "Nhóm chưa được gán đề tài!",
-        };
-      }
-
-      // Kiểm tra trạng thái để tránh xác nhận trùng
-      if (topicAssignment.defendStatus === "CONFIRMED" || topicAssignment.defendStatus === "UN_CONFIRMED") {
-        return {
-          success: false,
-          status: HTTP_STATUS.BAD_REQUEST,
-          message: "Vòng bảo vệ của nhóm này đã được xác nhận trước đó!",
-        };
-      }
-
-      // Xử lý quyết định
-      let defendStatus: string;
-      let message: string;
-      let updateData: any = {};
-
-      if (mentorDecision === "PASS") {
-        defendStatus = "CONFIRMED";
-        message = `Xác nhận nhóm đi bảo vệ vòng ${defenseRound} thành công!`;
-        updateData = {
-          defenseRound: defenseRound!.toString(),
-          defendStatus,
-        };
-      } else {
-        defendStatus = "UN_CONFIRMED";
-        message = "Nhóm được đánh giá không đạt và không được tham gia bảo vệ!";
-        updateData = {
-          defendStatus,
-          defenseRound: null,
-        };
-      }
-
-      // Cập nhật và ghi log trong transaction
-      const result = await prisma.$transaction(async (tx) => {
-        // Cập nhật topicAssignment
-        const updatedAssignment = await tx.topicAssignment.update({
-          where: { id: topicAssignment.id },
-          data: updateData,
+        // Tìm nhóm với groupCode và semesterId
+        const group = await prisma.group.findFirst({
+            where: {
+                groupCode,
+                semesterId,
+                isDeleted: false,
+            },
+            include: {
+                semester: { select: { code: true } },
+            },
         });
 
-        // Ghi log
-        await tx.systemLog.create({
-          data: {
-            userId,
-            action: "confirmDefenseRound",
-            entityType: "TopicAssignment",
-            entityId: updatedAssignment.id,
-            description: `Mentor ${userId} confirmed defense round for group ${group.id} (code: ${groupCode}, semester: ${group.semester.code}) with decision ${mentorDecision}`,
-            severity: "INFO",
-            createdAt: new Date(),
-            ipAddress: "unknown", // Thay bằng req.ip nếu có
-            isDeleted: false,
-          },
+        if (!group) {
+            return {
+                success: false,
+                status: HTTP_STATUS.NOT_FOUND,
+                message: `Không tìm thấy nhóm với mã ${groupCode} trong học kỳ này!`,
+            };
+        }
+
+        // Kiểm tra quyền mentor
+        const mentorGroup = await prisma.groupMentor.findFirst({
+            where: {
+                mentorId: userId,
+                groupId: group.id,
+                isDeleted: false,
+            },
         });
 
-        return updatedAssignment;
-      });
+        if (!mentorGroup) {
+            return {
+                success: false,
+                status: HTTP_STATUS.FORBIDDEN,
+                message: "Bạn không phải mentor của nhóm này!",
+            };
+        }
 
-      return {
-        success: true,
-        status: HTTP_STATUS.OK,
-        message,
-        data: result,
-      };
+        // Tìm phân công đề tài
+        const topicAssignment = await prisma.topicAssignment.findFirst({
+            where: { groupId: group.id, isDeleted: false },
+        });
+        if (!topicAssignment) {
+            return {
+                success: false,
+                status: HTTP_STATUS.BAD_REQUEST,
+                message: "Nhóm chưa được gán đề tài!",
+            };
+        }
+
+        // Xử lý quyết định
+        let defendStatus: string;
+        let message: string;
+        let updateData: any = {};
+
+        if (mentorDecision === "PASS") {
+            defendStatus = "CONFIRMED";
+            message = `Xác nhận nhóm đi bảo vệ vòng ${defenseRound} thành công!`;
+            updateData = {
+                defenseRound: defenseRound!.toString(),
+                defendStatus,
+            };
+        } else {
+            defendStatus = "UN_CONFIRMED";
+            message = "Nhóm được đánh giá không đạt và không được tham gia bảo vệ!";
+            updateData = {
+                defendStatus,
+                defenseRound: null,
+            };
+        }
+
+        // Cập nhật và ghi log trong transaction
+        const result = await prisma.$transaction(async (tx) => {
+            // Lấy trạng thái trước khi cập nhật để ghi log
+            const previousStatus = topicAssignment.defendStatus;
+            const previousRound = topicAssignment.defenseRound;
+
+            // Cập nhật topicAssignment
+            const updatedAssignment = await tx.topicAssignment.update({
+                where: { id: topicAssignment.id },
+                data: updateData,
+            });
+
+            // Ghi log với thông tin thay đổi
+            await tx.systemLog.create({
+                data: {
+                    userId,
+                    action: "confirmDefenseRound",
+                    entityType: "TopicAssignment",
+                    entityId: updatedAssignment.id,
+                    description: `Mentor ${userId} updated defense round for group ${group.id} (code: ${groupCode}, semester: ${group.semester.code}) with decision ${mentorDecision}. Previous: status=${previousStatus}, round=${previousRound}; New: status=${defendStatus}, round=${defenseRound}`,
+                    severity: "INFO",
+                    createdAt: new Date(),
+                    ipAddress: "unknown", // Thay bằng req.ip nếu có
+                    isDeleted: false,
+                },
+            });
+
+            return updatedAssignment;
+        });
+
+        return {
+            success: true,
+            status: HTTP_STATUS.OK,
+            message,
+            data: result,
+        };
     } catch (error) {
-      console.error("Lỗi khi xác nhận vòng bảo vệ:", error);
-      return {
-        success: false,
-        status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-        message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
-      };
+        console.error("Lỗi khi xác nhận vòng bảo vệ:", error);
+        return {
+            success: false,
+            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            message: "Lỗi hệ thống khi xác nhận vòng bảo vệ!",
+        };
     }
-  }
+}
 }
 
 
