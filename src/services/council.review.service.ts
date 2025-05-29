@@ -1052,125 +1052,133 @@ export class CouncilReviewService {
   }
 
   // API 5: Mentor xem lịch nhóm
-async getReviewScheduleForMentor(userId: string) {
-  try {
-    // 1. Lấy danh sách nhóm mà user là mentor
-    const mentorGroups = await prisma.groupMentor.findMany({
-      where: { mentorId: userId, isDeleted: false },
-      select: { groupId: true },
-    });
-
-    const groupIds = mentorGroups.map(gm => gm.groupId);
-    if (groupIds.length === 0) {
-      return {
-        success: false,
-        status: HTTP_STATUS.NOT_FOUND,
-        message: "Bạn hiện không phụ trách nhóm nào!",
-      };
-    }
-
-    // 2. Truy vấn đầy đủ dữ liệu ReviewSchedule và TopicAssignment
-    const schedules = await prisma.reviewSchedule.findMany({
-      where: { groupId: { in: groupIds }, isDeleted: false },
-      include: {
-        council: { select: { id: true, code: true, name: true, status: true, type: true, round: true } },
-        group: {
-          select: {
-            id: true,
-            groupCode: true,
-            semesterId: true,
-            status: true,
-            topicAssignments: { // Thêm truy vấn topicAssignments
-              where: { isDeleted: false },
-              select: {
-                defendStatus: true, // Lấy defendStatus
-                defenseRound: true, // Lấy defenseRound (nếu cần)
-              },
+async getReviewScheduleForMentor(userId: string, semesterId: string) {
+    try {
+        // 1. Lấy danh sách nhóm mà user là mentor, lọc theo semesterId
+        const mentorGroups = await prisma.groupMentor.findMany({
+            where: {
+                mentorId: userId,
+                isDeleted: false,
+                group: { semesterId: semesterId }, // Lọc theo semesterId
             },
-          },
-        },
-        topic: { select: { id: true, topicCode: true, name: true, status: true } },
-        assignments: {
-          include: {
-            council: { select: { id: true, name: true } },
-            topic: { select: { id: true, topicCode: true, name: true } },
-            reviewer: { select: { id: true, fullName: true, email: true } },
-            reviewSchedule: {
-              select: { id: true, reviewTime: true, room: true, reviewRound: true, status: true, note: true },
+            select: { groupId: true },
+        });
+
+        const groupIds = mentorGroups.map(gm => gm.groupId);
+        if (groupIds.length === 0) {
+            return {
+                success: false,
+                status: HTTP_STATUS.NOT_FOUND,
+                message: "Bạn hiện không phụ trách nhóm nào!",
+            };
+        }
+
+        // 2. Truy vấn đầy đủ dữ liệu ReviewSchedule và TopicAssignment
+        const schedules = await prisma.reviewSchedule.findMany({
+            where: {
+                groupId: { in: groupIds },
+                isDeleted: false,
+                council: { semesterId: semesterId }, // Lọc theo semesterId
             },
-          },
-        },
-        documents: {
-          where: { documentType: "REVIEW_REPORT", isDeleted: false },
-          select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true, uploadedBy: true },
-        },
-      },
-    });
+            include: {
+                council: { select: { id: true, code: true, name: true, status: true, type: true, round: true } },
+                group: {
+                    select: {
+                        id: true,
+                        groupCode: true,
+                        semesterId: true,
+                        status: true,
+                        topicAssignments: {
+                            where: { isDeleted: false },
+                            select: {
+                                defendStatus: true,
+                                defenseRound: true,
+                            },
+                        },
+                    },
+                },
+                topic: { select: { id: true, topicCode: true, name: true, status: true } },
+                assignments: {
+                    include: {
+                        council: { select: { id: true, name: true } },
+                        topic: { select: { id: true, topicCode: true, name: true } },
+                        reviewer: { select: { id: true, fullName: true, email: true } },
+                        reviewSchedule: {
+                            select: { id: true, reviewTime: true, room: true, reviewRound: true, status: true, note: true },
+                        },
+                    },
+                },
+                documents: {
+                    where: { documentType: "REVIEW_REPORT", isDeleted: false },
+                    select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true, uploadedBy: true },
+                },
+            },
+        });
 
-    if (schedules.length === 0) {
-      return {
-        success: false,
-        status: HTTP_STATUS.OK,
-        message: "Hiện tại chưa có lịch chấm điểm nào cho các nhóm bạn phụ trách!",
-      };
+        if (schedules.length === 0) {
+            return {
+                success: false,
+                status: HTTP_STATUS.OK,
+                message: "Hiện tại chưa có lịch chấm điểm nào cho các nhóm bạn phụ trách!",
+            };
+        }
+
+        // 3. Chuẩn bị dữ liệu trả về
+        const result = schedules.map(schedule => ({
+            schedule: {
+                id: schedule.id,
+                councilId: schedule.councilId,
+                groupId: schedule.groupId,
+                topicId: schedule.topicId,
+                reviewTime: schedule.reviewTime,
+                room: schedule.room,
+                reviewRound: schedule.council.round,
+                note: schedule.note,
+                status: schedule.status,
+                isDeleted: schedule.isDeleted,
+                defendStatus: schedule.group.topicAssignments[0]?.defendStatus || null,
+                defenseRound: schedule.group.topicAssignments[0]?.defenseRound || null,
+                council: schedule.council,
+                group: schedule.group,
+                topic: schedule.topic,
+                mentorDecision: schedule.assignments[0]?.score || null,
+            },
+            assignments: schedule.assignments.map(assignment => ({
+                id: assignment.id,
+                councilId: assignment.councilId,
+                topicId: assignment.topicId,
+                reviewerId: assignment.reviewerId,
+                score: assignment.score,
+                feedback: assignment.feedback,
+                status: assignment.status,
+                reviewRound: assignment.reviewRound,
+                assignedAt: assignment.assignedAt,
+                reviewedAt: assignment.reviewedAt,
+                reviewScheduleId: assignment.reviewScheduleId,
+                isDeleted: assignment.isDeleted,
+                council: assignment.council,
+                topic: assignment.topic,
+                reviewer: assignment.reviewer,
+                reviewSchedule: assignment.reviewSchedule,
+                mentorDecision: assignment.score || null,
+            })),
+            documents: schedule.documents,
+        }));
+
+        return {
+            success: true,
+            status: HTTP_STATUS.OK,
+            message: "Lấy lịch chấm điểm thành công!",
+            data: result,
+        };
+    } catch (error) {
+        console.error("Lỗi khi lấy lịch chấm điểm cho mentor:", error);
+        return {
+            success: false,
+            status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
+            message: "Lỗi hệ thống khi lấy lịch chấm điểm!",
+        };
     }
-
-    // 3. Chuẩn bị dữ liệu trả về
-    const result = schedules.map(schedule => ({
-      schedule: {
-        id: schedule.id,
-        councilId: schedule.councilId,
-        groupId: schedule.groupId,
-        topicId: schedule.topicId,
-        reviewTime: schedule.reviewTime,
-        room: schedule.room,
-        reviewRound: schedule.council.round,
-        note: schedule.note,
-        status: schedule.status,
-        isDeleted: schedule.isDeleted,
-        defendStatus: schedule.group.topicAssignments[0]?.defendStatus || null, // Thêm defendStatus
-        defenseRound: schedule.group.topicAssignments[0]?.defenseRound || null, // Thêm defenseRound (tuỳ chọn)
-        council: schedule.council,
-        group: schedule.group,
-        topic: schedule.topic,
-        mentorDecision: schedule.assignments[0]?.score || null,
-      },
-      assignments: schedule.assignments.map(assignment => ({
-        id: assignment.id,
-        councilId: assignment.councilId,
-        topicId: assignment.topicId,
-        reviewerId: assignment.reviewerId,
-        score: assignment.score,
-        feedback: assignment.feedback,
-        status: assignment.status,
-        reviewRound: assignment.reviewRound,
-        assignedAt: assignment.assignedAt,
-        reviewedAt: assignment.reviewedAt,
-        reviewScheduleId: assignment.reviewScheduleId,
-        isDeleted: assignment.isDeleted,
-        council: assignment.council,
-        topic: assignment.topic,
-        reviewer: assignment.reviewer,
-        reviewSchedule: assignment.reviewSchedule,
-        mentorDecision: assignment.score || null,
-      })),
-      documents: schedule.documents,
-    }));
-
-    return {
-      success: true,
-      status: HTTP_STATUS.OK,
-      message: "Lấy lịch chấm điểm thành công!",
-      data: result,
-    };
-  } catch (error) {
-    console.error("Lỗi khi lấy lịch chấm điểm cho mentor:", error);
-    return {
-      success: false,
-      status: HTTP_STATUS.INTERNAL_SERVER_ERROR,
-      message: "Lỗi hệ thống khi lấy lịch chấm điểm!",
-    };
-  }
 }
 
   // API 6: Leader thêm URL

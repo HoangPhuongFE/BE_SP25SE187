@@ -209,20 +209,43 @@ export class CouncilReviewController {
   }
 
   // API 5: Mentor xem lịch nhóm (Chỉnh sửa để phù hợp với service)
-  async getReviewScheduleForMentor(req: Request, res: Response) {
+  // async getReviewScheduleForMentor(req: Request, res: Response) {
+  //   try {
+  //     const userId = req.user!.userId;
+  //     const result = await councilReviewService.getReviewScheduleForMentor(userId);
+  //     return res.status(result.status).json(result);
+  //   } catch (error) {
+  //     console.error("Lỗi trong getReviewScheduleForMentor:", error);
+  //     return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+  //       success: false,
+  //       message: "Lỗi hệ thống khi lấy lịch chấm điểm!",
+  //     });
+  //   }
+  // }
+async getReviewScheduleForMentor(req: Request, res: Response) {
     try {
-      const userId = req.user!.userId;
-      const result = await councilReviewService.getReviewScheduleForMentor(userId);
-      return res.status(result.status).json(result);
-    } catch (error) {
-      console.error("Lỗi trong getReviewScheduleForMentor:", error);
-      return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-        success: false,
-        message: "Lỗi hệ thống khi lấy lịch chấm điểm!",
-      });
-    }
-  }
+        const userId = req.user!.userId;
+        const { semesterId } = req.query;
 
+        // Kiểm tra semesterId
+        if (!semesterId || typeof semesterId !== 'string') {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                status: HTTP_STATUS.BAD_REQUEST,
+                message: 'Vui lòng cung cấp semesterId hợp lệ!',
+            });
+        }
+
+        const result = await councilReviewService.getReviewScheduleForMentor(userId, semesterId);
+        return res.status(result.status).json(result);
+    } catch (error) {
+        console.error("Lỗi trong getReviewScheduleForMentor:", error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: "Lỗi hệ thống khi lấy lịch chấm điểm!",
+        });
+    }
+}
   // API 6: Leader thêm URL (API mới)
   async addUrlToReviewSchedule(req: Request, res: Response) {
     try {
