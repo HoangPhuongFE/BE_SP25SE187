@@ -338,16 +338,25 @@ export class TopicController {
 
 
 
-
-  async getRegisteredTopicsByMentor(req: Request, res: Response) {
+async getRegisteredTopicsByMentor(req: Request, res: Response) {
     try {
-      const mentorId = req.user?.userId;
+      const mentorId = req.user?.userId; // Giữ nguyên như bạn xác nhận
+      console.log('mentorId:', mentorId);
+
       if (!mentorId) {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json({ success: false, message: 'Không tìm thấy thông tin người dùng!' });
       }
 
-      const semesterId = req.query.semesterId as string; // Extract semesterId from query
-      const round = req.query.round ? Number(req.query.round) : undefined; // Extract round if provided
+      const semesterId = req.query.semesterId as string;
+      const round = req.query.round ? Number(req.query.round) : undefined;
+
+      if (!semesterId) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'SemesterId là bắt buộc trong query!',
+        });
+      }
+
       const result = await topicService.getRegisteredTopicsByMentor(mentorId, semesterId, round);
       return res.status(result.status).json(result);
     } catch (error) {
@@ -358,7 +367,6 @@ export class TopicController {
       });
     }
   }
-
 
 
   async getTopicRegistrations(req: Request, res: Response) {

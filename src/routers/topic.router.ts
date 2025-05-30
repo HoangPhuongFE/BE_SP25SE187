@@ -43,7 +43,7 @@ router.get(
 router.get(
   '/registered-topics',
   authenticateToken,
-  checkRole(['academic_officer', 'graduation_thesis_manager', 'lecturer']),
+  checkRole([ 'lecturer'],true),
   topicController.getRegisteredTopicsByMentor.bind(topicController)
 );
 

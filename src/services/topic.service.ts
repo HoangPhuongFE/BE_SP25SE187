@@ -1967,84 +1967,89 @@ async approveTopicRegistrationByMentor(
   }
   async getRegisteredTopicsByMentor(mentorId: string, semesterId: string, round?: number) {
     try {
-      // Check if the semester exists
-      const semester = await prisma.semester.findUnique({
-        where: { id: semesterId, isDeleted: false },
-        select: { id: true },
-      });
-      if (!semester) {
-        return {
-          success: false,
-          status: HTTP_STATUS.NOT_FOUND,
-          message: 'Học kỳ không tồn tại.',
-        };
-      }
+      console.log('getRegisteredTopicsByMentor called with:', { mentorId, semesterId, round });
 
-      // Build the where clause
-      let whereClause: any = {
-        OR: [
-          { createdBy: mentorId }, // Topics created by the mentor
-          { mainSupervisor: mentorId }, // Topics where mentor is the main supervisor
-          { subSupervisor: mentorId }, // Topics where mentor is the sub-supervisor
-        ],
-        semesterId, // Filter by semester
-        isDeleted: false,
-      };
-
-      // Filter by submission period if round is provided
-      if (round !== undefined) {
-        const submissionPeriod = await prisma.submissionPeriod.findFirst({
-          where: { semesterId, roundNumber: round, isDeleted: false },
+      return await prisma.$transaction(async (tx) => {
+        const semester = await tx.semester.findUnique({
+          where: { id: semesterId, isDeleted: false },
           select: { id: true },
         });
-        if (!submissionPeriod) {
+        console.log('semester:', semester);
+        if (!semester) {
           return {
             success: false,
             status: HTTP_STATUS.NOT_FOUND,
-            message: `Không tìm thấy đợt xét duyệt ${round} trong học kỳ này.`,
+            message: 'Học kỳ không tồn tại.',
           };
         }
-        whereClause.submissionPeriodId = submissionPeriod.id;
-      }
 
-      // Fetch registered topics with relations
-      const registeredTopics = await prisma.topic.findMany({
-        where: whereClause,
-        select: {
-          id: true,
-          topicCode: true,
-          nameVi: true,
-          nameEn: true,
-          description: true,
-          status: true,
-          createdAt: true,
-          createdBy: true, // Scalar field for creator ID
-          mainSupervisor: true, // Scalar field for main supervisor ID
-          subSupervisor: true, // Scalar field for sub-supervisor ID
-          creator: { // Relation to User
-            select: { id: true, fullName: true, email: true },
-          },
-          topicRegistrations: {
-            select: {
-              id: true,
-              status: true,
-              registeredAt: true,
-              userId: true,
-              topicId: true,
+        let whereClause: any = {
+          OR: [
+            { createdBy: mentorId },
+            { mainSupervisor: mentorId },
+            { subSupervisor: mentorId },
+          ],
+          semesterId,
+          isDeleted: false,
+        };
+
+        if (round !== undefined) {
+          const submissionPeriod = await tx.submissionPeriod.findFirst({
+            where: { semesterId, roundNumber: round, type: 'TOPIC', isDeleted: false },
+            select: { id: true },
+          });
+          console.log('submissionPeriod:', submissionPeriod);
+
+          if (!submissionPeriod) {
+            return {
+              success: false,
+              status: HTTP_STATUS.NOT_FOUND,
+              message: `Không tìm thấy đợt nộp đề tài ${round} trong học kỳ này.`,
+            };
+          }
+          whereClause.submissionPeriodId = submissionPeriod.id;
+        }
+
+        console.log('whereClause:', whereClause);
+
+        const registeredTopics = await tx.topic.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            topicCode: true,
+            nameVi: true,
+            nameEn: true,
+            description: true,
+            status: true,
+            createdAt: true,
+            createdBy: true,
+            mainSupervisor: true,
+            subSupervisor: true,
+            creator: {
+              select: { id: true, fullName: true, email: true },
             },
-          },
-          topicAssignments: {
-            select: {
-              group: {
-                select: {
-                  id: true,
-                  groupCode: true,
-                  members: {
-                    select: {
-                      student: {
-                        select: {
-                          studentCode: true,
-                          user: { select: { fullName: true } },
+            topicRegistrations: {
+              select: {
+                id: true,
+                status: true,
+                registeredAt: true,
+                userId: true,
+                topicId: true,
+              },
+            },
+            topicAssignments: {
+              select: {
+                group: {
+                  select: {
+                    id: true,
+                    groupCode: true,
+                    members: {
+                      select: {
+                        student: {
+                          select: {
+                            studentCode: true,
+                            user: { select: { fullName: true } },
+                          },
                         },
                       },
                     },
@@ -2053,63 +2058,61 @@ async approveTopicRegistrationByMentor(
               },
             },
           },
-        },
-      });
+        });
 
-      // Fetch user info for mainSupervisor and subSupervisor
-      const supervisorIds = [
-        ...new Set(
-          registeredTopics
-            .flatMap(topic => [topic.mainSupervisor, topic.subSupervisor])
-            .filter((id): id is string => id !== null) // Type guard to filter out null
-        ),
-      ];
-      const supervisors = await prisma.user.findMany({
-        where: { id: { in: supervisorIds } },
-        select: { id: true, fullName: true, email: true },
-      });
+        console.log('registeredTopics:', registeredTopics);
 
-      // Fetch user info for registrants
-      const userIds = [
-        ...new Set(registeredTopics.flatMap(topic => topic.topicRegistrations.map(reg => reg.userId))),
-      ];
-      const users = await prisma.user.findMany({
-        where: { id: { in: userIds } },
-        select: { id: true, fullName: true, email: true },
-      });
+        const supervisorIds = [
+          ...new Set(
+            registeredTopics
+              .flatMap(topic => [topic.mainSupervisor, topic.subSupervisor])
+              .filter((id): id is string => id !== null)
+          ),
+        ];
+        const supervisors = await tx.user.findMany({
+          where: { id: { in: supervisorIds } },
+          select: { id: true, fullName: true, email: true },
+        });
 
-      // Format the response data
-      const topicsWithDetails = registeredTopics.map(topic => ({
-        ...topic,
-        mainSupervisor: supervisors.find(user => user.id === topic.mainSupervisor) || null,
-        subSupervisor: supervisors.find(user => user.id === topic.subSupervisor) || null,
-        topicRegistrations: topic.topicRegistrations.map(reg => ({
-          ...reg,
-          user: users.find(user => user.id === reg.userId) || null,
-        })),
-        groups: topic.topicAssignments.map(ass => ass.group),
-      }));
+        const userIds = [
+          ...new Set(registeredTopics.flatMap(topic => topic.topicRegistrations.map(reg => reg.userId))),
+        ];
+        const users = await tx.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, fullName: true, email: true },
+        });
 
-      // Return response based on results
-      if (topicsWithDetails.length === 0) {
+        const topicsWithDetails = registeredTopics.map(topic => ({
+          ...topic,
+          mainSupervisor: supervisors.find(user => user.id === topic.mainSupervisor) || null,
+          subSupervisor: supervisors.find(user => user.id === topic.subSupervisor) || null,
+          topicRegistrations: topic.topicRegistrations.map(reg => ({
+            ...reg,
+            user: users.find(user => user.id === reg.userId) || null,
+          })),
+          groups: topic.topicAssignments.map(ass => ass.group),
+        }));
+
+        if (topicsWithDetails.length === 0) {
+          return {
+            success: true,
+            status: HTTP_STATUS.OK,
+            message: round !== undefined
+              ? `Không có đề tài nào trong đợt nộp đề tài ${round} của học kỳ này liên quan đến bạn.`
+              : 'Không có đề tài nào trong học kỳ này liên quan đến bạn.',
+            data: [],
+          };
+        }
+
         return {
           success: true,
           status: HTTP_STATUS.OK,
           message: round !== undefined
-            ? `Không có đề tài nào trong đợt xét duyệt ${round} của học kỳ này liên quan đến bạn.`
-            : 'Không có đề tài nào trong học kỳ này liên quan đến bạn.',
-          data: [],
+            ? `Lấy danh sách đề tài trong đợt nộp đề tài ${round} thành công!`
+            : 'Lấy danh sách đề tài trong học kỳ thành công!',
+          data: topicsWithDetails,
         };
-      }
-
-      return {
-        success: true,
-        status: HTTP_STATUS.OK,
-        message: round !== undefined
-          ? `Lấy danh sách đề tài trong đợt xét duyệt ${round} thành công!`
-          : 'Lấy danh sách đề tài trong học kỳ thành công!',
-        data: topicsWithDetails,
-      };
+      });
     } catch (error) {
       console.error('Lỗi khi lấy danh sách đề tài:', error);
       return {
@@ -2119,6 +2122,7 @@ async approveTopicRegistrationByMentor(
       };
     }
   }
+
 
 
 
