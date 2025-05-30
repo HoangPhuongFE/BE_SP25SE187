@@ -1,54 +1,56 @@
 import { PrismaClient } from '@prisma/client';
+import { nowVN } from '../utils/date'; 
+
 const prisma = new PrismaClient();
 
 export class DecisionService {
   async createDecision(data: any, createdBy: string) {
-    const newDecision = await prisma.decision.create({
-      data: {
-        decisionName: data.decisionName,
-        decisionTitle: data.decisionTitle,
-        decisionNameA: data.decisionNameA, // Add this line to include the required property
+  const newDecision = await prisma.decision.create({
+    data: {
+      decisionName: data.decisionName,
+      decisionTitle: data.decisionTitle,
+      decisionNameA: data.decisionNameA,
+      decisionTitleB: data.decisionTitleB,
+      decisionDate: data.decisionDate ? new Date(data.decisionDate) : undefined,
+      basedOnJson: data.basedOn ? JSON.stringify(data.basedOn) : undefined,
+      participantsJson: data.participants ? JSON.stringify(data.participants) : undefined,
+      clausesJson: data.clauses ? JSON.stringify(data.clauses) : undefined,
+      proposal: data.proposal,
+      content: data.content,
+      draftFile: data.draftFile,
+      finalFile: data.finalFile,
+      decisionURL: data.decisionURL,
+      semesterId: data.semesterId,
+      signature: data.signature,
+      type: data.type,
+      createdBy,
+      createdAt: nowVN(), // Thêm: Rõ ràng gán createdAt bằng nowVN()
+    },
+  });
 
-        decisionTitleB: data.decisionTitleB,
-        decisionDate: data.decisionDate ? new Date(data.decisionDate) : undefined,
-        basedOnJson: data.basedOn ? JSON.stringify(data.basedOn) : undefined,
-        participantsJson: data.participants ? JSON.stringify(data.participants) : undefined,
-        clausesJson: data.clauses ? JSON.stringify(data.clauses) : undefined,
-        proposal: data.proposal,
-        content: data.content,
-        draftFile: data.draftFile,
-        finalFile: data.finalFile,
-        decisionURL: data.decisionURL,
-        semesterId: data.semesterId,
-        signature: data.signature,
-        type: data.type, // Thêm trường type
-        createdBy,
-      },
-    });
-
-    return {
-      id: newDecision.id,
-      decisionName: newDecision.decisionName,
-      decisionTitle: newDecision.decisionTitle,
-      decisionNameA: newDecision.decisionNameA,
-      decisionTitleB: newDecision.decisionTitleB,
-      decisionDate: newDecision.decisionDate,
-      proposal: newDecision.proposal,
-      content: newDecision.content,
-      draftFile: newDecision.draftFile,
-      finalFile: newDecision.finalFile,
-      decisionURL: newDecision.decisionURL,
-      semesterId: newDecision.semesterId,
-      createdBy: newDecision.createdBy,
-      createdAt: newDecision.createdAt,
-      isDeleted: newDecision.isDeleted,
-      signature: newDecision.signature,
-      type: newDecision.type, // Thêm vào response
-      basedOn: newDecision.basedOnJson ? JSON.parse(newDecision.basedOnJson) : [],
-      participants: newDecision.participantsJson ? JSON.parse(newDecision.participantsJson) : null,
-      clauses: newDecision.clausesJson ? JSON.parse(newDecision.clausesJson) : [],
-    };
-  }
+  return {
+    id: newDecision.id,
+    decisionName: newDecision.decisionName,
+    decisionTitle: newDecision.decisionTitle,
+    decisionNameA: newDecision.decisionNameA,
+    decisionTitleB: newDecision.decisionTitleB,
+    decisionDate: newDecision.decisionDate,
+    proposal: newDecision.proposal,
+    content: newDecision.content,
+    draftFile: newDecision.draftFile,
+    finalFile: newDecision.finalFile,
+    decisionURL: newDecision.decisionURL,
+    semesterId: newDecision.semesterId,
+    createdBy: newDecision.createdBy,
+    createdAt: newDecision.createdAt,
+    isDeleted: newDecision.isDeleted,
+    signature: newDecision.signature,
+    type: newDecision.type,
+    basedOn: newDecision.basedOnJson ? JSON.parse(newDecision.basedOnJson) : [],
+    participants: newDecision.participantsJson ? JSON.parse(newDecision.participantsJson) : null,
+    clauses: newDecision.clausesJson ? JSON.parse(newDecision.clausesJson) : [],
+  };
+}
 
   async getDecisionById(id: string) {
     const decision = await prisma.decision.findUnique({
@@ -111,56 +113,56 @@ export class DecisionService {
   }
 
   async updateDecision(id: string, data: any) {
-    const existing = await prisma.decision.findUnique({
-      where: { id, isDeleted: false },
-    });
-    if (!existing) throw new Error("Không tìm thấy quyết định");
+  const existing = await prisma.decision.findUnique({
+    where: { id, isDeleted: false },
+  });
+  if (!existing) throw new Error("Không tìm thấy quyết định");
 
-    const updated = await prisma.decision.update({
-      where: { id },
-      data: {
-        decisionName: data.decisionName,
-        decisionTitle: data.decisionTitle,
-        decisionNameA: data.decisionNameA, // Thêm vào cập nhật
-        decisionTitleB: data.decisionTitleB, // Thêm vào cập nhật
-        decisionDate: data.decisionDate ? new Date(data.decisionDate) : undefined,
-        basedOnJson: data.basedOn ? JSON.stringify(data.basedOn) : undefined,
-        participantsJson: data.participants ? JSON.stringify(data.participants) : undefined,
-        clausesJson: data.clauses ? JSON.stringify(data.clauses) : undefined,
-        proposal: data.proposal,
-        content: data.content,
-        draftFile: data.draftFile,
-        finalFile: data.finalFile,
-        decisionURL: data.decisionURL,
-        semesterId: data.semesterId,
-        signature: data.signature,
-        type: data.type, // Thêm trường type
+  const updated = await prisma.decision.update({
+    where: { id },
+    data: {
+      decisionName: data.decisionName,
+      decisionTitle: data.decisionTitle,
+      decisionNameA: data.decisionNameA,
+      decisionTitleB: data.decisionTitleB,
+      decisionDate: data.decisionDate ? new Date(data.decisionDate) : undefined,
+      basedOnJson: data.basedOn ? JSON.stringify(data.basedOn) : undefined,
+      participantsJson: data.participants ? JSON.stringify(data.participants) : undefined,
+      clausesJson: data.clauses ? JSON.stringify(data.clauses) : undefined,
+      proposal: data.proposal,
+      content: data.content,
+      draftFile: data.draftFile,
+      finalFile: data.finalFile,
+      decisionURL: data.decisionURL,
+      semesterId: data.semesterId,
+      signature: data.signature,
+      type: data.type,
       },
-    });
+  });
 
-    return {
-      id: updated.id,
-      decisionName: updated.decisionName,
-      decisionTitle: updated.decisionTitle,
-      decisionNameA: updated.decisionNameA, // Thêm vào response
-      decisionTitleB: updated.decisionTitleB, // Thêm vào response
-      decisionDate: updated.decisionDate,
-      proposal: updated.proposal,
-      content: updated.content,
-      draftFile: updated.draftFile,
-      finalFile: updated.finalFile,
-      decisionURL: updated.decisionURL,
-      semesterId: updated.semesterId,
-      createdBy: updated.createdBy,
-      createdAt: updated.createdAt,
-      isDeleted: updated.isDeleted,
-      signature: updated.signature,
-      type: updated.type, // Thêm vào response
-      basedOn: updated.basedOnJson ? JSON.parse(updated.basedOnJson) : [],
-      participants: updated.participantsJson ? JSON.parse(updated.participantsJson) : null,
-      clauses: updated.clausesJson ? JSON.parse(updated.clausesJson) : [],
-    };
-  }
+  return {
+    id: updated.id,
+    decisionName: updated.decisionName,
+    decisionTitle: updated.decisionTitle,
+    decisionNameA: updated.decisionNameA,
+    decisionTitleB: updated.decisionTitleB,
+    decisionDate: updated.decisionDate,
+    proposal: updated.proposal,
+    content: updated.content,
+    draftFile: updated.draftFile,
+    finalFile: updated.finalFile,
+    decisionURL: updated.decisionURL,
+    semesterId: updated.semesterId,
+    createdBy: updated.createdBy,
+    createdAt: updated.createdAt,
+    isDeleted: updated.isDeleted,
+    signature: updated.signature,
+    type: updated.type,
+    basedOn: updated.basedOnJson ? JSON.parse(updated.basedOnJson) : [],
+    participants: updated.participantsJson ? JSON.parse(updated.participantsJson) : null,
+    clauses: updated.clausesJson ? JSON.parse(updated.clausesJson) : [],
+  };
+}
 
   async deleteDecision(id: string) {
     const existing = await prisma.decision.findUnique({

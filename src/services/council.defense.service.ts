@@ -2,7 +2,7 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import HTTP_STATUS from '../constants/httpStatus';
 import COUNCIL_MESSAGE from '../constants/message';
 import { SystemConfigService } from './system.config.service';
-
+import { nowVN } from '../utils/date';
 const prisma = new PrismaClient();
 const systemConfigService = new SystemConfigService();
 
@@ -20,7 +20,6 @@ export class CouncilDefenseService {
         defenseRound?: number;
     }) {
         try {
-            // Kiểm tra createdBy (lấy từ token qua controller)
             if (!data.createdBy) {
                 return {
                     success: false,
@@ -58,7 +57,7 @@ export class CouncilDefenseService {
                 return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: "Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc." };
             }
 
-            const now = new Date();
+            const now = nowVN(); // Sửa: Dùng nowVN()
             let computedStatus = data.status || "ACTIVE";
             if (now < data.startDate) computedStatus = "UPCOMING";
             else if (now >= data.startDate && now <= data.endDate) computedStatus = "ACTIVE";
@@ -79,7 +78,7 @@ export class CouncilDefenseService {
                     status: computedStatus,
                     type: "DEFENSE",
                     round: data.defenseRound || 1,
-                    createdDate: new Date(),
+                    createdDate: nowVN(), // Sửa: Dùng nowVN()
                     code: councilCode,
                 },
             });
@@ -90,7 +89,6 @@ export class CouncilDefenseService {
             return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống khi tạo hội đồng bảo vệ." };
         }
     }
-
     // Thêm thành viên vào hội đồng bảo vệ
     async addMemberToCouncil(councilId: string, data: { email: string; role: string; addedBy: string }) {
         try {
@@ -109,7 +107,6 @@ export class CouncilDefenseService {
                 return { success: false, status: HTTP_STATUS.NOT_FOUND, message: `Vai trò ${data.role} không tồn tại!` };
             }
 
-            // Kiểm tra thành viên đã tồn tại
             const existingMember = await prisma.councilMember.findFirst({
                 where: { councilId, userId: user.id, isDeleted: false },
             });
@@ -117,16 +114,14 @@ export class CouncilDefenseService {
                 return { success: false, status: HTTP_STATUS.CONFLICT, message: "Người dùng đã là thành viên của hội đồng!" };
             }
 
-            // Lấy cấu hình từ SystemConfigService
-            const minChairman = await systemConfigService.getMinDefenseChairman(); // 1
-            const maxChairman = await systemConfigService.getMaxDefenseChairman(); // 1
-            const minSecretary = await systemConfigService.getMinDefenseSecretary(); // 1
-            const maxSecretary = await systemConfigService.getMaxDefenseSecretary(); // 1
-            const minReviewers = await systemConfigService.getMinDefenseReviewers(); // 3
-            const maxReviewers = await systemConfigService.getMaxDefenseReviewers(); // 3
-            const maxDefenseMembers = await systemConfigService.getMaxDefenseMembers(); // 5 (tổng tối đa)
+            const minChairman = await systemConfigService.getMinDefenseChairman();
+            const maxChairman = await systemConfigService.getMaxDefenseChairman();
+            const minSecretary = await systemConfigService.getMinDefenseSecretary();
+            const maxSecretary = await systemConfigService.getMaxDefenseSecretary();
+            const minReviewers = await systemConfigService.getMinDefenseReviewers();
+            const maxReviewers = await systemConfigService.getMaxDefenseReviewers();
+            const maxDefenseMembers = await systemConfigService.getMaxDefenseMembers();
 
-            // Đếm số lượng hiện tại theo vai trò
             const currentMembers = await prisma.councilMember.findMany({
                 where: { councilId, isDeleted: false },
                 include: { role: true },
@@ -137,7 +132,6 @@ export class CouncilDefenseService {
             const reviewerCount = currentMembers.filter(m => m.role.name === "council_member").length;
             const totalMemberCount = currentMembers.length;
 
-            // Kiểm tra giới hạn tối đa
             if (data.role === "council_chairman" && chairmanCount >= maxChairman) {
                 return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: `Hội đồng đã có đủ ${maxChairman} chủ tịch!` };
             }
@@ -151,19 +145,17 @@ export class CouncilDefenseService {
                 return { success: false, status: HTTP_STATUS.BAD_REQUEST, message: `Số lượng thành viên đã đạt tối đa (${maxDefenseMembers})!` };
             }
 
-            // Thêm thành viên mới
             const newMember = await prisma.councilMember.create({
                 data: {
                     councilId,
                     userId: user.id,
                     roleId: role.id,
-                    assignedAt: new Date(),
+                    assignedAt: nowVN(), // Sửa: Dùng nowVN()
                     status: "ACTIVE",
                     semesterId: council.semesterId || '',
                 },
             });
 
-            // Kiểm tra yêu cầu tối thiểu khi đạt tổng số thành viên tối đa
             const updatedMembers = await prisma.councilMember.findMany({
                 where: { councilId, isDeleted: false },
                 include: { role: true },
@@ -175,7 +167,6 @@ export class CouncilDefenseService {
 
             if (updatedTotalCount === maxDefenseMembers) {
                 if (updatedChairmanCount !== minChairman || updatedSecretaryCount !== minSecretary || updatedReviewerCount !== minReviewers) {
-                    // Nếu không đủ thành phần, xóa thành viên vừa thêm và báo lỗi
                     await prisma.councilMember.delete({ where: { id: newMember.id } });
                     return {
                         success: false,
@@ -204,7 +195,7 @@ export class CouncilDefenseService {
         room: string;
         createdBy: string;
         defenseRound: number;
-        majorId?: string; // optional, bắt buộc nếu nhóm là liên ngành
+        majorId?: string;
     }) {
         try {
             const normalizedGroups = data.groups.map(g => ({
@@ -307,7 +298,6 @@ export class CouncilDefenseService {
                     const assignment = topicAssignments.find(ta => ta.groupId === group.groupId);
                     if (!assignment) continue;
 
-                    //  Xác định majorId
                     let majorIdToUse: string | null = null;
                     if (assignment.group.isMultiMajor) {
                         if (!data.majorId) {
@@ -318,9 +308,7 @@ export class CouncilDefenseService {
                             };
                         }
                         majorIdToUse = data.majorId;
-                    }
-                    else {
-                        // Đơn ngành: lấy major của sinh viên đầu tiên
+                    } else {
                         const firstStudent = assignment.group.members.find(m => m.student?.major?.id);
                         majorIdToUse = firstStudent?.student?.major?.id || null;
                     }
@@ -338,6 +326,7 @@ export class CouncilDefenseService {
                             defenseRound: data.defenseRound,
                             status: "PENDING",
                             majorId: majorIdToUse,
+                            createdAt: nowVN(), // Thêm: Rõ ràng gán createdAt bằng nowVN()
                         },
                     });
 
@@ -420,11 +409,10 @@ export class CouncilDefenseService {
         }
     ) {
         try {
-            // **Bước 1: Kiểm tra hội đồng có tồn tại không**
             const existingCouncil = await prisma.council.findUnique({
                 where: {
                     id: councilId,
-                    type: "DEFENSE", // Phân biệt hội đồng bảo vệ
+                    type: "DEFENSE",
                     isDeleted: false,
                 },
             });
@@ -437,10 +425,8 @@ export class CouncilDefenseService {
                 };
             }
 
-            // **Bước 2: Sao chép dữ liệu để xử lý**
             let updateData: any = { ...data };
 
-            // **Bước 3: Validation**
             if (data.code && data.code !== existingCouncil.code) {
                 const codeExists = await prisma.council.findUnique({
                     where: { code: data.code },
@@ -481,9 +467,8 @@ export class CouncilDefenseService {
                 };
             }
 
-            // **Bước 4: Xử lý logic cho status**
             if (data.councilStartDate && data.councilEndDate) {
-                const now = new Date();
+                const now = nowVN(); // Sửa: Dùng nowVN()
                 let computedStatus = data.status || "ACTIVE";
 
                 if (now < data.councilStartDate) {
@@ -499,7 +484,6 @@ export class CouncilDefenseService {
                 updateData.status = data.status;
             }
 
-            // **Bước 5: Thực hiện cập nhật**
             const updatedCouncil = await prisma.council.update({
                 where: { id: councilId },
                 data: {
@@ -548,7 +532,7 @@ export class CouncilDefenseService {
                 include: {
                     members: {
                         include: {
-                            user: { select: { id: true, fullName: true, email: true , username: true }  },
+                            user: { select: { id: true, fullName: true, email: true, username: true } },
                             role: { select: { id: true, name: true } },
                         },
                     },
@@ -579,7 +563,7 @@ export class CouncilDefenseService {
                             },
                             memberResults: {
                                 include: {
-                                    student: { select: { id: true, studentCode: true, user: { select: { fullName: true ,} } } },
+                                    student: { select: { id: true, studentCode: true, user: { select: { fullName: true, } } } },
                                 },
                             },
                             documents: {
@@ -764,83 +748,83 @@ export class CouncilDefenseService {
     //         return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
     //     }
     // }
-    
+
     async getDefenseScheduleForMentor(userId: string, semesterId: string) {
-    try {
-        // Lấy danh sách nhóm mà user là mentor
-        const mentorGroups = await prisma.groupMentor.findMany({
-            where: { mentorId: userId, isDeleted: false },
-            select: { groupId: true },
-        });
-        const groupIds = mentorGroups.map(gm => gm.groupId);
+        try {
+            // Lấy danh sách nhóm mà user là mentor
+            const mentorGroups = await prisma.groupMentor.findMany({
+                where: { mentorId: userId, isDeleted: false },
+                select: { groupId: true },
+            });
+            const groupIds = mentorGroups.map(gm => gm.groupId);
 
-        if (groupIds.length === 0) {
-            return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Bạn không phụ trách nhóm nào!" };
+            if (groupIds.length === 0) {
+                return { success: false, status: HTTP_STATUS.NOT_FOUND, message: "Bạn không phụ trách nhóm nào!" };
+            }
+
+            // Lấy lịch bảo vệ với tất cả thông tin liên quan, lọc theo semesterId
+            const schedules = await prisma.defenseSchedule.findMany({
+                where: {
+                    groupId: { in: groupIds },
+                    isDeleted: false,
+                    council: { semesterId: semesterId } // Thêm điều kiện lọc theo semesterId
+                },
+                include: {
+                    council: {
+                        include: {
+                            members: {
+                                include: {
+                                    user: { select: { id: true, fullName: true, email: true, username: true } },
+                                    role: { select: { id: true, name: true } },
+                                },
+                            },
+                            semester: { select: { id: true, code: true, startDate: true, endDate: true, status: true } },
+                            submissionPeriod: { select: { id: true, roundNumber: true, startDate: true, endDate: true, status: true } },
+                        },
+                    },
+                    group: {
+                        include: {
+                            members: {
+                                include: {
+                                    student: { select: { id: true, studentCode: true, user: { select: { fullName: true, email: true } } } },
+                                    role: { select: { id: true, name: true } },
+                                },
+                            },
+                            mentors: {
+                                include: {
+                                    mentor: { select: { id: true, fullName: true, email: true } },
+                                    role: { select: { id: true, name: true } },
+                                },
+                            },
+                            topicAssignments: {
+                                include: {
+                                    topic: { select: { id: true, topicCode: true, name: true, status: true } },
+                                },
+                            },
+                        },
+                    },
+                    memberResults: {
+                        include: {
+                            student: { select: { id: true, studentCode: true, user: { select: { fullName: true } } } },
+                        },
+                    },
+                    documents: {
+                        where: { documentType: "DEFENSE_REPORT", isDeleted: false },
+                        select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true, uploadedBy: true },
+                    },
+                },
+            });
+
+            if (schedules.length === 0) {
+                return { success: false, status: HTTP_STATUS.OK, message: "Hiện chưa có lịch bảo vệ nào cho nhóm bạn phụ trách!" };
+            }
+
+            return { success: true, status: HTTP_STATUS.OK, message: "Lấy lịch bảo vệ thành công!", data: schedules };
+        } catch (error) {
+            console.error("Lỗi khi lấy lịch bảo vệ:", error);
+            return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
         }
-
-        // Lấy lịch bảo vệ với tất cả thông tin liên quan, lọc theo semesterId
-        const schedules = await prisma.defenseSchedule.findMany({
-            where: { 
-                groupId: { in: groupIds }, 
-                isDeleted: false,
-                council: { semesterId: semesterId } // Thêm điều kiện lọc theo semesterId
-            },
-            include: {
-                council: {
-                    include: {
-                        members: {
-                            include: {
-                                user: { select: { id: true, fullName: true, email: true , username: true } },
-                                role: { select: { id: true, name: true } },
-                            },
-                        },
-                        semester: { select: { id: true, code: true, startDate: true, endDate: true, status: true } },
-                        submissionPeriod: { select: { id: true, roundNumber: true, startDate: true, endDate: true, status: true } },
-                    },
-                },
-                group: {
-                    include: {
-                        members: {
-                            include: {
-                                student: { select: { id: true, studentCode: true, user: { select: { fullName: true, email: true } } } },
-                                role: { select: { id: true, name: true } },
-                            },
-                        },
-                        mentors: {
-                            include: {
-                                mentor: { select: { id: true, fullName: true, email: true } },
-                                role: { select: { id: true, name: true } },
-                            },
-                        },
-                        topicAssignments: {
-                            include: {
-                                topic: { select: { id: true, topicCode: true, name: true, status: true } },
-                            },
-                        },
-                    },
-                },
-                memberResults: {
-                    include: {
-                        student: { select: { id: true, studentCode: true, user: { select: { fullName: true } } } },
-                    },
-                },
-                documents: {
-                    where: { documentType: "DEFENSE_REPORT", isDeleted: false },
-                    select: { id: true, fileName: true, fileUrl: true, documentType: true, uploadedAt: true, uploadedBy: true },
-                },
-            },
-        });
-
-        if (schedules.length === 0) {
-            return { success: false, status: HTTP_STATUS.OK, message: "Hiện chưa có lịch bảo vệ nào cho nhóm bạn phụ trách!" };
-        }
-
-        return { success: true, status: HTTP_STATUS.OK, message: "Lấy lịch bảo vệ thành công!", data: schedules };
-    } catch (error) {
-        console.error("Lỗi khi lấy lịch bảo vệ:", error);
-        return { success: false, status: HTTP_STATUS.INTERNAL_SERVER_ERROR, message: "Lỗi hệ thống!" };
     }
-}
 
     async getDefenseScheduleForStudent(userId: string) {
         try {
@@ -987,7 +971,6 @@ export class CouncilDefenseService {
     // Leader thêm URL báo cáo
     async addUrlToDefenseSchedule(scheduleId: string, url: string, userId: string) {
         try {
-            // 1. Kiểm tra URL hợp lệ
             if (!url || !url.match(/^https?:\/\/.+/)) {
                 return {
                     success: false,
@@ -996,7 +979,6 @@ export class CouncilDefenseService {
                 };
             }
 
-            // 2. Lấy thông tin defense schedule
             const defenseSchedule = await prisma.defenseSchedule.findUnique({
                 where: { id: scheduleId, isDeleted: false },
                 include: {
@@ -1027,7 +1009,6 @@ export class CouncilDefenseService {
                 };
             }
 
-            // 3. Kiểm tra user có trong nhóm không
             const userInGroup = defenseSchedule.group.members.find(
                 member => member.student && member.student.userId === userId
             );
@@ -1040,7 +1021,6 @@ export class CouncilDefenseService {
                 };
             }
 
-            // 4. Kiểm tra role leader
             const leaderRole = await prisma.role.findUnique({
                 where: { name: "leader" }
             });
@@ -1053,7 +1033,6 @@ export class CouncilDefenseService {
                 };
             }
 
-            // 5. Kiểm tra trùng URL
             const existingDoc = await prisma.document.findFirst({
                 where: {
                     defenseScheduleId: scheduleId,
@@ -1071,7 +1050,6 @@ export class CouncilDefenseService {
                 };
             }
 
-            // 6. Tạo document mới
             const newDocument = await prisma.document.create({
                 data: {
                     fileName: `Báo cáo bảo vệ - ${defenseSchedule.group.groupCode}`,
@@ -1079,7 +1057,8 @@ export class CouncilDefenseService {
                     fileType: "URL",
                     documentType: "DEFENSE_REPORT",
                     defenseScheduleId: scheduleId,
-                    uploadedBy: userId
+                    uploadedBy: userId,
+                    uploadedAt: nowVN(), // Thêm: Rõ ràng gán uploadedAt bằng nowVN()
                 }
             });
 
@@ -1089,7 +1068,6 @@ export class CouncilDefenseService {
                 message: "Thêm URL báo cáo thành công!",
                 data: newDocument
             };
-
         } catch (error) {
             console.error("Lỗi khi thêm URL:", error);
             return {
@@ -1114,7 +1092,7 @@ export class CouncilDefenseService {
                 include: {
                     members: {
                         include: {
-                            user: { select: { id: true, fullName: true, email: true , username: true } }, // Thông tin user của thành viên hội đồng
+                            user: { select: { id: true, fullName: true, email: true, username: true } }, // Thông tin user của thành viên hội đồng
                             role: { select: { id: true, name: true } }, // Vai trò của thành viên
                         },
                     },
@@ -1186,8 +1164,7 @@ export class CouncilDefenseService {
             });
 
             const roleNames = userRoles.map((ur) => ur.role.name);
-           // const allowedRoles = ["lecturer", "council_chairman", "council_secretary", "council_member"];
-            const allowedRoles = ["council_chairman", "council_secretary","lecturer"];
+            const allowedRoles = ["council_chairman", "council_secretary", "lecturer"];
 
             if (!roleNames.some((role) => allowedRoles.includes(role))) {
                 return {
@@ -1216,7 +1193,6 @@ export class CouncilDefenseService {
                         studentId,
                     },
                     isDeleted: false,
-
                 },
                 include: {
                     defenseSchedule: { select: { groupId: true, defenseRound: true } },
@@ -1231,7 +1207,6 @@ export class CouncilDefenseService {
                 };
             }
 
-            //  NEW: Không cho phép chấm nếu sinh viên đã PASS ở vòng trước
             const previousPassed = await prisma.defenseMemberResult.findFirst({
                 where: {
                     studentId,
@@ -1266,7 +1241,7 @@ export class CouncilDefenseService {
                     result: data.result,
                     feedback: data.feedback,
                     evaluatedBy: userId,
-                    evaluatedAt: new Date(),
+                    evaluatedAt: nowVN(), // Sửa: Dùng nowVN()
                 },
             });
 
@@ -1292,13 +1267,8 @@ export class CouncilDefenseService {
         members: { email: string; role: string }[],
     ) {
         try {
-            // Kiểm tra hội đồng
             const council = await prisma.council.findUnique({
-                where: {
-                    id: councilId,
-                    type: "DEFENSE",
-                    isDeleted: false
-                }
+                where: { id: councilId, type: "DEFENSE", isDeleted: false }
             });
             if (!council) {
                 return {
@@ -1308,7 +1278,6 @@ export class CouncilDefenseService {
                 };
             }
 
-            // Lấy cấu hình
             const systemConfigService = new SystemConfigService();
             const [
                 minChairman,
@@ -1328,9 +1297,7 @@ export class CouncilDefenseService {
                 systemConfigService.getMaxDefenseMembers()
             ]);
 
-            // Transaction
             const result = await prisma.$transaction(async (tx) => {
-                // Soft delete thành viên hiện tại
                 await tx.councilMember.updateMany({
                     where: { councilId, isDeleted: false },
                     data: {
@@ -1338,7 +1305,6 @@ export class CouncilDefenseService {
                     }
                 });
 
-                // Lấy roles
                 const [chairmanRole, secretaryRole, memberRole] = await Promise.all([
                     tx.role.findUnique({ where: { name: "council_chairman" } }),
                     tx.role.findUnique({ where: { name: "council_secretary" } }),
@@ -1349,7 +1315,6 @@ export class CouncilDefenseService {
                     throw new Error("Không tìm thấy thông tin vai trò cần thiết!");
                 }
 
-                // Kiểm tra số lượng
                 const roleCounts = { chairman: 0, secretary: 0, reviewer: 0 };
                 members.forEach(member => {
                     if (member.role === "council_chairman") roleCounts.chairman++;
@@ -1371,7 +1336,6 @@ export class CouncilDefenseService {
                     throw new Error(`Tổng số thành viên không được vượt quá ${maxDefenseMembers}!`);
                 }
 
-                // Thêm thành viên mới
                 const newMembers = await Promise.all(
                     members.map(async (member) => {
                         const user = await tx.user.findUnique({
@@ -1391,7 +1355,7 @@ export class CouncilDefenseService {
                                 councilId,
                                 userId: user.id,
                                 roleId,
-                                assignedAt: new Date(),
+                                assignedAt: nowVN(), // Sửa: Dùng nowVN()
                                 status: "ACTIVE",
                                 semesterId: council.semesterId || ''
                             }
