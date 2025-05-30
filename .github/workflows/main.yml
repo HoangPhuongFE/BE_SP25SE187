@@ -33,6 +33,8 @@ jobs:
           port: ${{ secrets.PORT_PRODUCTION }}
           script: |
             echo "${{ secrets.ENV_PROD }}" > .env
+            grep -vE '^[[:space:]]*$' .env > .env.cleaned && mv .env.cleaned .env
+            sed -i 's/[[:space:]]*$//' .env
             docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}" || { echo "Docker login failed"; exit 1; }
             docker pull hoangleuleu/project-management-system-mysql:v1 || { echo "Docker pull failed"; exit 1; }
             docker rm -f project_management_container || true
