@@ -12,7 +12,7 @@ router.post(
   checkRole(["student"], false),
   groupController.createGroup.bind(groupController)
 );
-// 2️ Mời thành viên
+// 2 Mời thành viên
 router.post(
   "/invite",
   authenticateToken,
@@ -20,7 +20,7 @@ router.post(
   groupController.inviteMember.bind(groupController)
 );
 
-// 3️ Phản hồi lời mời
+// 3 Phản hồi lời mời
 router.post(
   "/respond",
   authenticateToken,
@@ -28,7 +28,7 @@ router.post(
   groupController.respondToInvitation.bind(groupController)
 );
 
-// 4️ Lấy thông tin nhóm
+// 4 Lấy thông tin nhóm
 router.get(
   "/info/:groupId",
   authenticateToken,
@@ -36,7 +36,7 @@ router.get(
   groupController.getGroupInfo.bind(groupController)
 );
 
-// 5️ Lấy DS nhóm theo kỳ
+// 5Lấy DS nhóm theo kỳ
 router.get(
   "/semester/:semesterId",
   authenticateToken,
@@ -44,7 +44,7 @@ router.get(
   groupController.getGroupsBySemester.bind(groupController)
 );
 
-// 6️ Đổi Leader
+// 6 Đổi Leader
 router.post(
   "/change-leader",
   authenticateToken,
@@ -52,7 +52,7 @@ router.post(
   groupController.changeLeader.bind(groupController)
 );
 
-// 7️ Thêm Mentor
+// 7 Thêm Mentor
 router.post(
   "/add-mentor",
   authenticateToken,
@@ -60,7 +60,7 @@ router.post(
   groupController.addMentorToGroup.bind(groupController)
 );
 
-// 8️ Xóa thành viên
+// 8 Xóa thành viên
 router.post(
   "/remove-member",
   authenticateToken,
@@ -69,7 +69,7 @@ router.post(
   groupController.removeMemberFromGroup.bind(groupController)
 );
 
-// 9️ Xóa nhóm
+// 9 Xóa nhóm
 router.put(
   '/delete/:groupId', 
   authenticateToken,
@@ -77,7 +77,7 @@ router.put(
   groupController.deleteGroup.bind(groupController)
 );
 
-// 10️ Rời nhóm
+// 10 Rời nhóm
 router.post(
   "/leave",
   authenticateToken,
@@ -86,7 +86,7 @@ router.post(
   groupController.leaveGroup.bind(groupController)
 );
 
-// 11️ Hủy lời mời
+// 11 Hủy lời mời
 router.post(
   "/cancel-invitation",
   authenticateToken,
@@ -95,7 +95,7 @@ router.post(
   groupController.cancelInvitation.bind(groupController)
 );
 
-// 12️ Khóa nhóm
+// 12 Khóa nhóm
 router.post(
   "/lock",
   authenticateToken,
@@ -103,7 +103,7 @@ router.post(
   groupController.lockGroup.bind(groupController)
 );
 
-// 13️ Mở khóa nhóm
+// 13 Mở khóa nhóm
 router.put(
   "/unlock-group",
   authenticateToken,
@@ -111,7 +111,7 @@ router.put(
   groupController.unlockGroup.bind(groupController)
 );
 
-//  14️ Lấy danh sách thành viên nhóm mới thêm
+// 14 Lấy danh sách thành viên nhóm mới thêm
 router.get(
   "/members/:groupId",
   authenticateToken,
@@ -120,7 +120,7 @@ router.get(
   groupController.getGroupMembers.bind(groupController)
 );
 
-//  15️ Lấy danh sách mentor trong nhóm mới thêm
+// 15 Lấy danh sách mentor trong nhóm mới thêm
 router.get(
   "/mentors/:groupId",
   authenticateToken,
@@ -129,7 +129,7 @@ router.get(
   groupController.getGroupMentors.bind(groupController)
 );
 
-//  16️ Lấy danh sách sinh viên chưa có nhóm mới thêm
+// 16 Lấy danh sách sinh viên chưa có nhóm mới thêm
 router.get(
   "/students-without-group/:semesterId",
   authenticateToken,
@@ -138,7 +138,7 @@ router.get(
   groupController.getStudentsWithoutGroup.bind(groupController)
 );
 
-//  17️ Random nhóm mới thêm
+// 17 Random nhóm mới thêm
 router.post(
   "/randomize",
   authenticateToken,
@@ -146,7 +146,7 @@ router.post(
   groupController.randomizeGroups.bind(groupController)
 );
 
-// 18️ Thay đổi Mentor mới thêm
+// 18 Thay đổi Mentor mới thêm
 router.put(
   "/change-mentor",
   authenticateToken,
