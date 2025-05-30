@@ -37,7 +37,7 @@ import interMajorGroupRouter from './routers/interMajorGroup.router';
 import interMajorTopicRouter from './routers/interMajorTopic.router';
 import thesisAssignmentRouter from './routers/thesisAssignment.router';
 import { errorHandler } from './middleware/errorHandler';
-
+// 
 config();
 
 const app = express();
