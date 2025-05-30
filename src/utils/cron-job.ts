@@ -15,8 +15,8 @@ function determineStatus(startDate: Date, endDate: Date): string {
   }
 }
 
-// Cron job cập nhật trạng thái của SubmissionPeriod (ví dụ chạy mỗi phút cho kiểm tra nhanh)
-schedule("*/1 * * * *", async () => {
+// Cron job cập nhật trạng thái của SubmissionPeriod (ví dụ chạy mỗi 60 phút cho kiểm tra nhanh)
+schedule("*/60 * * * *", async () => {
   console.log("Đang kiểm tra trạng thái đợt đề xuất...");
   try {
     const periods = await prisma.submissionPeriod.findMany();
@@ -53,8 +53,8 @@ schedule("*/60 * * * *", async () => {
   }
 });
 
-// Cron job cập nhật trạng thái của Semester (chạy mỗi 15 phút)
-schedule("*/15 * * * *", async () => {
+// Cron job cập nhật trạng thái của Semester (chạy mỗi 60 phút)
+schedule("*/60 * * * *", async () => {
   console.log("Đang kiểm tra trạng thái semester...");
   try {
     const semesters = await prisma.semester.findMany();

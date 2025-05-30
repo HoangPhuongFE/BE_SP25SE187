@@ -21,24 +21,29 @@ export class YearController {
     }
   }
 
-  // Tạo mới Year
-  async createYear(req: Request, res: Response) {
-    try {
-      const { year } = req.body;
-      if (!year || typeof year !== "number") {
-        return res.status(400).json({ message: "Year is required and must be a number." });
-      }
-
-      const createdYear = await this.yearService.createYear(year);
-      return res.status(201).json({
-        message: YEAR_MESSAGE.YEAR_CREATED,
-        data: createdYear
-      });
-    } catch (error) {
-      console.error("Error creating year:", error);
-      return res.status(500).json({ message: GENERAL_MESSAGE.SERVER_ERROR });
+async createYear(req: Request, res: Response) {
+  try {
+    const { year } = req.body;
+    if (!year || typeof year !== "number") {
+      return res.status(400).json({ message: "Năm học phải là một số hợp lệ." });
     }
+
+    const createdYear = await this.yearService.createYear(year);
+    return res.status(201).json({
+      message: "Năm học đã được tạo thành công.",
+      data: createdYear,
+    });
+  } catch (error) {
+    console.error("Lỗi khi tạo năm học:", error);
+    const message = (error as Error).message;
+    if (message === "Năm học phải là số nguyên." || 
+        message === "Năm học phải nằm trong khoảng từ 1900 đến 2100." || 
+        message === "Năm học đã tồn tại.") {
+      return res.status(400).json({ message });
+    }
+    return res.status(500).json({ message: "Có lỗi xảy ra trên máy chủ." });
   }
+}
 
   // Cập nhật Year
   async updateYear(req: Request, res: Response) {

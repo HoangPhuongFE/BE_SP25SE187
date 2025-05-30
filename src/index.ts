@@ -3,6 +3,7 @@ import { startCronJobs } from './utils/cron-job';
 import morgan from 'morgan';
 import cors from 'cors';
 import { config } from 'dotenv';
+//import { nowVN } from "./utils/date";
 import userRouter from './routers/user.router';
 import adminRouter from './routers/admin.router';
 import importStudentRouter from './routers/importStudent.router';
@@ -37,7 +38,10 @@ import interMajorGroupRouter from './routers/interMajorGroup.router';
 import interMajorTopicRouter from './routers/interMajorTopic.router';
 import thesisAssignmentRouter from './routers/thesisAssignment.router';
 import { errorHandler } from './middleware/errorHandler';
-// 
+
+// Đặt múi giờ cho Node.js
+process.env.TZ = "Asia/Ho_Chi_Minh";
+
 config();
 
 const app = express();
@@ -95,11 +99,12 @@ app.use('/api', interMajorConfigRouter);
 app.use('/api', interMajorGroupRouter);
 app.use('/api', interMajorTopicRouter);
 app.use('/api', thesisAssignmentRouter);
+
 // Start the server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   startCronJobs();
 });
-
+// console.log("Test nowVN:", nowVN().toISOString());
 app.use(errorHandler);
