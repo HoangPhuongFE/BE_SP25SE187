@@ -264,7 +264,7 @@ export class CouncilReviewService {
         include: {
           members: {
             include: {
-              user: { select: { id: true, fullName: true, email: true } },
+              user: { select: { id: true, fullName: true, email: true , username: true } },
             },
           },
           sessions: { // 👈 dùng đúng tên quan hệ trong model Council
