@@ -36,5 +36,8 @@ router.get('/users/:id',
    userController.getUserById
 );
 
+router.put('/change-password', authenticateToken, userController.changePassword);
+router.post('/forgot-password', userController.forgotPassword);
+router.post('/reset-password', userController.resetPassword);
 
 export default router;

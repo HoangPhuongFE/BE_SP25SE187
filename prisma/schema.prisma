@@ -94,6 +94,7 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id])
   expiresAt DateTime
   createdAt DateTime @default(now())
+  type      String   @default("refresh") 
   isDeleted Boolean  @default(false)
 
   @@map("refresh_token")

@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
 import { UserService } from '../services/user.service';
-import { AUTH_MESSAGE, USER_MESSAGE } from '../constants/message';
+import { AUTH_MESSAGE, USER_MESSAGE  } from '../constants/message';
 import { AuthenticatedRequest } from '../middleware/user.middleware';
+import HTTP_STATUS from '../constants/httpStatus';
 
 const userService = new UserService();
 
@@ -126,5 +127,95 @@ export class UserController {
       res.status(500).json({ message: (error as Error).message });
     }
   }
-  
+  async changePassword(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user?.id;
+      console.log('Request body:', req.body);
+
+      const { oldPassword, newPassword } = req.body;
+      console.log('oldPassword:', oldPassword, 'newPassword:', newPassword);
+
+      if (!userId) {
+        res.status(HTTP_STATUS.UNAUTHORIZED).json({
+          success: false,
+          message: USER_MESSAGE.UNAUTHORIZED,
+        });
+        return;
+      }
+
+      if (!oldPassword || !newPassword) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'Mật khẩu cũ và mật khẩu mới là bắt buộc',
+        });
+        return;
+      }
+
+      const result = await userService.changePassword(userId, oldPassword, newPassword);
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error.message || 'Lỗi hệ thống khi thay đổi mật khẩu',
+      });
+    }
+  }
+
+  async forgotPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+      console.log('Forgot password request body:', req.body);
+
+      if (!email) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'Email là bắt buộc',
+        });
+        return;
+      }
+
+      const result = await userService.forgotPassword(email);
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error.message || 'Lỗi hệ thống khi yêu cầu khôi phục mật khẩu',
+      });
+    }
+  }
+
+  async resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, otp, newPassword } = req.body;
+      console.log('Reset password request body:', req.body);
+
+      if (!email || !otp || !newPassword) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          success: false,
+          message: 'Email, mã OTP và mật khẩu mới là bắt buộc',
+        });
+        return;
+      }
+
+      const result = await userService.resetPassword(email, otp, newPassword);
+
+      res.status(HTTP_STATUS.OK).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error: any) {
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        success: false,
+        message: error.message || 'Lỗi hệ thống khi đặt lại mật khẩu',
+      });
+    }
+  }
 }
