@@ -8,8 +8,6 @@ import { AUTH_MESSAGE, USER_MESSAGE } from '~/constants/message';
 
 const prisma = new PrismaClient();
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-const SYSTEM_DEFAULT_SEMESTER_ID = 'system-default-id'; // Thay bằng ID thực tế từ seed
-const DEFAULT_STUDENT_SEMESTER_ID = 'spring-2025-id'; // Thay bằng ID thực tế của SPRING2025 từ seed
 
 export class UserService {
   async register(data: RegisterDTO & { semesterId?: string }) {
@@ -26,8 +24,8 @@ export class UserService {
         fullName: data.fullName,
         roles: {
           create: {
-            roleId: studentRole.id, // Dùng role "student" mặc định
-            semesterId: data.semesterId || DEFAULT_STUDENT_SEMESTER_ID, // Mặc định cho student
+            roleId: studentRole.id,
+            semesterId: data.semesterId,
             isActive: true,
           },
         },
@@ -109,74 +107,7 @@ export class UserService {
     };
   }
 
-  async loginWithGoogle(idToken: string) {
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-  
-    const payload = ticket.getPayload();
-    if (!payload?.email) throw new Error('Invalid Google token');
-  
-    let user = await prisma.user.findUnique({
-      where: { email: payload.email },
-      include: {
-        roles: {
-          include: { role: true },
-        },
-      },
-    });
-  
-    // Nếu tài khoản chưa tồn tại, theo chính sách của bạn có thể quăng lỗi thay vì tự tạo mới.
-    if (!user) {
-      throw new Error('Tài khoản có trong hệ thống . Vui lòng liên hệ bộ phận hỗ trợ.');
-    } else {
-      // Tùy chọn: cập nhật thông tin từ Google (avatar, fullName, …) nếu cần
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          fullName: payload.name || user.fullName,
-          avatar: payload.picture || user.avatar,
-        },
-        include: {
-          roles: {
-            include: { role: true },
-          },
-        },
-      });
-    }
-  
-    // Kiểm tra hoặc tạo UserRole nếu cần cho học kỳ hiện tại
-    const currentSemesterId = '...' // Lấy từ ngữ cảnh hiện tại nếu cần
-    const existRole = await prisma.userRole.findFirst({
-      where: { userId: user.id, roleId: user.roles[0]?.role?.id, semesterId: currentSemesterId },
-    });
-    if (!existRole) {
-      await prisma.userRole.create({
-        data: {
-          userId: user.id,
-          roleId: user.roles[0]?.role?.id,
-          semesterId: currentSemesterId,
-          isActive: true,
-        },
-      });
-    }
-  
-    const accessToken = this.generateAccessToken(user);
-    const refreshToken = this.generateRefreshToken(user);
-  
-    // Lưu refresh token vào DB nếu cần
-    await prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
-  
-    return { accessToken, refreshToken };
-  }
-  
+
 
   generateAccessToken(user: any) {
     return jwt.sign(

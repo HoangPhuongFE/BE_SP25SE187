@@ -172,7 +172,7 @@ export class CouncilTopicService {
 
       const councils = await prisma.council.findMany({
         where: whereClause,
-        include: { members: { include: { user: { select: { id: true, fullName: true, email: true } } } } },
+        include: { members: { include: { user: { select: { id: true, fullName: true, email: true, username: true } } } } },
       });
 
       const roleIds = councils.flatMap((council) => council.members.map((member) => member.roleId)).filter((id, index, self) => self.indexOf(id) === index);
@@ -196,7 +196,7 @@ export class CouncilTopicService {
       const council = await prisma.council.findUnique({
         where: { id: councilId },
         include: {
-          members: { include: { user: { select: { id: true, fullName: true, email: true } } } },
+          members: { include: { user: { select: { id: true, fullName: true, email: true , username: true } } } },
           sessions: {
             include: {
               group: { select: { id: true, groupCode: true, semesterId: true, status: true } },
@@ -205,7 +205,7 @@ export class CouncilTopicService {
                 include: {
                   council: { select: { id: true, name: true } },
                   topic: { select: { id: true, topicCode: true, name: true } },
-                  reviewer: { select: { id: true, fullName: true, email: true } },
+                  reviewer: { select: { id: true, fullName: true, email: true , username: true } },
                   reviewSchedule: { select: { id: true, reviewTime: true, room: true, reviewRound: true, status: true, note: true } },
                 },
               },
@@ -445,7 +445,7 @@ export class CouncilTopicService {
       const council = await prisma.council.findUnique({
         where: { id: councilId },
         include: {
-          members: { include: { user: { select: { id: true, fullName: true, email: true } }, role: { select: { id: true, name: true } } } },
+          members: { include: { user: { select: { id: true, fullName: true, email: true , username: true } }, role: { select: { id: true, name: true } } } },
           semester: { select: { id: true, code: true, startDate: true, endDate: true } },
           submissionPeriod: { select: { id: true, roundNumber: true, startDate: true, endDate: true } },
         },

@@ -548,7 +548,7 @@ export class CouncilDefenseService {
                 include: {
                     members: {
                         include: {
-                            user: { select: { id: true, fullName: true, email: true } },
+                            user: { select: { id: true, fullName: true, email: true , username: true }  },
                             role: { select: { id: true, name: true } },
                         },
                     },
@@ -579,7 +579,7 @@ export class CouncilDefenseService {
                             },
                             memberResults: {
                                 include: {
-                                    student: { select: { id: true, studentCode: true, user: { select: { fullName: true } } } },
+                                    student: { select: { id: true, studentCode: true, user: { select: { fullName: true ,} } } },
                                 },
                             },
                             documents: {
@@ -790,7 +790,7 @@ export class CouncilDefenseService {
                     include: {
                         members: {
                             include: {
-                                user: { select: { id: true, fullName: true, email: true } },
+                                user: { select: { id: true, fullName: true, email: true , username: true } },
                                 role: { select: { id: true, name: true } },
                             },
                         },
@@ -1114,7 +1114,7 @@ export class CouncilDefenseService {
                 include: {
                     members: {
                         include: {
-                            user: { select: { id: true, fullName: true, email: true } }, // Thông tin user của thành viên hội đồng
+                            user: { select: { id: true, fullName: true, email: true , username: true } }, // Thông tin user của thành viên hội đồng
                             role: { select: { id: true, name: true } }, // Vai trò của thành viên
                         },
                     },

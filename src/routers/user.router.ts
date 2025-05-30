@@ -7,7 +7,6 @@ const userController = new UserController();
 
 router.post('/register', validateRegister, userController.register);
 router.post('/login', validateLogin, userController.login);
-router.post('/google-login', userController.googleLogin);
 router.post('/logout', authenticateToken, userController.logout);
 
 router.put('/profile', 

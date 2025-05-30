@@ -38,22 +38,7 @@ export class UserController {
     }
   }
 
-  async googleLogin(req: Request, res: Response) {
-    try {
-      const { idToken } = req.body;
-      const { accessToken, refreshToken } = await userService.loginWithGoogle(idToken);
-      res.json({ 
-        message: AUTH_MESSAGE.LOGIN_SUCCESS,
-        accessToken,
-        refreshToken
-      });
-    } catch (error) {
-      res.status(401).json({ 
-        message: AUTH_MESSAGE.GOOGLE_LOGIN_FAILED,
-        error: (error as Error).message 
-      });
-    }
-  }
+ 
 
   async getProfile(req: AuthenticatedRequest, res: Response) {
     try {
