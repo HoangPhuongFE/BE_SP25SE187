@@ -1,8 +1,10 @@
 name: Deploy to VPS with MySQL
+
 on:
   push:
     branches:
       - main
+
 jobs:
   build:
     name: Build and Push Docker Image
@@ -10,15 +12,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Build Docker image
         run: docker build -t hoangleuleu/project-management-system-mysql:v1 .
+
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Push Docker image to Docker Hub
         run: docker push hoangleuleu/project-management-system-mysql:v1
+
   deploy:
     name: Deploy to VPS with MySQL
     runs-on: ubuntu-latest
@@ -33,17 +39,12 @@ jobs:
           port: ${{ secrets.PORT_PRODUCTION }}
           script: |
             echo "${{ secrets.ENV_PROD }}" > .env
-            grep -vE '^[[:space:]]*$' .env > .env.cleaned && mv .env.cleaned .env
-            sed -i 's/[[:space:]]*$//' .env
-            docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}" || { echo "Docker login failed"; exit 1; }
-            docker pull hoangleuleu/project-management-system-mysql:v1 || { echo "Docker pull failed"; exit 1; }
+            docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
+            docker pull hoangleuleu/project-management-system-mysql:v1
             docker rm -f project_management_container || true
             docker run -d -p 6969:3000 \
               --name project_management_container \
               --env-file .env \
-              -e TZ=Asia/Ho_Chi_Minh \
-              --restart=unless-stopped \
-              hoangleuleu/project-management-system-mysql:v1 \
-              --default-time-zone=+07:00 || { echo "Docker run failed"; exit 1; }
+              hoangleuleu/project-management-system-mysql:v1
             docker image prune -f
             docker ps
