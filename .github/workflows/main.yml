@@ -45,6 +45,8 @@ jobs:
             docker run -d -p 6969:3000 \
               --name project_management_container \
               --env-file .env \
+              -e TZ=Asia/Ho_Chi_Minh \
               hoangleuleu/project-management-system-mysql:v1
+              --default-time-zone=+07:00
             docker image prune -f
             docker ps
