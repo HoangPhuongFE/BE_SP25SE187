@@ -129,8 +129,8 @@ export class UserController {
   }
   async changePassword(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.id;
-      console.log('Request body:', req.body);
+      const userId = req.user?.userId; // Lấy userId từ token đã xác thực
+     // console.log('Request body:', req.body);
 
       const { oldPassword, newPassword } = req.body;
       console.log('oldPassword:', oldPassword, 'newPassword:', newPassword);
@@ -168,7 +168,7 @@ export class UserController {
   async forgotPassword(req: Request, res: Response): Promise<void> {
     try {
       const { email } = req.body;
-      console.log('Forgot password request body:', req.body);
+     // console.log('Forgot password request body:', req.body);
 
       if (!email) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -195,7 +195,7 @@ export class UserController {
   async resetPassword(req: Request, res: Response): Promise<void> {
     try {
       const { email, otp, newPassword } = req.body;
-      console.log('Reset password request body:', req.body);
+     // console.log('Reset password request body:', req.body);
 
       if (!email || !otp || !newPassword) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({

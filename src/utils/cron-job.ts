@@ -1,11 +1,11 @@
 import { schedule } from "node-cron";
 import { PrismaClient } from "@prisma/client";
-
+import { nowVN } from "../utils/date";
 const prisma = new PrismaClient();
 
 // Hàm xác định trạng thái của SubmissionPeriod (có thể dùng chung với Semester nếu cùng logic)
 function determineStatus(startDate: Date, endDate: Date): string {
-  const now = new Date();
+  const now = nowVN();
   if (now < startDate) {
     return "UPCOMING";
   } else if (now >= startDate && now <= endDate) {
