@@ -286,7 +286,7 @@ export class CouncilDefenseService {
                     return {
                         success: false,
                         status: 400,
-                        message: `Mentor ${conflict.mentor.fullName} không được nằm trong hội đồng nhóm ${assignment.group.groupCode}`,
+                        message: `Mentor ${conflict.mentor.username} không được nằm trong hội đồng nhóm ${assignment.group.groupCode}`,
                     };
                 }
             }

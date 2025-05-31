@@ -151,8 +151,8 @@ export class UserService {
         throw new Error(USER_MESSAGE.INVALID_PASSWORD);
       }
 
-      if (newPassword.length < 8) {
-        throw new Error('Mật khẩu mới phải có ít nhất 8 ký tự');
+      if (newPassword.length < 6) {
+        throw new Error('Mật khẩu mới phải có ít nhất 6 ký tự');
       }
 
       const hashedNewPassword = await hashPassword(newPassword);

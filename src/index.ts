@@ -53,6 +53,7 @@ app.use(
       'http://localhost:3000',
       'http://localhost:5173',
       'https://final-capstone-project-git-main-anhphis-projects.vercel.app',
+      'https://final-capstone-project-nu.vercel.app',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization'],
