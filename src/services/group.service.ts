@@ -394,7 +394,9 @@ export class GroupService {
 
       // 11 Gửi email lời mời
       if (invitedStudent.user?.email) {
-        const invitationLink = `http://103.185.184.198:6969/api/groups/accept-invitation/${invitation.id}`;
+        //const invitationLink = `http://103.185.184.198:6969/api/groups/accept-invitation/${invitation.id}`;
+        const invitationLink = `http://localhost:3000/api/groups/accept-invitation/${invitation.id}`;
+
         const emailContent = `
         <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
           <p>Xin chào <strong>${ invitedStudent.user.username}</strong>,</p>
@@ -576,7 +578,7 @@ export class GroupService {
         status: "ACTIVE",
       },
     });
-    return { message: "Lời mời đã được chấp nhận." };
+    return { message: "Lời mời đã được chấp nhận. " };
   }
 
 

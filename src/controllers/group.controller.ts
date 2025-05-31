@@ -114,28 +114,70 @@ async createGroup(req: AuthenticatedRequest, res: Response) {
   }
 
   // Link chấp nhận lời mời (không cần token)
-  async acceptInvitation(req: Request, res: Response) {
-    try {
-      const { invitationId } = req.params;
-      const invitation = await groupService.getInvitationById(invitationId);
-      if (!invitation) {
-        return res
-          .status(404)
-          .send(`<h2>hihi</h2> Lời mời không tồn tại hoặc đã hết hạn.`);
-      }
+async acceptInvitation(req: Request, res: Response) {
+  try {
+    const { invitationId } = req.params;
 
-      const result = await groupService.forceAcceptInvitation(
-        invitationId,
-        invitation.studentId,
-        "ACCEPTED"
-      );
-      return res.send(
-        `<h2>Lời mời đã được chấp nhận!</h2><p>Bạn đã tham gia nhóm thành công.</p>`
-      );
-    } catch (error) {
-      return res.status(400).send(`<h2>Lỗi:</h2> ${(error as Error).message}`);
+    const invitation = await groupService.getInvitationById(invitationId);
+    if (!invitation) {
+      return res.status(404).send(`
+        <html>
+          <head><title>Lỗi</title><meta charset="UTF-8" /></head>
+          <body style="text-align:center; font-family:sans-serif; padding:40px;">
+            <h2 style="color:red;">Lời mời không tồn tại hoặc đã hết hạn.</h2>
+            <a href="https://final-capstone-project-nu.vercel.app/log-in" style="color:blue;">Quay lại trang chủ</a>
+          </body>
+        </html>
+      `);
     }
+
+    await groupService.forceAcceptInvitation(
+      invitationId,
+      invitation.studentId,
+      "ACCEPTED"
+    );
+
+    return res.send(`
+      <html>
+        <head>
+          <title>Chấp nhận lời mời</title>
+          <meta charset="UTF-8" />
+          <style>
+            body { font-family: Arial, sans-serif; text-align: center; padding: 40px; }
+            h2 { color: green; }
+            p { font-size: 16px; color: #333; }
+            a {
+              margin-top: 20px;
+              display: inline-block;
+              padding: 10px 20px;
+              background-color: #007bff;
+              color: white;
+              text-decoration: none;
+              border-radius: 4px;
+            }
+          </style>
+        </head>
+        <body>
+          <h2>Lời mời đã được chấp nhận!</h2>
+          <p>Bạn đã tham gia nhóm thành công.</p>
+          <a href="https://final-capstone-project-nu.vercel.app/log-in">Về trang chủ</a>
+        </body>
+      </html>
+    `);
+  } catch (error) {
+    return res.status(400).send(`
+      <html>
+        <head><title>Lỗi</title><meta charset="UTF-8" /></head>
+        <body style="text-align:center; font-family:sans-serif; padding:40px;">
+          <h2 style="color:red;">Lỗi hệ thống:</h2>
+          <p>${(error as Error).message}</p>
+          <a href="https://final-capstone-project-nu.vercel.app/log-in" style="color:blue;">Quay lại trang chủ</a>
+        </body>
+      </html>
+    `);
   }
+}
+
 
   async getGroupsBySemester(req: AuthenticatedRequest, res: Response) {
     try {
