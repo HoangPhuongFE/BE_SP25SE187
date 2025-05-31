@@ -396,14 +396,14 @@ export class GroupService {
       // 11 Gửi email lời mời
       if (invitedStudent.user?.email) {
         const invitationLink = `http://103.185.184.198:6969/api/groups/accept-invitation/${invitation.id}`;
-
+        const groupLink = `https://final-capstone-project-nu.vercel.app/student/group-student-detail/${group.id}`;
         const emailContent = `
         <div style="font-family: Arial, sans-serif; font-size: 14px; color: #333;">
-          <p>Xin chào <strong>${invitedStudent.user.fullName || invitedStudent.user.username}</strong>,</p>
+          <p>Xin chào <strong>${ invitedStudent.user.username}</strong>,</p>
           <p>Bạn đã được mời tham gia nhóm <b>${group.groupCode}</b>.</p>
           <p>Vui lòng nhấn vào nút bên dưới để chấp nhận lời mời:</p>
           <p style="margin-top: 20px;">
-            <a href="${invitationLink}" 
+            <a href="${groupLink}" 
                style="display: inline-block; padding: 10px 20px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">
               Chấp nhận lời mời
             </a>
