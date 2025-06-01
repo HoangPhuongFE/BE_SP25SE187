@@ -2,6 +2,7 @@ import { PrismaClient, User, Prisma } from "@prisma/client";
 import { sendEmail } from "../utils/email";
 import { EmailTemplateService } from "./emailTemplate.service";
 import { group } from "console";
+import e from "express";
 
 const prisma = new PrismaClient();
 const templateService = new EmailTemplateService();
@@ -437,7 +438,8 @@ export class EmailService {
       const emailBody = this.replacePlaceholders(template.body, {
         username: student.user.username,
         semesterCode: semesterCode,
-        eligibilityMessage: eligibilityMessage
+        eligibilityMessage: eligibilityMessage,
+        email: student.user.email
       });
   
       const emailSent = await sendEmail(student.user.email, template.subject, emailBody);

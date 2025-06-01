@@ -1591,13 +1591,14 @@ export class TopicService {
       });
 
       const now = new Date();
-      if (!submissionPeriod || now < submissionPeriod.startDate || now > submissionPeriod.endDate) {
+      if (!submissionPeriod || now < submissionPeriod.startDate) {
         return {
           success: false,
           status: HTTP_STATUS.FORBIDDEN,
-          message: 'Thời gian nộp đăng ký không hợp lệ!',
+          message: 'Đợt nộp đề tài chưa bắt đầu hoặc không tồn tại!',
         };
       }
+
 
       // Kiểm tra đề tài đã được duyệt cho nhóm khác
       const existingApproved = await prisma.topicRegistration.findFirst({
